@@ -4,7 +4,7 @@
 **Repository:** [Sunder-Chauhan/Ishti-OS](https://github.com/Sunder-Chauhan/Ishti-OS.git)  
 **Public Brand:** **ISHTI**  
 **Internal Codename:** `spiritual-OS`  
-**Current Baseline Commit:** [`d6b5ae081c29ac15023588d719514ff37366365f`](https://github.com/Sunder-Chauhan/Ishti-OS/commit/d6b5ae0)  
+**Current Baseline Commit:** [`d99f1d1b01a5043b07f382f6f107cf607453ccab`](https://github.com/Sunder-Chauhan/Ishti-OS/commit/d99f1d1)  
 **Migration Baseline:** `supabase/migrations/20261114000000_initial_schema.sql`  
 **Migration SHA-256 Checksum:** `a1c07ce3f4a3dd45d71634f35ee7ec2f138f0130ebc211486baed6cce092c9b0`  
 **Staging Status:** **STAGING BLOCKED** (Awaiting separate staging environment provisioning and user approval before remote execution)
