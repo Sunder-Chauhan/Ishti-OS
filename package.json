@@ -12,9 +12,17 @@
     "dev:mobile": "npm run start --workspace @spiritual-os/mobile",
     "build:web": "npm run build --workspace @spiritual-os/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test:security": "npx tsx scripts/run-comprehensive-tests.js"
+    "test:security": "npx tsx scripts/run-comprehensive-tests.js",
+    "test:real-db": "npx tsx scripts/run-real-postgres-tests.ts"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@types/pg": "^8.23.1",
+    "embedded-postgres": "^18.6.0-beta.19",
+    "pg": "^8.23.1",
+    "server-only": "^0.0.1"
   }
 }

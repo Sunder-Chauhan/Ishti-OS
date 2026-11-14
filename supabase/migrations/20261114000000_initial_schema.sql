@@ -53,6 +53,28 @@ CREATE TABLE IF NOT EXISTS public.role_assignment_audit (
 
 CREATE INDEX IF NOT EXISTS idx_role_audit_user ON public.role_assignment_audit(user_id);
 
+-- Enforce Append-Only Immutability on Role Assignment Audit
+CREATE OR REPLACE FUNCTION public.prevent_audit_log_tampering()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RAISE EXCEPTION 'Audit records are immutable and cannot be updated or deleted.';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prevent_role_audit_tampering ON public.role_assignment_audit;
+CREATE TRIGGER trg_prevent_role_audit_tampering
+  BEFORE UPDATE OR DELETE ON public.role_assignment_audit
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_audit_log_tampering();
+
+REVOKE ALL ON public.role_assignment_audit FROM PUBLIC, anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.role_assignment_audit FROM authenticated;
+GRANT SELECT ON public.role_assignment_audit TO authenticated;
+GRANT ALL ON public.role_assignment_audit TO service_role, postgres;
+
 -- ------------------------------------------------------------------------------
 -- SECURITY DEFINER Helper Functions (Eliminates RLS Policy Recursion)
 -- ------------------------------------------------------------------------------
@@ -115,7 +137,7 @@ BEGIN
 
   -- Caller verification: platform_admin session or backend service_role
   IF v_caller IS NULL THEN
-    IF CURRENT_USER IN ('postgres', 'service_role', 'supabase_admin') THEN
+    IF CURRENT_USER IN ('postgres', 'service_role', 'supabase_admin') OR auth.role() = 'service_role' THEN
       v_is_service_role := TRUE;
     ELSE
       RAISE EXCEPTION 'Unauthorized: Unauthenticated caller cannot assign roles.';
@@ -138,6 +160,9 @@ BEGIN
   IF v_old_role = p_new_role THEN
     RETURN;
   END IF;
+
+  -- Set transaction-local flag authorizing the profile update trigger
+  PERFORM set_config('ishti.authorized_role_assignment', 'true', true);
 
   -- Update role on profile
   UPDATE public.profiles
@@ -165,8 +190,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.assign_user_role(UUID, TEXT, TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.assign_user_role(UUID, TEXT, TEXT) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.assign_user_role(UUID, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.assign_user_role(UUID, TEXT, TEXT) TO authenticated, service_role, postgres;
 
 -- Signup Profile Initialization (Devotee Only — Never trusts metadata)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -212,13 +237,13 @@ BEGIN
 
   -- Role modification must go through assign_user_role()
   IF (NEW.role IS DISTINCT FROM OLD.role) THEN
-    IF NOT public.is_admin() AND CURRENT_USER NOT IN ('postgres', 'service_role') THEN
+    IF current_setting('ishti.authorized_role_assignment', true) IS DISTINCT FROM 'true' THEN
       RAISE EXCEPTION 'Direct role modification prohibited. Use assign_user_role().';
     END IF;
   END IF;
 
   IF (NEW.is_verified IS DISTINCT FROM OLD.is_verified) THEN
-    IF NOT public.is_admin() AND CURRENT_USER NOT IN ('postgres', 'service_role') THEN
+    IF NOT public.is_admin() AND COALESCE(auth.role(), 'anon') <> 'service_role' AND SESSION_USER NOT IN ('postgres', 'supabase_admin') THEN
       RAISE EXCEPTION 'Direct verification status modification prohibited.';
     END IF;
   END IF;
@@ -348,12 +373,14 @@ VALUES (
   'Public Domain',
   'Public Domain',
   'free_scholarly_access',
-  'public_domain_unrestricted',
-  'curated'
+  'under_legal_review',
+  'scholarly_review'
 )
 ON CONFLICT (slug) DO UPDATE SET
   source_edition = EXCLUDED.source_edition,
   publication_publisher = EXCLUDED.publication_publisher,
+  commercial_rights_status = EXCLUDED.commercial_rights_status,
+  status = EXCLUDED.status,
   updated_at = NOW();
 
 INSERT INTO public.canonical_verses (
@@ -388,12 +415,14 @@ VALUES (
   'Samvanana Angirasa',
   'Rigveda 10.191.2, Poona Critical Edition, Vol. 4, p. 894',
   NULL, -- Honest provenance: Unassigned until accredited scholarly peer reviewer sign-off
-  'Awaiting formal scholarly peer review accreditation. Sanskrit text is public domain.',
-  'cleared',
+  'Awaiting formal scholarly peer review accreditation and commercial rights clearance verification. Sanskrit text Poona Critical Edition 1933; translation Griffith 1896 under legal copyright assessment.',
+  'pending_clearance',
   'pending_peer_review' -- Must remain pending until certified
 )
 ON CONFLICT (id) DO UPDATE SET
+  translations = EXCLUDED.translations,
   source_citation = EXCLUDED.source_citation,
+  scholarly_verification_notes = EXCLUDED.scholarly_verification_notes,
   rights_clearance_status = EXCLUDED.rights_clearance_status,
   review_status = EXCLUDED.review_status,
   updated_at = NOW();
@@ -500,7 +529,7 @@ BEGIN
   IF (NEW.verification_status IS DISTINCT FROM OLD.verification_status) OR
      (NEW.rating IS DISTINCT FROM OLD.rating) OR
      (NEW.review_count IS DISTINCT FROM OLD.review_count) THEN
-    IF NOT public.is_admin() AND CURRENT_USER NOT IN ('postgres', 'service_role') THEN
+    IF NOT public.is_admin() AND COALESCE(auth.role(), 'anon') <> 'service_role' THEN
       RAISE EXCEPTION 'Unauthorized: Only platform administrators can verify experts or adjust review metrics.';
     END IF;
   END IF;
@@ -575,7 +604,7 @@ DECLARE
 BEGIN
   -- 1. Disallow self-confirmation or self-marking as paid on client insert
   IF NEW.payment_status <> 'pending' OR NEW.status <> 'pending_confirmation' THEN
-    IF NOT public.is_admin() AND CURRENT_USER NOT IN ('postgres', 'service_role') THEN
+    IF NOT public.is_admin() AND COALESCE(auth.role(), 'anon') <> 'service_role' THEN
       RAISE EXCEPTION 'Unauthorized: Initial booking must have status pending_confirmation and payment_status pending.';
     END IF;
   END IF;
@@ -639,7 +668,7 @@ BEGIN
     IF (NEW.status = 'cancelled' AND OLD.status IN ('pending_confirmation', 'confirmed') AND auth.uid() = OLD.user_id) THEN
       NULL; -- Allowed devotee cancellation
     ELSE
-      IF NOT public.is_admin() AND CURRENT_USER NOT IN ('postgres', 'service_role') THEN
+      IF NOT public.is_admin() AND COALESCE(auth.role(), 'anon') <> 'service_role' THEN
         IF auth.uid() IS NOT NULL THEN
           RAISE EXCEPTION 'Unauthorized: Payment verification and status modification require administrative authority.';
         END IF;
@@ -681,7 +710,7 @@ CREATE TABLE IF NOT EXISTS public.rate_limit_events (
 CREATE INDEX IF NOT EXISTS idx_rate_limit_lookup
   ON public.rate_limit_events (bucket, identifier_hash, created_at);
 
--- Atomic rate check and probabilistic cleanup RPC
+-- Atomic, Concurrency-Safe Sliding-Window Rate Limiter using Advisory Transaction Locks
 CREATE OR REPLACE FUNCTION public.check_rate_limit(
   p_bucket TEXT,
   p_identifier_hash TEXT,
@@ -694,36 +723,76 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_window_start TIMESTAMPTZ := NOW() - (p_window_seconds || ' seconds')::INTERVAL;
+  v_window_start TIMESTAMPTZ;
   v_current_count INTEGER;
 BEGIN
-  -- Count events in active window
+  -- 1. Validate bucket from server-controlled allowlist
+  IF p_bucket NOT IN ('early_access', 'auth_otp', 'kundli_decrypt', 'booking_request') THEN
+    RAISE EXCEPTION 'Invalid rate limit bucket: %', p_bucket;
+  END IF;
+
+  -- 2. Validate parameters within sane bounds
+  IF p_max_requests < 1 OR p_max_requests > 1000 THEN
+    RAISE EXCEPTION 'Invalid max_requests: must be between 1 and 1000';
+  END IF;
+
+  IF p_window_seconds < 1 OR p_window_seconds > 86400 THEN
+    RAISE EXCEPTION 'Invalid window_seconds: must be between 1 and 86400';
+  END IF;
+
+  IF p_identifier_hash IS NULL OR LENGTH(TRIM(p_identifier_hash)) < 16 THEN
+    RAISE EXCEPTION 'Invalid identifier_hash: must be a valid cryptographic digest';
+  END IF;
+
+  -- 3. Acquire transaction-level advisory xact lock to serialize concurrent requests for this bucket + identifier
+  PERFORM pg_advisory_xact_lock(hashtext(p_bucket || ':' || p_identifier_hash));
+
+  v_window_start := NOW() - (p_window_seconds || ' seconds')::INTERVAL;
+
+  -- 4. Count events in active sliding window
   SELECT COUNT(*) INTO v_current_count
   FROM public.rate_limit_events
   WHERE bucket = p_bucket
     AND identifier_hash = p_identifier_hash
     AND created_at >= v_window_start;
 
+  -- 5. Atomic check & insert
   IF v_current_count >= p_max_requests THEN
     RETURN FALSE; -- Rate limited
   END IF;
 
-  -- Record event
   INSERT INTO public.rate_limit_events (bucket, identifier_hash, created_at)
   VALUES (p_bucket, p_identifier_hash, NOW());
-
-  -- Probabilistic cleanup (approx 2% of calls)
-  IF (random() < 0.02) THEN
-    DELETE FROM public.rate_limit_events
-    WHERE created_at < NOW() - INTERVAL '1 hour';
-  END IF;
 
   RETURN TRUE; -- Allowed
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.check_rate_limit(TEXT, TEXT, INTEGER, INTEGER) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.check_rate_limit(TEXT, TEXT, INTEGER, INTEGER) TO authenticated, anon, service_role;
+-- Dedicated Retention & Event Cleanup Function
+CREATE OR REPLACE FUNCTION public.cleanup_rate_limit_events(
+  p_retention_interval INTERVAL DEFAULT INTERVAL '24 hours'
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_deleted_count INTEGER;
+BEGIN
+  DELETE FROM public.rate_limit_events
+  WHERE created_at < NOW() - p_retention_interval;
+  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+  RETURN v_deleted_count;
+END;
+$$;
+
+-- Strict Access Control: Revoke direct execution from anon & authenticated clients
+REVOKE ALL ON FUNCTION public.check_rate_limit(TEXT, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.check_rate_limit(TEXT, TEXT, INTEGER, INTEGER) TO service_role, postgres;
+
+REVOKE ALL ON FUNCTION public.cleanup_rate_limit_events(INTERVAL) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cleanup_rate_limit_events(INTERVAL) TO service_role, postgres;
 
 -- ==============================================================================
 -- 10. EARLY ACCESS SUBSCRIBERS
@@ -783,6 +852,7 @@ CREATE POLICY "Users can update their own profile"
   WITH CHECK (auth.uid() = id);
 
 -- Role Audit
+DROP POLICY IF EXISTS "Admins can view role audit" ON public.role_assignment_audit;
 CREATE POLICY "Admins can view role audit"
   ON public.role_assignment_audit FOR SELECT
   USING (public.is_admin());
@@ -934,6 +1004,18 @@ CREATE POLICY "Devotees can create bookings"
   ON public.booking_requests FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Devotees can update their own bookings" ON public.booking_requests;
+DROP POLICY IF EXISTS "Admins can update bookings" ON public.booking_requests;
+
+CREATE POLICY "Devotees can update their own bookings"
+  ON public.booking_requests FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admins can update bookings"
+  ON public.booking_requests FOR UPDATE
+  USING (public.is_admin());
+
 -- Early Access Subscribers: Public insert, Admin select only
 DROP POLICY IF EXISTS "Public insert early access" ON public.early_access_subscribers;
 DROP POLICY IF EXISTS "Admins only view early access subscribers" ON public.early_access_subscribers;
@@ -947,6 +1029,11 @@ CREATE POLICY "Admins only view early access subscribers"
   USING (public.is_admin());
 
 -- Rate Limit Events: Internal RPC use only (no public direct queries)
+DROP POLICY IF EXISTS "Admins can view rate limit events" ON public.rate_limit_events;
 CREATE POLICY "Admins can view rate limit events"
   ON public.rate_limit_events FOR SELECT
   USING (public.is_admin());
+
+REVOKE ALL ON public.rate_limit_events FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.rate_limit_events TO authenticated;
+GRANT ALL ON public.rate_limit_events TO service_role, postgres;

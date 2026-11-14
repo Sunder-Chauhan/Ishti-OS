@@ -1,19 +1,32 @@
+import "server-only";
+
 /**
  * ISHTI Astrological Data (Kundli) Application-Layer Encryption Service
  *
  * Security Architecture:
+ * - Server-only execution: strictly prevented from entering client/mobile bundles.
  * - Algorithm: AES-256-GCM (Authenticated Encryption with Associated Data - AEAD)
  * - Key Length: 256 bits (32 bytes)
- * - IV Length: 96 bits (12 bytes) cryptographically random per operation
+ * - IV Length: 96 bits (12 bytes) cryptographically random per field operation
  * - Auth Tag Length: 128 bits (16 bytes)
- * - AAD: Additional Authenticated Data binding ciphertext to target User ID & Key Version
- * - Isolation: Keys are held exclusively in server-side memory/KMS and never sent to
- *   browser clients, mobile apps, or PostgreSQL schemas.
+ * - Strict Context-Bound AAD:
+ *     `ishti:kundli_profiles:${userId}:${profileId}:${fieldName}:v${keyVersion}`
+ *   Prevents:
+ *     1. Cross-user ciphertext transplantation.
+ *     2. Cross-profile ciphertext transplantation (between profiles of same user).
+ *     3. Cross-field ciphertext swapping (e.g. DOB into TOB or coordinates).
+ *     4. Cross-version/environment replay attacks.
+ * - Key Management & Rotation:
+ *     * In production (NODE_ENV === "production"), explicitly configured versioned 32-byte
+ *       hex keys (e.g. KUNDLI_ENCRYPTION_KEY_V1) are mandatory. Fails fast if missing.
+ *     * Multi-version decryption allows seamless rolling key rotation without downtime.
  *
- * ISHTI Security Classification: Level 4 — Highly Confidential
+ * ISHTI Security Classification: Level 4 — Highly Confidential (DPDP Act 2023 §8(5))
  */
 
 import crypto from "node:crypto";
+
+export type KundliEncryptedField = "dob" | "tob" | "coordinates";
 
 export interface EncryptedField {
   ciphertext: string;
@@ -43,7 +56,7 @@ export interface DecryptedKundliProfile {
 }
 
 export interface EncryptedKundliRecord {
-  id?: string;
+  id: string;
   user_id: string;
   profile_name: string;
   gender: "male" | "female" | "other";
@@ -51,29 +64,51 @@ export interface EncryptedKundliRecord {
   ciphertext_tob: string;
   ciphertext_coordinates: string;
   encryption_key_version: number;
-  encryption_iv: string;
-  encryption_auth_tag: string;
+  encryption_iv: string; // Packed ivDob:ivTob:ivCoords
+  encryption_auth_tag: string; // Packed tagDob:tagTob:tagCoords
   ayanamsha: string;
   is_primary: boolean;
 }
 
-const CURRENT_KEY_VERSION = 1;
+export const CURRENT_KEY_VERSION = 1;
 
 /**
- * Retrieves the 256-bit encryption key for the specified version from server secrets.
- * Throws an explicit error if the key is missing or invalid.
+ * Builds the canonical Additional Authenticated Data (AAD) for a specific Kundli field.
+ * Cryptographically binds the ciphertext to the exact user, profile, field, table, and key version.
+ */
+export function buildKundliAad(
+  userId: string,
+  profileId: string,
+  fieldName: KundliEncryptedField,
+  keyVersion: number
+): Buffer {
+  if (!userId || typeof userId !== "string") {
+    throw new Error("userId is required for Kundli AAD binding.");
+  }
+  if (!profileId || typeof profileId !== "string") {
+    throw new Error("profileId is required for Kundli AAD binding.");
+  }
+  if (!fieldName || !["dob", "tob", "coordinates"].includes(fieldName)) {
+    throw new Error(`Invalid fieldName '${fieldName}' for Kundli AAD binding.`);
+  }
+  return Buffer.from(`ishti:kundli_profiles:${userId}:${profileId}:${fieldName}:v${keyVersion}`, "utf8");
+}
+
+/**
+ * Retrieves the 256-bit encryption key for the specified version from server environment.
+ * In production, fails immediately if the versioned key is missing or invalid.
  */
 export function getEncryptionKey(version: number = CURRENT_KEY_VERSION): Buffer {
-  // Read versioned key from environment
   const envVarName = `KUNDLI_ENCRYPTION_KEY_V${version}`;
-  let rawKeyHex = process.env[envVarName];
+  const rawKeyHex = process.env[envVarName];
 
-  // In development/test environments, fallback to a derived key if not explicitly set
   if (!rawKeyHex) {
     if (process.env.NODE_ENV === "production") {
-      throw new Error(`CRITICAL: Missing server encryption key ${envVarName} in production.`);
+      throw new Error(
+        `CRITICAL CONFIGURATION ERROR: Missing server encryption key '${envVarName}' in production. Server startup halted.`
+      );
     }
-    // Deterministic test key derivation from master secret
+    // Deterministic test key derivation from master secret for isolated dev/test only
     const salt = `ishti-dev-salt-v${version}`;
     const baseSecret = process.env.SUPABASE_SERVICE_ROLE_KEY || "ishti-development-master-key-seed-32b";
     return crypto.scryptSync(baseSecret, salt, 32);
@@ -81,34 +116,33 @@ export function getEncryptionKey(version: number = CURRENT_KEY_VERSION): Buffer 
 
   const keyBuffer = Buffer.from(rawKeyHex.trim(), "hex");
   if (keyBuffer.length !== 32) {
-    throw new Error(`Invalid key length for ${envVarName}: expected 32 bytes (64 hex characters), got ${keyBuffer.length}`);
+    throw new Error(
+      `Invalid key length for '${envVarName}': expected 32 bytes (64 hex characters), got ${keyBuffer.length} bytes.`
+    );
   }
   return keyBuffer;
 }
 
 /**
- * Encrypts a plaintext string using AES-256-GCM with a fresh 96-bit IV and AAD binding.
+ * Encrypts a single plaintext field using AES-256-GCM with a fresh 96-bit IV and full AAD context binding.
  */
 export function encryptKundliField(
   plaintext: string,
   userId: string,
+  profileId: string,
+  fieldName: KundliEncryptedField,
   keyVersion: number = CURRENT_KEY_VERSION,
   customKey?: Buffer
 ): EncryptedField {
   if (!plaintext || typeof plaintext !== "string") {
     throw new Error("Plaintext must be a non-empty string.");
   }
-  if (!userId || typeof userId !== "string") {
-    throw new Error("User ID is required for AAD security binding.");
-  }
 
   const key = customKey || getEncryptionKey(keyVersion);
   const iv = crypto.randomBytes(12); // Fresh 96-bit IV for every encryption
 
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-
-  // Bind ciphertext cryptographically to user ID and key version (prevents cross-user copying)
-  const aad = Buffer.from(`ishti:kundli:${userId}:v${keyVersion}`, "utf8");
+  const aad = buildKundliAad(userId, profileId, fieldName, keyVersion);
   cipher.setAAD(aad);
 
   let ciphertext = cipher.update(plaintext, "utf8", "hex");
@@ -124,13 +158,16 @@ export function encryptKundliField(
 }
 
 /**
- * Decrypts an AES-256-GCM encrypted field, verifying both the auth tag and AAD binding.
+ * Decrypts an AES-256-GCM encrypted field, verifying both the 128-bit auth tag and full AAD context binding.
+ * Throws an error if any tampering, cross-user copy, cross-profile copy, or cross-field swap occurs.
  */
 export function decryptKundliField(
   ciphertext: string,
   ivHex: string,
   authTagHex: string,
   userId: string,
+  profileId: string,
+  fieldName: KundliEncryptedField,
   keyVersion: number = CURRENT_KEY_VERSION,
   customKey?: Buffer
 ): string {
@@ -150,9 +187,7 @@ export function decryptKundliField(
   }
 
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-
-  // Verify AAD binding matches the original encryption context
-  const aad = Buffer.from(`ishti:kundli:${userId}:v${keyVersion}`, "utf8");
+  const aad = buildKundliAad(userId, profileId, fieldName, keyVersion);
   decipher.setAAD(aad);
   decipher.setAuthTag(authTag);
 
@@ -164,12 +199,14 @@ export function decryptKundliField(
 
 /**
  * Encrypts an entire Kundli profile into the database record format.
+ * Generates an immutable profile ID if not already assigned, ensuring profile-level binding.
  */
 export function encryptKundliProfile(
   profile: DecryptedKundliProfile,
-  keyVersion: number = CURRENT_KEY_VERSION
+  keyVersion: number = CURRENT_KEY_VERSION,
+  customKey?: Buffer
 ): EncryptedKundliRecord {
-  // Validate basic format before encryption
+  // Validate format before encryption
   if (!/^\d{4}-\d{2}-\d{2}$/.test(profile.dob)) {
     throw new Error("Invalid date of birth format: expected YYYY-MM-DD");
   }
@@ -177,12 +214,21 @@ export function encryptKundliProfile(
     throw new Error("Invalid time of birth format: expected HH:MM or HH:MM:SS");
   }
 
-  const encDob = encryptKundliField(profile.dob, profile.userId, keyVersion);
-  const encTob = encryptKundliField(profile.tob, profile.userId, keyVersion);
-  const encCoords = encryptKundliField(JSON.stringify(profile.coordinates), profile.userId, keyVersion);
+  const profileId = profile.id || crypto.randomUUID();
+
+  const encDob = encryptKundliField(profile.dob, profile.userId, profileId, "dob", keyVersion, customKey);
+  const encTob = encryptKundliField(profile.tob, profile.userId, profileId, "tob", keyVersion, customKey);
+  const encCoords = encryptKundliField(
+    JSON.stringify(profile.coordinates),
+    profile.userId,
+    profileId,
+    "coordinates",
+    keyVersion,
+    customKey
+  );
 
   return {
-    id: profile.id,
+    id: profileId,
     user_id: profile.userId,
     profile_name: profile.profileName,
     gender: profile.gender,
@@ -190,7 +236,6 @@ export function encryptKundliProfile(
     ciphertext_tob: encTob.ciphertext,
     ciphertext_coordinates: encCoords.ciphertext,
     encryption_key_version: keyVersion,
-    // Store IVs & Tags (we store the coordinate IV as primary or serialized envelope)
     encryption_iv: `${encDob.iv}:${encTob.iv}:${encCoords.iv}`,
     encryption_auth_tag: `${encDob.authTag}:${encTob.authTag}:${encCoords.authTag}`,
     ayanamsha: profile.ayanamsha,
@@ -199,14 +244,18 @@ export function encryptKundliProfile(
 }
 
 /**
- * Decrypts an encrypted Kundli database record into the plain domain model.
+ * Decrypts a database record back into a strongly-typed DecryptedKundliProfile.
+ * Authenticates user ID, profile ID, and field bindings.
  */
-export function decryptKundliProfile(record: EncryptedKundliRecord): DecryptedKundliProfile {
+export function decryptKundliProfile(
+  record: EncryptedKundliRecord,
+  customKey?: Buffer
+): DecryptedKundliProfile {
   const [ivDob, ivTob, ivCoords] = record.encryption_iv.split(":");
   const [tagDob, tagTob, tagCoords] = record.encryption_auth_tag.split(":");
 
   if (!ivDob || !ivTob || !ivCoords || !tagDob || !tagTob || !tagCoords) {
-    throw new Error("Corrupted encryption envelope: missing multi-field IV or Auth Tag components.");
+    throw new Error("Corrupted encryption metadata: missing IV or auth tag components.");
   }
 
   const dob = decryptKundliField(
@@ -214,7 +263,10 @@ export function decryptKundliProfile(record: EncryptedKundliRecord): DecryptedKu
     ivDob,
     tagDob,
     record.user_id,
-    record.encryption_key_version
+    record.id,
+    "dob",
+    record.encryption_key_version,
+    customKey
   );
 
   const tob = decryptKundliField(
@@ -222,16 +274,29 @@ export function decryptKundliProfile(record: EncryptedKundliRecord): DecryptedKu
     ivTob,
     tagTob,
     record.user_id,
-    record.encryption_key_version
+    record.id,
+    "tob",
+    record.encryption_key_version,
+    customKey
   );
 
-  const coordsRaw = decryptKundliField(
+  const coordsJson = decryptKundliField(
     record.ciphertext_coordinates,
     ivCoords,
     tagCoords,
     record.user_id,
-    record.encryption_key_version
+    record.id,
+    "coordinates",
+    record.encryption_key_version,
+    customKey
   );
+
+  let coordinates: EncryptedCoordinatesPayload;
+  try {
+    coordinates = JSON.parse(coordsJson);
+  } catch {
+    throw new Error("Failed to parse decrypted coordinates payload JSON.");
+  }
 
   return {
     id: record.id,
@@ -240,8 +305,39 @@ export function decryptKundliProfile(record: EncryptedKundliRecord): DecryptedKu
     gender: record.gender,
     dob,
     tob,
-    coordinates: JSON.parse(coordsRaw),
+    coordinates,
     ayanamsha: record.ayanamsha,
     isPrimary: record.is_primary,
   };
+}
+
+/**
+ * Key Rotation Architecture & Migration Procedure:
+ *
+ * 1. Active Key Policy:
+ *    - New records are always encrypted using CURRENT_KEY_VERSION.
+ *    - To rotate to key v2:
+ *      a) Add KUNDLI_ENCRYPTION_KEY_V2 to production secrets/KMS.
+ *      b) Retain KUNDLI_ENCRYPTION_KEY_V1 in production environment.
+ *      c) Update CURRENT_KEY_VERSION = 2 in code.
+ *
+ * 2. Background Re-encryption Worker:
+ *    - Queries records where encryption_key_version < CURRENT_KEY_VERSION.
+ *    - Decrypts record using old version key (e.g. v1).
+ *    - Re-encrypts record using new active key (e.g. v2) with fresh IVs and updated AAD.
+ *    - Saves record with encryption_key_version = 2.
+ *
+ * 3. Decommissioning:
+ *    - Once 0 records remain with key_version = 1, safely remove KUNDLI_ENCRYPTION_KEY_V1.
+ */
+export async function reencryptKundliRecord(
+  record: EncryptedKundliRecord,
+  targetKeyVersion: number = CURRENT_KEY_VERSION
+): Promise<EncryptedKundliRecord> {
+  if (record.encryption_key_version === targetKeyVersion) {
+    return record; // Already up-to-date
+  }
+
+  const decrypted = decryptKundliProfile(record);
+  return encryptKundliProfile(decrypted, targetKeyVersion);
 }

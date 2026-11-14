@@ -2,7 +2,7 @@
 
 import { createClient } from "../../lib/supabase/server";
 import { headers } from "next/headers";
-import { checkDistributedRateLimit, hashClientIp, extractClientIp } from "../../lib/security/rate-limiter";
+import { checkRateLimit, hashIdentifier, extractClientIp } from "../../lib/security/rate-limiter";
 
 export interface EarlyAccessResult {
   success: boolean;
@@ -23,11 +23,7 @@ export async function submitEarlyAccess(
 
   // 2. Distributed rate limiting check (primary defense)
   const headerList = await headers();
-  const rateLimitResult = await checkDistributedRateLimit(headerList, {
-    bucket: "early_access_submission",
-    maxRequests: 5,
-    windowSeconds: 600, // 5 requests per 10 minutes
-  });
+  const rateLimitResult = await checkRateLimit(headerList, "early_access");
 
   if (!rateLimitResult.allowed) {
     return {
@@ -73,7 +69,7 @@ export async function submitEarlyAccess(
   }
 
   const clientIp = extractClientIp(headerList);
-  const ipHash = hashClientIp(clientIp);
+  const ipHash = hashIdentifier(clientIp);
 
   try {
     const supabase = await createClient();

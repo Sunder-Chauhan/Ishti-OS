@@ -22,7 +22,7 @@
 - [x] Transaction-Safe Booking Concurrency & Re-Booking Lifecycle Repair (Partial Unique Index)
 - [x] DPDP Act 2023 Consent Audit Logging Schema (`user_consents` §6 & §8(5) technical safeguards)
 - [x] Early Access Registration Server Action & Interactive Accessible Form (`EarlyAccessForm.tsx`)
-- [x] Comprehensive Test Suite (`npm run test:security` — 45 automated tests passed)
+- [x] Comprehensive Test Suite (`npm run test:security` — 59 automated tests passed across static, unit, integration, real PostgreSQL 18 & concurrency)
 - [ ] Remote Database Migration Execution (Pending user approval & DB credentials / SQL Editor run)
 - [ ] Phone OTP / SMS Gateway Configuration (Twilio / Gupshup / MSG91)
 

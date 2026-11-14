@@ -1,11 +1,15 @@
+import "server-only";
+
 /**
  * ISHTI Trusted Role Assignment & RBAC Governance
  *
  * Security Architecture:
+ * - Server-only execution: strictly prevented from entering client/mobile bundles.
  * - Direct profile updates to `role` and `is_verified` are blocked by database triggers.
  * - Role elevations MUST be performed via the server-side `assign_user_role` function.
  * - Every role modification records an immutable audit entry in `public.role_assignment_audit`.
  * - Ordinary authenticated devotees cannot elevate themselves or others.
+ * - Public and anonymous users cannot execute `assign_user_role`.
  */
 
 import { createAdminClient } from "../supabase/admin";
