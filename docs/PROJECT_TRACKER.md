@@ -36,13 +36,30 @@
 - [x] Pre-migration inspection, SHA-256 integrity check (`3399a731...`), scripture rights remediation, and staging key verification ([docs/M03_STAGING_PRE_MIGRATION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_PRE_MIGRATION_REPORT.md))
 - [x] Post-remediation audit: purged credential markers (`PRODUCTION_KEY_MARKERS`), assessed Git history, reconciled staging database state (11 tables, 2 seed rows, 0 migrations), and validated RLS scholar policy syntax (`TO authenticated` + `WITH CHECK`)
 - [x] Final Read-Only Staging Reconciliation Audit: refactored credential verifier into 5 distinct categories, purged false entropy randomness claims, verified CSPRNG key provenance, verified 7 behavioral RLS conditions [SIMULATED], evaluated root-cause confidence levels, and authored comprehensive audit deliverable ([docs/M03_STAGING_RECONCILIATION_AUDIT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_RECONCILIATION_AUDIT.md))
-- [ ] Obtain user authorization & execute remote migration on staging database
-- [ ] Verify 11 tables, RLS policies, triggers, and partial indexes on remote staging
-- [ ] Deploy web application to staging environment and verify end-to-end workflows (Auth, RLS, Kundli, Booking)
-- [ ] Configure and test sandbox integrations (Twilio SMS OTP sandbox, Razorpay test mode)
-- [ ] Achieve final staging validation status (`STAGING VALIDATED`)
+
+## M03.1 — Controlled Staging Reconciliation & Release Readiness
+- [x] Secret scanning across tracked files, commit history, and previous M03 commits
+- [x] Git exclusion re-verification (`.env`, `.env.*` properly ignored)
+- [x] Verified CSPRNG key generation (`crypto.randomBytes(32)`) in setup script
+- [x] Complete object-by-object database drift analysis (tables, types, constraints, indexes, RLS, policies, functions, triggers, seed rows, migration history)
+- [x] Specific verification of scholar-management policies on `scripture_catalog` and `canonical_verses` (`TO authenticated` vs `{public}`)
+- [x] Non-destructive staging reconciliation script engineered ([scripts/reconcile-staging-schema.ts](file:///C:/Users/as/Documents/GitHub/spiritual-OS/scripts/reconcile-staging-schema.ts)) with dry-run default, production block, atomic transaction, postcondition checks, and rollback plan
+- [x] Controlled Staging Reconciliation Plan ([docs/M03_1_STAGING_RECONCILIATION_PLAN.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_STAGING_RECONCILIATION_PLAN.md))
+- [x] Release Readiness Checklist with strict labeling ([docs/M03_1_RELEASE_READINESS_CHECKLIST.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_RELEASE_READINESS_CHECKLIST.md))
+- [x] Milestone M04 Application Foundation & Architecture Specification ([docs/M04_APPLICATION_FOUNDATION_SPEC.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M04_APPLICATION_FOUNDATION_SPEC.md))
+- [ ] Obtain user explicit authorization to execute reconciliation against staging database
+- [ ] Execute pre-reconciliation backup (`supabase db dump`)
+- [ ] Run `scripts/reconcile-staging-schema.ts --execute` against staging project `zrjptpkhtklfgnovdrny`
+- [ ] Execute Tier 3 hosted staging tests against live PostgREST and GoTrue endpoints
+
+## M04 — Application Foundation & User Experience Shell (Pending M03.1 Sign-Off)
+- [ ] Implement Next.js 15 application shell layout and font loading
+- [ ] Implement responsive navigation header (desktop) and bottom navigation (mobile)
+- [ ] Implement India-first phone OTP authentication modal and session middleware
+- [ ] Implement user profile view and DPDP Act 2023 consent center UI
+- [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `STAGING RECONCILIATION — MIGRATION BLOCKED`
+- **Status:** `M03.1 — RECONCILIATION PLAN READY / REMOTE EXECUTION AWAITING EXPLICIT APPROVAL`
 - **Restrictions:** Zero remote database mutations. No `supabase db push`. Production quarantined.
-- **Action Required:** Await user authorization and staging credentials following state reconciliation review.
+- **Action Required:** Await user explicit approval before executing staging reconciliation and provisioning credentials.
