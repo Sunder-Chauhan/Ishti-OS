@@ -21,7 +21,8 @@ export type LicenseType =
   | "CC-BY-4.0"
   | "CC-BY-NC-4.0"
   | "Academic Fair Use"
-  | "Licensed Commercial";
+  | "Licensed Commercial"
+  | "Under Legal Review";
 
 export type CommercialRightsStatus =
   | "public_domain_unrestricted"
@@ -47,6 +48,7 @@ export interface ScriptureCatalogItem {
   license_type: LicenseType;
   permitted_use: string;
   commercial_rights_status: CommercialRightsStatus;
+  rights_clearance_status?: RightsClearanceStatus;
   status: ScholarlyStatus;
 }
 

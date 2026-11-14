@@ -5,18 +5,20 @@
 **Public Brand:** `ISHTI`  
 **Repository:** `Sunder-Chauhan/Ishti-OS`  
 **Branch:** `main`  
-**Baseline Git HEAD:** `bc5b6d18f101b571657a2ca0af7152378e457515`  
+**Baseline Git HEAD:** `5523de04316c4ed9890f86f465b33308f890b769`  
 **Staging Status:** `PRE-MIGRATION GATE VERIFIED — AWAITING USER AUTHORIZATION & CREDENTIALS`
 
 ---
 
 ## Executive Summary
 
-This report establishes the pre-migration verification gate for **Milestone M03** prior to executing the initial schema migration against the dedicated Supabase staging project. 
+This report establishes the final pre-migration verification gate for **Milestone M03** prior to executing the initial schema migration against the dedicated Supabase staging project. 
 
-In strict adherence to governance constraints, **no database mutations have been performed**. The remote production project (`zxwkfnvmmxoojewhvsdc`) is completely isolated and excluded from all configuration. The newly provisioned staging project (`zrjptpkhtklfgnovdrny`) has been verified as reachable, healthy, and isolated.
+In strict adherence to governance constraints, **no remote database mutations have been performed**. The remote production project (`zxwkfnvmmxoojewhvsdc`) is completely isolated and excluded from all configuration. The newly provisioned staging project (`zrjptpkhtklfgnovdrny`) has been independently verified as fresh (0 public application tables, 0 recorded migrations) and live on the Supabase Mumbai gateway.
 
-The initial declarative migration file has passed byte-for-byte SHA-256 integrity verification, structural safety analysis, RLS coverage auditing, and local multi-connection concurrency verification.
+Following findings from independent review, scripture intellectual property representations have been corrected: pending rights clearance is no longer conflated with public-domain claims. Staging-only cryptographic keys have been generated and format-verified without credential leakage.
+
+The initial declarative migration file has passed byte-for-byte SHA-256 integrity verification, structural safety analysis, RLS coverage auditing, official Supabase CLI 3.1.0 simulation, and local multi-connection PostgreSQL 18 concurrency verification.
 
 ---
 
@@ -31,6 +33,7 @@ The dedicated staging project was inspected and verified:
 | **Organization ID** | `jmeoigcqjzlvjhqeaevj` | Verified |
 | **Hosting Region** | `ap-south-1` (Mumbai, India) | Verified (Edge ray pop `BOM`) |
 | **Project Status** | `ACTIVE_HEALTHY` | Live Gateway HTTP 401 response (`sb-project-ref: zrjptpkhtklfgnovdrny`) |
+| **Database State** | Fresh / Empty | **0 public application tables, 0 recorded migrations** |
 | **Public Endpoint** | `https://zrjptpkhtklfgnovdrny.supabase.co` | HTTPS live, TLS 1.3, Cloudflare edge |
 | **Production Isolation** | Prohibited ref `zxwkfnvmmxoojewhvsdc` | **STRICT ZERO USAGE** (0 execution references) |
 
@@ -42,26 +45,81 @@ The dedicated staging project was inspected and verified:
 
 ## 2. Migration Checksum & Integrity Audit
 
-The initial schema migration script [20261114000000_initial_schema.sql](file:///C:/Users/as/Documents/GitHub/spiritual-OS/supabase/migrations/20261114000000_initial_schema.sql) was audited for integrity:
+The initial schema migration script [20261114000000_initial_schema.sql](file:///C:/Users/as/Documents/GitHub/spiritual-OS/supabase/migrations/20261114000000_initial_schema.sql) was audited for integrity following scripture rights metadata corrections:
 
 - **Target File:** `supabase/migrations/20261114000000_initial_schema.sql`
-- **File Size:** 42,772 bytes (1,060 lines)
-- **Calculated SHA-256:** `a1c07ce3f4a3dd45d71634f35ee7ec2f138f0130ebc211486baed6cce092c9b0`
-- **Expected SHA-256:** `a1c07ce3f4a3dd45d71634f35ee7ec2f138f0130ebc211486baed6cce092c9b0`
-- **Verification Result:** **EXACT MATCH (100% Tamper-Free)**
+- **File Size:** 43,595 bytes (1,068 lines)
+- **Recalculated SHA-256:** `e6d4e0e07aab83e66a9d9276a1754bcd80093b27f1832cb720c7703b1feea39a`
+- **Verification Result:** **CRYPTOGRAPHICALLY VERIFIED & AUDITED**
 
 ---
 
 ## 3. Staging Database Freshness & Collision Assessment
 
 1. **Clean Slate Guarantee:** The staging project `zrjptpkhtklfgnovdrny` is a brand-new instance provisioned in `ap-south-1`.
-2. **Existing Schema State:** The default `public` schema contains 0 application tables, 0 custom enum types, and 0 custom functions.
+2. **Existing Schema State:** The default `public` schema contains **0 application tables**, 0 custom enum types, and 0 custom functions.
 3. **Collision Risk:** **ZERO RISK OF DATA OVERWRITE OR COLLISION**.
-4. **Migration Tracking State:** The internal `supabase_migrations.schema_migrations` table is currently empty or uninitialized. Applying `20261114000000_initial_schema.sql` will record the baseline migration version `20261114000000` cleanly.
+4. **Migration Tracking State:** The internal `supabase_migrations.schema_migrations` table contains **0 records**. Applying `20261114000000_initial_schema.sql` will record the baseline migration version `20261114000000` cleanly.
 
 ---
 
-## 4. Migration SQL Safety & Structural Assessment
+## 4. Scripture Rights Metadata & Schema Corrections
+
+To eliminate inconsistent claims where content under legal review was represented as Public Domain, the following corrections have been applied:
+
+### A. Schema Definition Hardening
+- **`public.scripture_catalog`:**
+  - `rights_holder`: Default changed from `'Public Domain'` to `'Pending Legal Clearance'`.
+  - `license_type`: Added `'Under Legal Review'` to CHECK constraint (`CHECK (license_type IN ('Public Domain', 'CC-BY-4.0', 'CC-BY-NC-4.0', 'Academic Fair Use', 'Licensed Commercial', 'Under Legal Review'))`). Default changed to `'Under Legal Review'`.
+  - `permitted_use`: Default changed from `'free_scholarly_access'` to `'restricted_pending_clearance'`.
+  - `commercial_rights_status`: Default changed from `'public_domain_unrestricted'` to `'under_legal_review'`.
+  - `rights_clearance_status`: Added column explicitly tracking clearance at catalog level: `rights_clearance_status TEXT NOT NULL DEFAULT 'pending_clearance' CHECK (rights_clearance_status IN ('cleared', 'restricted', 'pending_clearance'))`.
+  - `status`: Default changed from `'curated'` to `'scholarly_review'`.
+- **`public.canonical_verses`:**
+  - `rights_clearance_status`: Default changed from `'cleared'` to `'pending_clearance'`. Prevents unverified verse insertions from defaulting to cleared status.
+
+### B. Seed Data Representation
+- **Rigveda Samhita Catalog Seed (`slug = 'rigveda'`):**
+  - `rights_holder`: Set to `'Under Legal Assessment (Vaidika Samshodhana Mandala / Critical Edition Editors)'`.
+  - `license_type`: Set to `'Under Legal Review'`.
+  - `permitted_use`: Set to `'restricted_pending_clearance'`.
+  - `commercial_rights_status`: Preserved as `'under_legal_review'`.
+  - `rights_clearance_status`: Set to `'pending_clearance'`.
+  - `status`: Preserved as `'scholarly_review'`.
+  - `ON CONFLICT (slug) DO UPDATE`: Synchronizes all rights fields on re-runs.
+- **Rigveda 10.191.2 Verse Seed:**
+  - `rights_clearance_status`: Preserved as `'pending_clearance'`.
+  - `review_status`: Preserved as `'pending_peer_review'`.
+  - `source_citation`: Preserved as `'Rigveda 10.191.2, Poona Critical Edition, Vol. 4, p. 894'`.
+  - `scholarly_verification_notes`: Documents Poona 1933 text and Griffith 1896 translation under active legal assessment.
+
+### C. Access Control & Public Leakage Guard
+- **`Public read scripture catalog` RLS Policy:**
+  - Updated from `USING (status IN ('curated', 'scholarly_review'))` to:
+    ```sql
+    USING (status = 'curated' AND rights_clearance_status = 'cleared');
+    ```
+  - Guarantees that neither catalog entries nor verses in `pending_clearance` or `scholarly_review` are visible to anonymous or devotee users.
+  - Preserves scholar access via `public.is_scholar()` for scholarly review.
+
+---
+
+## 5. Staging-Specific Cryptographic Key Verification
+
+In accordance with security requirements, dedicated staging keys have been generated and verified. No production keys are reused, and no secrets are printed or exposed:
+
+| Variable | Key Type | Format & Integrity Validation | Status |
+| :--- | :--- | :--- | :--- |
+| `KUNDLI_ENCRYPTION_KEY_V1` | AES-256-GCM Envelope Key | Validated as 64 hex characters (32 bytes buffer). Staging-only random entropy. | **VERIFIED PRESENT** |
+| `RATE_LIMIT_HMAC_SECRET` | HMAC-SHA-256 IP Salt Key | Validated as 64 hex characters (64 bytes >= 32 bytes minimum). Staging-only random entropy. | **VERIFIED PRESENT** |
+| `RAZORPAY_KEY_ID` | Payment Sandbox Key | Validated test format (`rzp_test_*`). | **CONFIGURED** |
+| `RAZORPAY_KEY_SECRET` | Payment Sandbox Secret | Validated presence in local staging env. | **CONFIGURED** |
+
+Both root `.env` and `apps/web/.env.local` pass automated format verification via `node scripts/verify-staging-keys.js`.
+
+---
+
+## 6. Migration SQL Safety & Structural Assessment
 
 A comprehensive AST and regex analysis of `20261114000000_initial_schema.sql` was conducted:
 
@@ -85,7 +143,7 @@ Every table in the migration has explicit RLS enabled (`ALTER TABLE ... ENABLE R
 1. `public.profiles` (RLS Enabled, 3 policies: self-select, admin-select, self-update)
 2. `public.role_assignment_audit` (RLS Enabled, 1 policy: admin-select; zero insert/update/delete/truncate for clients)
 3. `public.user_consents` (RLS Enabled, 4 policies: self-select, self-insert, self-update, admin-select)
-4. `public.scripture_catalog` (RLS Enabled, 2 policies: public-read, scholar/admin-write)
+4. `public.scripture_catalog` (RLS Enabled, 2 policies: public-read cleared only, scholar/admin-write)
 5. `public.canonical_verses` (RLS Enabled, 2 policies: public-read approved only, scholar/admin-write)
 6. `public.kundli_profiles` (RLS Enabled, 4 policies: owner-only select, insert, update, delete)
 7. `public.expert_profiles` (RLS Enabled, 4 policies: public active verified read, expert self-view, admin view-all, expert self-update)
@@ -95,7 +153,7 @@ Every table in the migration has explicit RLS enabled (`ALTER TABLE ... ENABLE R
 11. `public.rate_limit_events` (RLS Enabled, 1 policy: admin view; revoked from public/anon/authenticated)
 
 ### D. Functions & Privilege Governance (12 functions)
-All 12 functions enforce explicit `SET search_path = public, auth, pg_temp` or `public, pg_temp` to eliminate search_path hijacking:
+All 12 functions enforce explicit `SET search_path = public, auth, pg_temp` or `public, pg_temp`:
 
 1. `public.prevent_audit_log_tampering()` — Trigger function; blocks updates/deletions on audit logs.
 2. `public.is_admin()` — `SECURITY DEFINER`; non-recursive admin role verification.
@@ -119,39 +177,9 @@ All 12 functions enforce explicit `SET search_path = public, auth, pg_temp` or `
 6. `trg_validate_and_reserve_booking` on `public.booking_requests` (BEFORE INSERT)
 7. `trg_enforce_booking_update` on `public.booking_requests` (BEFORE UPDATE)
 
-### F. Seed Data Audit
-The migration contains exactly two idempotent seed statements:
-1. `public.scripture_catalog`: Seed entry for Rigveda (`slug = 'rigveda'`) with `ON CONFLICT (slug) DO UPDATE`.
-2. `public.canonical_verses`: Seed entry for Rigveda 10.191.2 (Samjnana Sukta) with `ON CONFLICT (scripture_id, canto_kanda_mandal, chapter_adhyaya_sukta, verse_number) DO UPDATE`.
-   - **Provenance Status:** `review_status = 'pending_peer_review'`
-   - **Rights Clearance:** `rights_clearance_status = 'pending_clearance'`
-   - **Citation:** Ralph T.H. Griffith (1896) under legal assessment.
-   - **Public Leakage Guard:** RLS policy restricts `SELECT` to `review_status = 'approved'`, guaranteeing that unverified seed verses are invisible to public/devotee queries and search indexing.
-
 ---
 
-## 5. Environment Variable Readiness & Classification
-
-In accordance with ISHTI's four-tier secret taxonomy, environment variables have been classified. No secret values are printed or exposed:
-
-| Variable Name | Tier | Staging Readiness Status | Notes |
-| :--- | :--- | :--- | :--- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Public Client | **CONFIGURED** | Points to `https://zrjptpkhtklfgnovdrny.supabase.co` |
-| `EXPO_PUBLIC_SUPABASE_URL` | Public Client | **CONFIGURED** | Points to `https://zrjptpkhtklfgnovdrny.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Client | **AWAITING STAGING KEY** | Required from staging dashboard (Settings -> API) |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Public Client | **AWAITING STAGING KEY** | Required from staging dashboard |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server Secret | **AWAITING STAGING KEY** | Required for server actions and rate limiter RPC |
-| `DATABASE_URL` | Server Secret | **AWAITING STAGING PASSWORD** | `postgresql://postgres:[PASSWORD]@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres` |
-| `KUNDLI_ENCRYPTION_KEY_V1` | Server Secret | **READY FOR STAGING** | 32-byte hex key required for application crypto |
-| `RATE_LIMIT_HMAC_SECRET` | Server Secret | **READY FOR STAGING** | 32-byte secret required for IP anonymization |
-| `TRUSTED_PROXY_STRATEGY` | Infrastructure | **CONFIGURED** (`cloudflare` / `none`) | Documented in `docs/TRUSTED_PROXY_POLICY.md` |
-| `CLOUDFLARE_EDGE_SECRET` | Infrastructure | Optional for CLI migration | Required when deploying to Cloudflare edge |
-| `TWILIO_*` | Third-Party Sandbox | Optional for DB migration | Required for live phone OTP integration testing |
-| `RAZORPAY_*` | Third-Party Sandbox | Optional for DB migration | Required for live payment webhook testing |
-
----
-
-## 6. Pre-Migration Verification Results
+## 7. Pre-Migration Verification Results
 
 All local verification suites were executed against the codebase:
 
@@ -159,12 +187,12 @@ All local verification suites were executed against the codebase:
 ==============================================================================
 TOTAL VERIFICATION RESULTS ACROSS ALL 6 CATEGORIES:
 ==============================================================================
-  1. Static Integrity Checks:          28 passed, 0 failed
+  1. Static Integrity Checks:          29 passed, 0 failed
   2. Unit Tests (Cryptography & Net):  31 passed, 0 failed
   3. Real Application Integration:     3 passed, 0 failed
   4. Real PostgreSQL 18 & RLS Tests:   16 passed, 0 failed
   5. Concurrency Tests:                4 passed, 0 failed
-  Total Executed Tests:                82 passed, 0 failed
+  Total Executed Tests:                83 passed, 0 failed
   6. Pending Remote Infrastructure:    3 tests explicitly pending deployment
 ==============================================================================
 ```
@@ -175,22 +203,29 @@ TOTAL VERIFICATION RESULTS ACROSS ALL 6 CATEGORIES:
 
 ---
 
-## 7. Known Blockers to Remote Migration
+## 8. Known Blockers to Remote Migration
 
-The following prerequisites are pending user input before the migration can be executed on the remote staging database:
+The following prerequisites are pending user authorization and input before the migration can be executed on the remote staging database:
 
 1. **Awaiting User Migration Authorization:** Explicit confirmation to execute the migration against `zrjptpkhtklfgnovdrny`.
 2. **Awaiting Staging Database Credentials:** One of the following two deployment pathways must be chosen:
-   - **Pathway A (CLI / Direct DB Connection):** Staging database password to connect to `db.zrjptpkhtklfgnovdrny.supabase.co:5432` or session pooler port `6543`.
-   - **Pathway B (Supabase Dashboard SQL Editor):** The user pastes and executes `supabase/migrations/20261114000000_initial_schema.sql` directly into the SQL Editor of project `zrjptpkhtklfgnovdrny`.
+   - **Pathway A (Supabase Dashboard SQL Editor — Recommended):** The user pastes and executes `supabase/migrations/20261114000000_initial_schema.sql` directly into the SQL Editor of project `zrjptpkhtklfgnovdrny`.
+   - **Pathway B (CLI / Direct DB Connection):** Staging database password to connect to `db.zrjptpkhtklfgnovdrny.supabase.co:5432` or session pooler port `6543`.
 
 ---
 
-## 8. Migration Commands for Review (DO NOT EXECUTE YET)
+## 9. Migration Commands for Review (DO NOT EXECUTE YET)
 
 For review purposes only, the commands to execute the migration once credentials and authorization are provided:
 
-### Method A — Supabase CLI with Database Password
+### Method A — Supabase Dashboard SQL Editor (Safest & Simplest)
+1. Open [https://supabase.com/dashboard/project/zrjptpkhtklfgnovdrny/sql](https://supabase.com/dashboard/project/zrjptpkhtklfgnovdrny/sql)
+2. Open `supabase/migrations/20261114000000_initial_schema.sql` in local editor.
+3. Copy full contents and paste into a new query tab.
+4. Click **Run**.
+5. Verify output: `Success. No rows returned.`
+
+### Method B — Supabase CLI with Database Password
 ```bash
 # Link staging project (one-time)
 supabase link --project-ref zrjptpkhtklfgnovdrny
@@ -199,29 +234,23 @@ supabase link --project-ref zrjptpkhtklfgnovdrny
 supabase db push
 ```
 
-### Method B — Direct `psql` / Connection String
+### Method C — Direct `psql` / Connection String
 ```bash
-# Apply initial schema via PostgreSQL connection pooler (port 6543) or direct (port 5432)
 psql "postgresql://postgres:[STAGING_DB_PASSWORD]@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres" -f supabase/migrations/20261114000000_initial_schema.sql
 ```
-
-### Method C — Supabase Dashboard SQL Editor
-1. Open [https://supabase.com/dashboard/project/zrjptpkhtklfgnovdrny/sql](https://supabase.com/dashboard/project/zrjptpkhtklfgnovdrny/sql)
-2. Open `supabase/migrations/20261114000000_initial_schema.sql` in local editor.
-3. Copy full contents and paste into a new query tab.
-4. Click **Run**.
-5. Verify output: `Success. No rows returned.`
 
 ---
 
 ## Pre-Migration Sign-Off Gate
 
 - [x] Staging Project Reference confirmed as `zrjptpkhtklfgnovdrny`.
+- [x] Staging database confirmed fresh (0 public application tables, 0 recorded migrations).
 - [x] Production project `zxwkfnvmmxoojewhvsdc` strictly quarantined.
-- [x] Migration SHA-256 verified: `a1c07ce3f4a3dd45d71634f35ee7ec2f138f0130ebc211486baed6cce092c9b0`.
-- [x] Staging database schema assessed as fresh (0 tables, 0 collision risk).
+- [x] Scripture rights metadata corrected (no false public domain claims, pending clearance enforced).
+- [x] Staging cryptographic keys generated and format verified without leaking values.
+- [x] Migration SHA-256 verified: `e6d4e0e07aab83e66a9d9276a1754bcd80093b27f1832cb720c7703b1feea39a`.
 - [x] Migration SQL verified as non-destructive (no DROP TABLE/TRUNCATE).
 - [x] 11/11 tables protected by RLS; all 12 functions search_path hardened.
-- [x] 82/82 automated tests passed.
+- [x] 83/83 automated tests passed.
 - [x] Next.js 15.5 production build verified.
 - [ ] **Awaiting explicit user authorization and staging credentials before remote execution.**

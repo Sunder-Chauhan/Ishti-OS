@@ -156,6 +156,16 @@ async function main() {
     if (!sql.includes('Ralph T.H. Griffith, The Hymns of the Rigveda (1896)')) throw new Error('Missing exact bibliographic citation');
   });
 
+  runTest('static', 'Scripture Rights: Catalog seed represents pending review honestly without false public-domain assertion', () => {
+    if (!sql.includes("'Under Legal Review'")) throw new Error('Scripture catalog seed must specify Under Legal Review license');
+    if (!sql.includes("'Under Legal Assessment (Vaidika Samshodhana Mandala / Critical Edition Editors)'")) {
+      throw new Error('Scripture catalog seed must specify pending legal assessment for rights_holder');
+    }
+    if (!sql.includes("'restricted_pending_clearance'")) {
+      throw new Error('Scripture catalog seed permitted_use must be restricted_pending_clearance');
+    }
+  });
+
   // ==============================================================================
   // 2. UNIT TESTS (CRYPTOGRAPHY, AAD CONTEXT BINDING & NETWORKING)
   // ==============================================================================

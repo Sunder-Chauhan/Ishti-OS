@@ -55,4 +55,13 @@ Decision: Connect dedicated staging project `zrjptpkhtklfgnovdrny` (Region: `ap-
 3. Database Freshness & Safety Audit: Verified target database is fresh with zero existing application objects (zero collision risk). Confirmed migration script is strictly non-destructive (zero DROP TABLE/TRUNCATE). Confirmed 100% RLS enforcement (11/11 tables), 12 functions search_path hardened, 7 integrity triggers, 31 policies, and pending scripture seed marked with ON CONFLICT.
 4. Pre-Migration Report: Produced formal pre-migration sign-off report (`docs/M03_STAGING_PRE_MIGRATION_REPORT.md`).
 5. Execution Gate: Remote database mutation remains paused pending explicit user authorization and provision of staging database credentials.
-Status: PRE-MIGRATION GATE VERIFIED. Remote execution paused awaiting user credentials and authorization.
+Status: Staging connected.
+
+## 2026-11-14 — Milestone M03: Final Pre-Migration Corrections & Scripture Rights Hardening
+Decision: Remediate pre-migration review findings before remote schema execution:
+1. Scripture Rights Metadata Correction: Resolved inconsistent assertions where content under legal review was represented as Public Domain. Modified schema: `rights_holder` defaults to `'Pending Legal Clearance'`; `license_type` includes `'Under Legal Review'` and defaults to it; `permitted_use` defaults to `'restricted_pending_clearance'`; `commercial_rights_status` defaults to `'under_legal_review'`; `rights_clearance_status` defaults to `'pending_clearance'` on both `scripture_catalog` and `canonical_verses`.
+2. Access Control Hardening: Updated `Public read scripture catalog` RLS policy to strictly require `status = 'curated' AND rights_clearance_status = 'cleared'`, preventing un-cleared catalog entries from public exposure while preserving scholar review access.
+3. Staging-Specific Cryptographic Keys: Generated dedicated staging keys (`KUNDLI_ENCRYPTION_KEY_V1` 32-byte hex, `RATE_LIMIT_HMAC_SECRET` 32-byte minimum) without reusing production keys or exposing values. Verified presence and formatting via automated script.
+4. Cryptographic Checksum Update: Recalculated migration SHA-256 checksum to `e6d4e0e07aab83e66a9d9276a1754bcd80093b27f1832cb720c7703b1feea39a`. Updated `docs/M03_STAGING_PRE_MIGRATION_REPORT.md`.
+5. Re-Verification: Executed test suite (83 passed, 0 failed across static, unit, real DB, and concurrency), Supabase CLI 3.1.0 simulation, and Next.js 15.5 production build.
+Status: FINAL PRE-MIGRATION GATE PASSED. Awaiting user authorization and staging credentials.

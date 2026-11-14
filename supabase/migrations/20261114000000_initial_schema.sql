@@ -316,11 +316,12 @@ CREATE TABLE IF NOT EXISTS public.scripture_catalog (
   publication_publisher TEXT NOT NULL,
   publication_year INTEGER,
   editor_or_compiler TEXT,
-  rights_holder TEXT NOT NULL DEFAULT 'Public Domain',
-  license_type TEXT NOT NULL DEFAULT 'Public Domain' CHECK (license_type IN ('Public Domain', 'CC-BY-4.0', 'CC-BY-NC-4.0', 'Academic Fair Use', 'Licensed Commercial')),
-  permitted_use TEXT NOT NULL DEFAULT 'free_scholarly_access',
-  commercial_rights_status TEXT NOT NULL DEFAULT 'public_domain_unrestricted' CHECK (commercial_rights_status IN ('public_domain_unrestricted', 'non_commercial_only', 'commercial_license_secured', 'under_legal_review')),
-  status TEXT NOT NULL DEFAULT 'curated' CHECK (status IN ('curated', 'scholarly_review', 'draft')),
+  rights_holder TEXT NOT NULL DEFAULT 'Pending Legal Clearance',
+  license_type TEXT NOT NULL DEFAULT 'Under Legal Review' CHECK (license_type IN ('Public Domain', 'CC-BY-4.0', 'CC-BY-NC-4.0', 'Academic Fair Use', 'Licensed Commercial', 'Under Legal Review')),
+  permitted_use TEXT NOT NULL DEFAULT 'restricted_pending_clearance',
+  commercial_rights_status TEXT NOT NULL DEFAULT 'under_legal_review' CHECK (commercial_rights_status IN ('public_domain_unrestricted', 'non_commercial_only', 'commercial_license_secured', 'under_legal_review')),
+  rights_clearance_status TEXT NOT NULL DEFAULT 'pending_clearance' CHECK (rights_clearance_status IN ('cleared', 'restricted', 'pending_clearance')),
+  status TEXT NOT NULL DEFAULT 'scholarly_review' CHECK (status IN ('curated', 'scholarly_review', 'draft')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -342,7 +343,7 @@ CREATE TABLE IF NOT EXISTS public.canonical_verses (
   scholarly_peer_reviewer TEXT,
   peer_review_date TIMESTAMPTZ,
   scholarly_verification_notes TEXT,
-  rights_clearance_status TEXT NOT NULL DEFAULT 'cleared' CHECK (rights_clearance_status IN ('cleared', 'restricted', 'pending_clearance')),
+  rights_clearance_status TEXT NOT NULL DEFAULT 'pending_clearance' CHECK (rights_clearance_status IN ('cleared', 'restricted', 'pending_clearance')),
   review_status TEXT NOT NULL DEFAULT 'pending_peer_review' CHECK (review_status IN ('verified', 'pending_peer_review', 'flagged')),
   fts TSVECTOR GENERATED ALWAYS AS (to_tsvector('simple', devanagari || ' ' || iast)) STORED,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -372,6 +373,7 @@ INSERT INTO public.scripture_catalog (
   license_type,
   permitted_use,
   commercial_rights_status,
+  rights_clearance_status,
   status
 )
 VALUES (
@@ -387,16 +389,22 @@ VALUES (
   'Vaidika Samshodhana Mandala, Pune',
   1933,
   'N. S. Sontakke, C. G. Kashikar',
-  'Public Domain',
-  'Public Domain',
-  'free_scholarly_access',
+  'Under Legal Assessment (Vaidika Samshodhana Mandala / Critical Edition Editors)',
+  'Under Legal Review',
+  'restricted_pending_clearance',
   'under_legal_review',
+  'pending_clearance',
   'scholarly_review'
 )
 ON CONFLICT (slug) DO UPDATE SET
   source_edition = EXCLUDED.source_edition,
   publication_publisher = EXCLUDED.publication_publisher,
+  editor_or_compiler = EXCLUDED.editor_or_compiler,
+  rights_holder = EXCLUDED.rights_holder,
+  license_type = EXCLUDED.license_type,
+  permitted_use = EXCLUDED.permitted_use,
   commercial_rights_status = EXCLUDED.commercial_rights_status,
+  rights_clearance_status = EXCLUDED.rights_clearance_status,
   status = EXCLUDED.status,
   updated_at = NOW();
 
@@ -906,7 +914,7 @@ DROP POLICY IF EXISTS "Scholars and admins can manage scripture catalog" ON publ
 
 CREATE POLICY "Public read scripture catalog"
   ON public.scripture_catalog FOR SELECT
-  USING (status IN ('curated', 'scholarly_review'));
+  USING (status = 'curated' AND rights_clearance_status = 'cleared');
 
 CREATE POLICY "Scholars and admins can manage scripture catalog"
   ON public.scripture_catalog FOR ALL

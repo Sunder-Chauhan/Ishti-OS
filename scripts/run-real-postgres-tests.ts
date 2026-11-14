@@ -1,5 +1,5 @@
 import EmbeddedPostgres from "embedded-postgres";
-import { Pool, PoolClient } from "pg";
+import { Client, Pool, PoolClient } from "pg";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -71,6 +71,73 @@ async function main() {
   });
 
   await pgServer.start();
+
+  // Ensure ishti_test is a fresh, pristine database using template0
+  const adminClient = new Client({
+    host: "127.0.0.1",
+    port: 54321,
+    user: "postgres",
+    password: "password",
+    database: "postgres",
+  });
+  await adminClient.connect();
+  try {
+    await adminClient.query(`
+      SELECT pg_terminate_backend(pid)
+      FROM pg_stat_activity
+      WHERE datname = 'ishti_test' AND pid <> pg_backend_pid();
+    `);
+    await adminClient.query(`DROP DATABASE IF EXISTS ishti_test;`);
+    await adminClient.query(`CREATE DATABASE ishti_test WITH TEMPLATE template0 ENCODING 'UTF8';`);
+  } finally {
+    await adminClient.end();
+  }
+
+  // Pre-configure extensions, auth stubs and standard Supabase roles in fresh ishti_test
+  const initClient = new Client({
+    host: "127.0.0.1",
+    port: 54321,
+    user: "postgres",
+    password: "password",
+    database: "ishti_test",
+  });
+  await initClient.connect();
+  try {
+    await initClient.query(`
+      CREATE SCHEMA IF NOT EXISTS extensions;
+      CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
+      CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
+
+      CREATE SCHEMA IF NOT EXISTS auth;
+      CREATE TABLE IF NOT EXISTS auth.users (
+        id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+        email TEXT UNIQUE,
+        phone TEXT,
+        raw_user_meta_data JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE OR REPLACE FUNCTION auth.uid() RETURNS UUID AS $$
+        SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::UUID;
+      $$ LANGUAGE sql STABLE;
+
+      CREATE OR REPLACE FUNCTION auth.role() RETURNS TEXT AS $$
+        SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')::TEXT;
+      $$ LANGUAGE sql STABLE;
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_admin') THEN CREATE ROLE supabase_admin NOLOGIN; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN CREATE ROLE supabase_auth_admin NOLOGIN; END IF;
+      END $$;
+    `);
+  } finally {
+    await initClient.end();
+  }
 
   const pool = new Pool({
     host: "127.0.0.1",
@@ -649,11 +716,19 @@ async function main() {
         if (anonRes.rows.length !== 0) {
           throw new Error(`Anon was able to query unverified verse! Count: ${anonRes.rows.length}`);
         }
+        const anonCatalog = await client.query("SELECT * FROM public.scripture_catalog;");
+        if (anonCatalog.rows.length !== 0) {
+          throw new Error(`Anon was able to query un-cleared scripture catalog! Count: ${anonCatalog.rows.length}`);
+        }
 
         await setAuthSession(client, "authenticated", devoteeUserAId);
         const devoteeRes = await client.query("SELECT * FROM public.canonical_verses;");
         if (devoteeRes.rows.length !== 0) {
           throw new Error(`Devotee was able to query unverified verse! Count: ${devoteeRes.rows.length}`);
+        }
+        const devoteeCatalog = await client.query("SELECT * FROM public.scripture_catalog;");
+        if (devoteeCatalog.rows.length !== 0) {
+          throw new Error(`Devotee was able to query un-cleared scripture catalog! Count: ${devoteeCatalog.rows.length}`);
         }
       } finally {
         await resetAuthSession(client);
@@ -710,6 +785,20 @@ async function main() {
         }
         if (scholarRes.rows[0].rights_clearance_status !== "pending_clearance") {
           throw new Error(`Expected rights_clearance_status 'pending_clearance', got ${scholarRes.rows[0].rights_clearance_status}`);
+        }
+
+        const scholarCatalog = await client.query("SELECT * FROM public.scripture_catalog;");
+        if (scholarCatalog.rows.length !== 1) {
+          throw new Error(`Scholar was unable to view pending scripture catalog! Count: ${scholarCatalog.rows.length}`);
+        }
+        if (scholarCatalog.rows[0].rights_clearance_status !== "pending_clearance") {
+          throw new Error(`Expected catalog rights_clearance_status 'pending_clearance', got ${scholarCatalog.rows[0].rights_clearance_status}`);
+        }
+        if (scholarCatalog.rows[0].license_type !== "Under Legal Review") {
+          throw new Error(`Expected catalog license_type 'Under Legal Review', got ${scholarCatalog.rows[0].license_type}`);
+        }
+        if (scholarCatalog.rows[0].commercial_rights_status !== "under_legal_review") {
+          throw new Error(`Expected catalog commercial_rights_status 'under_legal_review', got ${scholarCatalog.rows[0].commercial_rights_status}`);
         }
 
         // Scholar can also query via FTS
