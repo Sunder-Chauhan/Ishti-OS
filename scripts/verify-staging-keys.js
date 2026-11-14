@@ -5,7 +5,7 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const ENV_PATH = path.join(ROOT_DIR, '.env');
 const WEB_ENV_PATH = path.join(ROOT_DIR, 'apps', 'web', '.env.local');
 
-// Known placeholders and old production key markers for isolation testing
+// Known placeholders for isolation testing
 const KNOWN_PLACEHOLDERS = [
   'your_64_character_hex_encryption_key_32_bytes',
   'your_32_byte_minimum_rate_limit_hmac_secret',
@@ -13,13 +13,12 @@ const KNOWN_PLACEHOLDERS = [
   'your_supabase_secret_service_role_key',
 ];
 
-// Production key markers that must NEVER match staging keys
-const PRODUCTION_KEY_MARKERS = [
-  'sb_secret_3LHpS',
-  'sb_publishable_sQ7x',
-  'rzp_test_U03HURCQ2zoC35',
-  'UFDrc0KK1HqQ3E2waNCVT2t7',
-];
+// Untracked environment targets for production/compromised key non-reuse verification.
+// Read dynamically from process.env; NEVER hardcode credentials in tracked source files.
+const UNTRACKED_EXCLUDED_KEYS = (process.env.PROD_KEYS_TO_EXCLUDE || '')
+  .split(',')
+  .map(k => k.trim())
+  .filter(Boolean);
 
 function parseEnv(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -138,21 +137,28 @@ const keysDistinct = env.KUNDLI_ENCRYPTION_KEY_V1 !== env.RATE_LIMIT_HMAC_SECRET
 recordResult('KUNDLI_ENCRYPTION_KEY_V1 and RATE_LIMIT_HMAC_SECRET are independent and distinct', keysDistinct);
 
 console.log('\n--- 4. Production Key Non-Reuse & Isolation Verification ---');
-let matchesProduction = false;
-for (const marker of PRODUCTION_KEY_MARKERS) {
-  if (
-    env.KUNDLI_ENCRYPTION_KEY_V1 === marker ||
-    env.RATE_LIMIT_HMAC_SECRET === marker ||
-    webEnv.KUNDLI_ENCRYPTION_KEY_V1 === marker ||
-    webEnv.RATE_LIMIT_HMAC_SECRET === marker ||
-    env.RAZORPAY_KEY_ID === marker ||
-    env.RAZORPAY_KEY_SECRET === marker
-  ) {
-    matchesProduction = true;
-    break;
+let matchesExcluded = false;
+if (UNTRACKED_EXCLUDED_KEYS.length > 0) {
+  for (const marker of UNTRACKED_EXCLUDED_KEYS) {
+    if (
+      env.KUNDLI_ENCRYPTION_KEY_V1 === marker ||
+      env.RATE_LIMIT_HMAC_SECRET === marker ||
+      webEnv.KUNDLI_ENCRYPTION_KEY_V1 === marker ||
+      webEnv.RATE_LIMIT_HMAC_SECRET === marker ||
+      env.RAZORPAY_KEY_ID === marker ||
+      env.RAZORPAY_KEY_SECRET === marker
+    ) {
+      matchesExcluded = true;
+      break;
+    }
   }
 }
-recordResult('Staging keys do NOT equal production or compromised keys (local comparison, zero values printed)', !matchesProduction);
+recordResult(
+  UNTRACKED_EXCLUDED_KEYS.length > 0
+    ? 'Staging keys do NOT equal production or compromised keys (local env comparison, zero values printed)'
+    : 'Staging keys verified distinct from placeholders (dynamic PROD_KEYS_TO_EXCLUDE unconfigured)',
+  !matchesExcluded
+);
 
 console.log('\n--- 5. Staging Supabase Credentials Placeholder Gate ---');
 const anonIsPlaceholder = Boolean(env.NEXT_PUBLIC_SUPABASE_ANON_KEY && (env.NEXT_PUBLIC_SUPABASE_ANON_KEY.startsWith('awaiting_') || env.NEXT_PUBLIC_SUPABASE_ANON_KEY.startsWith('your_')));

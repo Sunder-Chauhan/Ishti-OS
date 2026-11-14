@@ -866,23 +866,19 @@ DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 
-CREATE POLICY "Users can view their own profile"
-  ON public.profiles FOR SELECT
+CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
-CREATE POLICY "Admins can view all profiles"
-  ON public.profiles FOR SELECT
+CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT
   USING (public.is_admin());
 
-CREATE POLICY "Users can update their own profile"
-  ON public.profiles FOR UPDATE
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
 -- Role Audit
 DROP POLICY IF EXISTS "Admins can view role audit" ON public.role_assignment_audit;
-CREATE POLICY "Admins can view role audit"
-  ON public.role_assignment_audit FOR SELECT
+CREATE POLICY "Admins can view role audit" ON public.role_assignment_audit FOR SELECT
   USING (public.is_admin());
 
 -- User Consents
@@ -891,46 +887,42 @@ DROP POLICY IF EXISTS "Users can insert their own consents" ON public.user_conse
 DROP POLICY IF EXISTS "Users can update their own consents" ON public.user_consents;
 DROP POLICY IF EXISTS "Admins can view all consents" ON public.user_consents;
 
-CREATE POLICY "Users can view their own consents"
-  ON public.user_consents FOR SELECT
+CREATE POLICY "Users can view their own consents" ON public.user_consents FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own consents"
-  ON public.user_consents FOR INSERT
+CREATE POLICY "Users can insert their own consents" ON public.user_consents FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own consents"
-  ON public.user_consents FOR UPDATE
+CREATE POLICY "Users can update their own consents" ON public.user_consents FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Admins can view all consents"
-  ON public.user_consents FOR SELECT
+CREATE POLICY "Admins can view all consents" ON public.user_consents FOR SELECT
   USING (public.is_admin());
 
 -- Scripture Catalog
 DROP POLICY IF EXISTS "Public read scripture catalog" ON public.scripture_catalog;
 DROP POLICY IF EXISTS "Scholars and admins can manage scripture catalog" ON public.scripture_catalog;
 
-CREATE POLICY "Public read scripture catalog"
-  ON public.scripture_catalog FOR SELECT
+CREATE POLICY "Public read scripture catalog" ON public.scripture_catalog FOR SELECT
   USING (status = 'curated' AND rights_clearance_status = 'cleared');
 
-CREATE POLICY "Scholars and admins can manage scripture catalog"
-  ON public.scripture_catalog FOR ALL
-  USING (public.is_scholar());
+CREATE POLICY "Scholars and admins can manage scripture catalog" ON public.scripture_catalog FOR ALL
+  TO authenticated
+  USING (public.is_scholar())
+  WITH CHECK (public.is_scholar());
 
 -- Canonical Verses: Strictly requires review_status = 'verified' AND rights_clearance_status = 'cleared'
 DROP POLICY IF EXISTS "Public read verified verses" ON public.canonical_verses;
 DROP POLICY IF EXISTS "Scholars and admins can manage verses" ON public.canonical_verses;
 
-CREATE POLICY "Public read verified verses"
-  ON public.canonical_verses FOR SELECT
+CREATE POLICY "Public read verified verses" ON public.canonical_verses FOR SELECT
   USING (review_status = 'verified' AND rights_clearance_status = 'cleared');
 
-CREATE POLICY "Scholars and admins can manage verses"
-  ON public.canonical_verses FOR ALL
-  USING (public.is_scholar());
+CREATE POLICY "Scholars and admins can manage verses" ON public.canonical_verses FOR ALL
+  TO authenticated
+  USING (public.is_scholar())
+  WITH CHECK (public.is_scholar());
 
 -- Kundli Profiles: Strict owner isolation
 DROP POLICY IF EXISTS "Owner-only select kundli" ON public.kundli_profiles;
@@ -938,21 +930,17 @@ DROP POLICY IF EXISTS "Owner-only insert kundli" ON public.kundli_profiles;
 DROP POLICY IF EXISTS "Owner-only update kundli" ON public.kundli_profiles;
 DROP POLICY IF EXISTS "Owner-only delete kundli" ON public.kundli_profiles;
 
-CREATE POLICY "Owner-only select kundli"
-  ON public.kundli_profiles FOR SELECT
+CREATE POLICY "Owner-only select kundli" ON public.kundli_profiles FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Owner-only insert kundli"
-  ON public.kundli_profiles FOR INSERT
+CREATE POLICY "Owner-only insert kundli" ON public.kundli_profiles FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Owner-only update kundli"
-  ON public.kundli_profiles FOR UPDATE
+CREATE POLICY "Owner-only update kundli" ON public.kundli_profiles FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Owner-only delete kundli"
-  ON public.kundli_profiles FOR DELETE
+CREATE POLICY "Owner-only delete kundli" ON public.kundli_profiles FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Expert Profiles: Public reads ONLY accredited, active experts with zero personal contact fields
@@ -961,20 +949,16 @@ DROP POLICY IF EXISTS "Experts can view their own profile" ON public.expert_prof
 DROP POLICY IF EXISTS "Admins can view all expert profiles" ON public.expert_profiles;
 DROP POLICY IF EXISTS "Experts can update their own profile" ON public.expert_profiles;
 
-CREATE POLICY "Public read active experts"
-  ON public.expert_profiles FOR SELECT
+CREATE POLICY "Public read active experts" ON public.expert_profiles FOR SELECT
   USING (is_active = TRUE AND verification_status = 'accredited');
 
-CREATE POLICY "Experts can view their own profile"
-  ON public.expert_profiles FOR SELECT
+CREATE POLICY "Experts can view their own profile" ON public.expert_profiles FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Admins can view all expert profiles"
-  ON public.expert_profiles FOR SELECT
+CREATE POLICY "Admins can view all expert profiles" ON public.expert_profiles FOR SELECT
   USING (public.is_admin());
 
-CREATE POLICY "Experts can update their own profile"
-  ON public.expert_profiles FOR UPDATE
+CREATE POLICY "Experts can update their own profile" ON public.expert_profiles FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
@@ -982,8 +966,7 @@ CREATE POLICY "Experts can update their own profile"
 DROP POLICY IF EXISTS "Public view available slots" ON public.consultation_slots;
 DROP POLICY IF EXISTS "Experts can manage their own slots" ON public.consultation_slots;
 
-CREATE POLICY "Public view available slots"
-  ON public.consultation_slots FOR SELECT
+CREATE POLICY "Public view available slots" ON public.consultation_slots FOR SELECT
   USING (
     is_booked = FALSE
     AND EXISTS (
@@ -994,8 +977,7 @@ CREATE POLICY "Public view available slots"
     )
   );
 
-CREATE POLICY "Experts can manage their own slots"
-  ON public.consultation_slots FOR ALL
+CREATE POLICY "Experts can manage their own slots" ON public.consultation_slots FOR ALL
   USING (
     EXISTS (
       SELECT 1 FROM public.expert_profiles
@@ -1010,12 +992,10 @@ DROP POLICY IF EXISTS "Experts can view assigned bookings" ON public.booking_req
 DROP POLICY IF EXISTS "Admins can view all bookings" ON public.booking_requests;
 DROP POLICY IF EXISTS "Devotees can create bookings" ON public.booking_requests;
 
-CREATE POLICY "Devotees can view their bookings"
-  ON public.booking_requests FOR SELECT
+CREATE POLICY "Devotees can view their bookings" ON public.booking_requests FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Experts can view assigned bookings"
-  ON public.booking_requests FOR SELECT
+CREATE POLICY "Experts can view assigned bookings" ON public.booking_requests FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM public.expert_profiles
@@ -1024,42 +1004,35 @@ CREATE POLICY "Experts can view assigned bookings"
     )
   );
 
-CREATE POLICY "Admins can view all bookings"
-  ON public.booking_requests FOR SELECT
+CREATE POLICY "Admins can view all bookings" ON public.booking_requests FOR SELECT
   USING (public.is_admin());
 
-CREATE POLICY "Devotees can create bookings"
-  ON public.booking_requests FOR INSERT
+CREATE POLICY "Devotees can create bookings" ON public.booking_requests FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Devotees can update their own bookings" ON public.booking_requests;
 DROP POLICY IF EXISTS "Admins can update bookings" ON public.booking_requests;
 
-CREATE POLICY "Devotees can update their own bookings"
-  ON public.booking_requests FOR UPDATE
+CREATE POLICY "Devotees can update their own bookings" ON public.booking_requests FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Admins can update bookings"
-  ON public.booking_requests FOR UPDATE
+CREATE POLICY "Admins can update bookings" ON public.booking_requests FOR UPDATE
   USING (public.is_admin());
 
 -- Early Access Subscribers: Public insert, Admin select only
 DROP POLICY IF EXISTS "Public insert early access" ON public.early_access_subscribers;
 DROP POLICY IF EXISTS "Admins only view early access subscribers" ON public.early_access_subscribers;
 
-CREATE POLICY "Public insert early access"
-  ON public.early_access_subscribers FOR INSERT
+CREATE POLICY "Public insert early access" ON public.early_access_subscribers FOR INSERT
   WITH CHECK (true);
 
-CREATE POLICY "Admins only view early access subscribers"
-  ON public.early_access_subscribers FOR SELECT
+CREATE POLICY "Admins only view early access subscribers" ON public.early_access_subscribers FOR SELECT
   USING (public.is_admin());
 
 -- Rate Limit Events: Internal RPC use only (no public direct queries)
 DROP POLICY IF EXISTS "Admins can view rate limit events" ON public.rate_limit_events;
-CREATE POLICY "Admins can view rate limit events"
-  ON public.rate_limit_events FOR SELECT
+CREATE POLICY "Admins can view rate limit events" ON public.rate_limit_events FOR SELECT
   USING (public.is_admin());
 
 REVOKE ALL ON public.rate_limit_events FROM PUBLIC, anon, authenticated;

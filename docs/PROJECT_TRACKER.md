@@ -33,15 +33,15 @@
 - [x] Staging Supabase prerequisites, verification matrix & rollback procedure ([docs/M03_STAGING_DEPLOYMENT_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_DEPLOYMENT_REPORT.md))
 - [x] Fresh database simulation via Supabase CLI 3.1.0 (`npm run test:fresh-migration`)
 - [x] Provision separate disposable Supabase staging project (`zrjptpkhtklfgnovdrny`, Region: `ap-south-1`)
-- [x] Pre-migration inspection, SHA-256 integrity check (`e6d4e0e0...`), scripture rights remediation, and staging key verification ([docs/M03_STAGING_PRE_MIGRATION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_PRE_MIGRATION_REPORT.md))
-- [x] Final credential remediation, Shannon entropy audit (21/21 passed), and RLS explicit role syntax hardening (`e6d4e0e0...`)
+- [x] Pre-migration inspection, SHA-256 integrity check (`3399a731...`), scripture rights remediation, and staging key verification ([docs/M03_STAGING_PRE_MIGRATION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_PRE_MIGRATION_REPORT.md))
+- [x] Post-remediation audit: purged credential markers (`PRODUCTION_KEY_MARKERS`), assessed Git history, reconciled staging database state (11 tables, 2 seed rows, 0 migrations), and validated RLS scholar policy syntax (`TO authenticated` + `WITH CHECK`)
 - [ ] Obtain user authorization & execute remote migration on staging database
 - [ ] Verify 11 tables, RLS policies, triggers, and partial indexes on remote staging
 - [ ] Deploy web application to staging environment and verify end-to-end workflows (Auth, RLS, Kundli, Booking)
 - [ ] Configure and test sandbox integrations (Twilio SMS OTP sandbox, Razorpay test mode)
 - [ ] Achieve final staging validation status (`STAGING VALIDATED`)
 
-## Next priorities
-1. Await explicit user authorization and staging database credentials (db password or dashboard SQL Editor execution).
-2. Execute remote migration against staging database upon authorization.
-3. Validate staging deployment and authenticate real user flows against live GoTrue and database services.
+## Current Gate Status
+- **Status:** `STAGING STATE RECONCILIATION — MIGRATION BLOCKED`
+- **Restrictions:** Zero remote database mutations. No `supabase db push`. Production quarantined.
+- **Action Required:** Await user authorization and staging credentials following state reconciliation review.
