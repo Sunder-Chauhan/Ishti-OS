@@ -11,3 +11,12 @@ build/
 supabase/.temp/
 .temp/
 data/
+
+# Database dumps, exports & reconciliation backups
+supabase/backups/
+backups/
+*.dump
+*.backup
+*.sql.gz
+*.tar
+
