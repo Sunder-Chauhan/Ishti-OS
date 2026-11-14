@@ -1,11 +1,70 @@
 # ISHTI
-## Official Brand Guidelines — Version 1.0
+## Official Brand Guidelines — Version 1.1
 
-**Brand tagline:** Rooted in Tradition. Connected to Today.
+**Brand tagline:** Rooted in Tradition. Connected to Today.  
+**Supporting taglines:** Transformative Rituals &amp; Offerings | Vedic Essence &amp; Rituals  
+**Brand positioning:** A modern spiritual ecosystem rooted in Indian wisdom, built to make authentic spiritual knowledge, practices and communities accessible through technology.  
+**Internal project codename:** spiritual-OS  
 
-**Brand positioning:** A modern spiritual ecosystem rooted in Indian wisdom, built to make authentic spiritual knowledge, practices and communities accessible through technology.
+---
 
-**Internal project codename:** spiritual-OS
+# 1. Approved Digital Logo Family (Pure Vector SVG)
+
+The approved ISHTI logo family is grounded in the sacred geometry of the Vedic fire altar (*Yajna Vedi / Havan Kund*) and the living flame of Agni with the consecrated golden ghee seed (*Bindu*). 
+
+| # | Variant | Description | Digital Vector Asset | Component |
+|---|---|---|---|---|
+| 1 | **Primary** | Full vertical lockup: Sacred flame symbol, bespoke serif wordmark, and dual supporting taglines (*Transformative Rituals &amp; Offerings* / *Vedic Essence &amp; Rituals*). | `public/brand/ishti-logo-primary.svg` | `<IshtiLogoPrimary />` / `<IshtiLogo variant="primary" />` |
+| 2 | **Secondary** | Standard lockup: Sacred flame symbol and bespoke serif wordmark. Primary signature for web and mobile headers. | `public/brand/ishti-logo-secondary.svg` | `<IshtiLogoSecondary />` / `<IshtiLogo variant="secondary" />` |
+| 3 | **Icon** | Standalone symbol: Stepped three-tier Vedic altar with rising flame, floating embers, and golden bindu drop. | `public/brand/ishti-logo-icon.svg` | `<IshtiLogoIcon />` / `<IshtiLogo variant="icon" />` |
+| 4 | **Horizontal** | Landscape lockup: Symbol on the left, bespoke wordmark on the right with stacked two-line tagline. | `public/brand/ishti-logo-horizontal.svg` | `<IshtiLogoHorizontal />` / `<IshtiLogo variant="horizontal" />` |
+| 5 | **Monochrome** | Single-color Temple Charcoal execution with crisp architectural negative-space separation for print and stamping. | `public/brand/ishti-logo-monochrome.svg` | `<IshtiLogoMonochrome />` / `<IshtiLogo variant="monochrome" />` |
+| 6 | **Reversed** | Light ivory and gold artwork on a deep slate-charcoal tile canvas for dark mode and night sanctuary. | `public/brand/ishti-logo-reversed.svg` | `<IshtiLogoReversed />` / `<IshtiLogo variant="reversed" />` |
+
+---
+
+# 2. Brand Design Tokens
+
+### Core Color Palette
+
+| Token Name | Hex Code | Purpose &amp; Role |
+|---|---|---|
+| **Temple Maroon** | `#711B16` | Primary brand color, bespoke wordmark, deep flame roots |
+| **Vedic Saffron** | `#EF7428` | Sacred Agni fire body, altar illuminated facet, energy |
+| **Sacred Gold** | `#D7A64A` | Ghee seed (*Bindu*), illumination, golden embers |
+| **Ivory Paper** | `#F8F4ED` | Primary sanctuary canvas, serene backgrounds |
+| **Warm Sand** | `#D1A477` | Borders, subtle dividers, secondary brand surfaces |
+| **Warm Bronze** | `#8B6846` | Tagline typography, secondary accents |
+| **Muted Gold** | `#9E764E` | Subtitle serif text, Vedic quotes |
+| **Temple Charcoal** | `#2A2726` | Monochrome single-color lockup, dark high-contrast text |
+| **Slate Charcoal** | `#282A36` | Reversed dark tile background |
+
+---
+
+# 3. Typography &amp; Letterform Geometry
+
+### Bespoke Wordmark Letterforms (ISHTI)
+- **Initial `I`:** Vertical stem with sharp left-pointing top serif, descending to an elegant outward-curving Sanskrit-inspired foot flaring to the left.
+- **Letter `S`:** Balanced classical serif display letterform with open counter and graceful terminals.
+- **Letter `H`:** Stately vertical stems with serifs and centered crossbar.
+- **Letter `T`:** Broad horizontal crossbar with downward-angled serifs and centered vertical stem.
+- **Terminal `I`:** Vertical stem with top serif, descending to an outward-curving foot flaring to the **right**, creating a symmetrical sacred bracket with the initial `I`.
+
+### Supporting Typography
+- **Primary Display / Taglines:** *Cinzel* / *Trajan Pro* (letter-spacing `0.20em`–`0.22em`, uppercase, weight 600).
+- **Sacred Subtext &amp; Vedic Quotes:** *Cormorant Garamond* (letter-spacing `0.05em`, italic/medium, weight 500).
+- **Body &amp; User Interface:** *Inter* / system sans-serif (clean, highly accessible WCAG 2.2 compliant).
+
+---
+
+# 4. Clear-Space and Minimum Sizing Rules
+
+- **Clear-Space Perimeter:** Minimum clearance of **0.5X** (where X = wordmark cap-height) around all outer bounds of any lockup.
+- **Minimum Rendering Dimensions:**
+  - `Icon Only`: Minimum **16px** digital (favicon) / **6mm** print.
+  - `Horizontal`: Minimum **120px** digital width / **30mm** print.
+  - `Primary / Secondary`: Minimum **140px** digital width / **35mm** print.
+- **Prohibited Alterations:** Never stretch, skew, alter gradient directions, replace wordmark font, or rearrange symbol tiers.
 
 ---
 

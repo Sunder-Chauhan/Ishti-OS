@@ -106,3 +106,15 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
 4. Automated Testing & Verification: Verified all safety guards via CLI (missing DB URL exits 1, production ref exits 1, non-staging ref exits 1, dry-run default). Executed comprehensive test suite (89 passed, 0 failed across static, cryptographic, PostgreSQL 18 simulation, and concurrency suites) and passed TypeScript typecheck cleanly (0 errors).
 5. Final Execution Readiness Verdict: Authored `docs/M03_1_1_EXECUTION_READINESS_CHECKLIST.md` and assigned the explicit verdict: `NOT READY — CREDENTIAL BLOCKERS`. While the script is hardened and verified, execution is strictly blocked by unset `STAGING_DATABASE_URL`, unpopulated staging Supabase API key placeholders, unrotated Razorpay sandbox keys, and pending operator approval.
 6. Standing Gate: Absolute zero remote mutation maintained. Zero DDL/DML executed against staging or production.
+
+---
+
+## 2026-11-15: ADR-009 — Approved ISHTI Brand Identity System & Pure Vector SVG Architecture
+- **Context:** The approved master artwork (`media_1794686197230_b2cc9f44.jpg`) defines the visual signature for ISHTI across 6 canonical variants: Primary, Secondary, Icon, Horizontal, Monochrome, and Reversed.
+- **Decision:**
+  1. Extract and mathematically reconstruct the bespoke typography letterforms (`ISHTI` with Sanskrit-inspired initial and terminal flourishes) and sacred altar geometry (three-tiered Vedic vedi with Agni flame and golden bindu seed) into pure mathematical vector SVGs.
+  2. Implement reusable React SVG components (`IshtiLogoIcon`, `IshtiLogoSecondary`, `IshtiLogoPrimary`, `IshtiLogoHorizontal`, `IshtiLogoMonochrome`, `IshtiLogoReversed`, `IshtiLogo`) using `React.ComponentPropsWithoutRef<'svg'>` for multi-workspace type safety and `useId()` for collision-resistant gradient IDs.
+  3. Formalize design tokens in both CSS (`design-tokens.css`) and TypeScript (`ISHTI_COLORS`, `ISHTI_TYPOGRAPHY`, `ISHTI_CLEARSPACE`), ensuring full backwards compatibility with v1.0 token consumers.
+  4. Build interactive brand showcase at `/brand` featuring visual rendering, SVG download endpoints, clickable hex swatches, clear-space rules, and icon scale verification down to 16px.
+  5. Upgrade Brand Guidelines to v1.1.
+- **Verification:** All 89 security and integrity tests passed; full Next.js 15 production build compiled cleanly with 0 errors.

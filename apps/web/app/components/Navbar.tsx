@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Emblem } from "./Emblem";
+import { IshtiLogoIcon } from "./brand";
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -14,7 +14,7 @@ export function Navbar() {
       <div className="headerContainer">
         {/* Brand identity */}
         <a href="/" className="brandLink" aria-label="ISHTI - Rooted in Tradition. Connected to Today.">
-          <Emblem size={34} variant="gold" />
+          <IshtiLogoIcon size={34} decorative />
           <div className="brandText">
             <span className="brandName">ISHTI</span>
           </div>

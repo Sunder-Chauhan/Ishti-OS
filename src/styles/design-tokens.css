@@ -1,0 +1,24 @@
+/**
+ * ISHTI Central Design Tokens CSS
+ */
+:root {
+  /* Brand Color Tokens */
+  --ishti-temple-maroon: #711B16;
+  --ishti-temple-maroon-dark: #5D1510;
+  --ishti-vedic-saffron: #EF7428;
+  --ishti-vedic-saffron-light: #F58A45;
+  --ishti-sacred-gold: #D7A64A;
+  --ishti-sacred-gold-light: #FFF3B3;
+  --ishti-sacred-gold-dark: #B27E24;
+  --ishti-ivory-paper: #F8F4ED;
+  --ishti-warm-sand: #D1A477;
+  --ishti-warm-bronze: #8B6846;
+  --ishti-muted-gold: #9E764E;
+  --ishti-temple-charcoal: #2A2726;
+  --ishti-slate-charcoal: #282A36;
+
+  /* Typography */
+  --ishti-font-serif: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  --ishti-font-sub-serif: 'Cormorant Garamond', Georgia, serif;
+  --ishti-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
