@@ -913,11 +913,15 @@ DROP POLICY IF EXISTS "Public read scripture catalog" ON public.scripture_catalo
 DROP POLICY IF EXISTS "Scholars and admins can manage scripture catalog" ON public.scripture_catalog;
 
 CREATE POLICY "Public read scripture catalog"
-  ON public.scripture_catalog FOR SELECT
+  ON public.scripture_catalog
+  FOR SELECT
+  TO authenticated, anon
   USING (status = 'curated' AND rights_clearance_status = 'cleared');
 
 CREATE POLICY "Scholars and admins can manage scripture catalog"
-  ON public.scripture_catalog FOR ALL
+  ON public.scripture_catalog
+  FOR ALL
+  TO authenticated
   USING (public.is_scholar());
 
 -- Canonical Verses: Strictly requires review_status = 'verified' AND rights_clearance_status = 'cleared'
@@ -925,11 +929,15 @@ DROP POLICY IF EXISTS "Public read verified verses" ON public.canonical_verses;
 DROP POLICY IF EXISTS "Scholars and admins can manage verses" ON public.canonical_verses;
 
 CREATE POLICY "Public read verified verses"
-  ON public.canonical_verses FOR SELECT
+  ON public.canonical_verses
+  FOR SELECT
+  TO authenticated, anon
   USING (review_status = 'verified' AND rights_clearance_status = 'cleared');
 
 CREATE POLICY "Scholars and admins can manage verses"
-  ON public.canonical_verses FOR ALL
+  ON public.canonical_verses
+  FOR ALL
+  TO authenticated
   USING (public.is_scholar());
 
 -- Kundli Profiles: Strict owner isolation

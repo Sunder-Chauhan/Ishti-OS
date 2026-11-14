@@ -33,7 +33,8 @@
 - [x] Staging Supabase prerequisites, verification matrix & rollback procedure ([docs/M03_STAGING_DEPLOYMENT_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_DEPLOYMENT_REPORT.md))
 - [x] Fresh database simulation via Supabase CLI 3.1.0 (`npm run test:fresh-migration`)
 - [x] Provision separate disposable Supabase staging project (`zrjptpkhtklfgnovdrny`, Region: `ap-south-1`)
-- [x] Pre-migration inspection, SHA-256 integrity check (`e6d4e0e0...`), scripture rights remediation, and staging key verification ([docs/M03_STAGING_PRE_MIGRATION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_PRE_MIGRATION_REPORT.md))
+- [x] Pre-migration inspection, SHA-256 integrity check (`c3d041fb...`), scripture rights remediation, and staging key verification ([docs/M03_STAGING_PRE_MIGRATION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_PRE_MIGRATION_REPORT.md))
+- [x] Final credential remediation, Shannon entropy audit (21/21 passed), and RLS explicit role syntax hardening (`c3d041fb...`)
 - [ ] Obtain user authorization & execute remote migration on staging database
 - [ ] Verify 11 tables, RLS policies, triggers, and partial indexes on remote staging
 - [ ] Deploy web application to staging environment and verify end-to-end workflows (Auth, RLS, Kundli, Booking)

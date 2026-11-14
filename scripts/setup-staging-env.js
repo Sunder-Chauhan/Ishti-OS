@@ -10,11 +10,12 @@ const WEB_ENV_PATH = path.join(ROOT_DIR, 'apps', 'web', '.env.local');
 const stagingKundliKey = crypto.randomBytes(32).toString('hex');
 const stagingHmacSecret = crypto.randomBytes(32).toString('hex');
 
-// Razorpay test credentials from user metadata
-const rzpKeyId = 'rzp_test_U03HURCQ2zoC35';
-const rzpKeySecret = 'UFDrc0KK1HqQ3E2waNCVT2t7';
+// 2. Read third-party credentials strictly from runtime environment variables.
+// Real credentials must NEVER be hardcoded as source defaults.
+const rzpKeyId = process.env.RAZORPAY_KEY_ID || 'awaiting_staging_razorpay_key_id';
+const rzpKeySecret = process.env.RAZORPAY_KEY_SECRET || 'awaiting_staging_razorpay_key_secret';
 
-// 2. Format .env content
+// 3. Format .env content
 const envContent = `# ==============================================================================
 # ISHTI Staging Environment Configuration (.env)
 # Target Staging Project Ref: zrjptpkhtklfgnovdrny
@@ -51,7 +52,7 @@ RAZORPAY_KEY_SECRET=${rzpKeySecret}
 
 fs.writeFileSync(ENV_PATH, envContent, 'utf8');
 
-// 3. Format apps/web/.env.local content
+// 4. Format apps/web/.env.local content
 const webEnvContent = `# ==============================================================================
 # ISHTI Web Application Staging Environment Configuration (.env.local)
 # Target Staging Project Ref: zrjptpkhtklfgnovdrny
@@ -75,4 +76,4 @@ RAZORPAY_KEY_SECRET=${rzpKeySecret}
 
 fs.writeFileSync(WEB_ENV_PATH, webEnvContent, 'utf8');
 
-console.log('Staging environment configuration files written successfully.');
+console.log('Staging environment configuration files written successfully (zero credentials in source).');

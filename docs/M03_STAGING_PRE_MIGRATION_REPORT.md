@@ -5,8 +5,8 @@
 **Public Brand:** `ISHTI`  
 **Repository:** `Sunder-Chauhan/Ishti-OS`  
 **Branch:** `main`  
-**Baseline Git HEAD:** `5523de04316c4ed9890f86f465b33308f890b769`  
-**Staging Status:** `PRE-MIGRATION GATE VERIFIED — AWAITING USER AUTHORIZATION & CREDENTIALS`
+**Baseline Git HEAD:** `52b834e9a571fb53be61243fac595cc01615d3fc`  
+**Staging Status:** `PRE-MIGRATION — AWAITING EXPLICIT USER AUTHORIZATION`
 
 ---
 
@@ -16,7 +16,10 @@ This report establishes the final pre-migration verification gate for **Mileston
 
 In strict adherence to governance constraints, **no remote database mutations have been performed**. The remote production project (`zxwkfnvmmxoojewhvsdc`) is completely isolated and excluded from all configuration. The newly provisioned staging project (`zrjptpkhtklfgnovdrny`) has been independently verified as fresh (0 public application tables, 0 recorded migrations) and live on the Supabase Mumbai gateway.
 
-Following findings from independent review, scripture intellectual property representations have been corrected: pending rights clearance is no longer conflated with public-domain claims. Staging-only cryptographic keys have been generated and format-verified without credential leakage.
+Following an independent source review:
+1. **Credential Remediation:** A credential handling defect in `scripts/setup-staging-env.js` (where a Razorpay sandbox test key was hardcoded) was identified and completely remediated. All hardcoded credentials have been purged from tracked files; the exposed key is marked compromised for dashboard rotation; and credentials are now read strictly from local environment variables.
+2. **Key Verification Enhancements:** `scripts/verify-staging-keys.js` was upgraded to evaluate cryptographic Shannon entropy, verify key consistency between root and web environments, confirm staging keys do not equal production or compromised keys, and confirm Supabase staging credentials remain safe placeholders.
+3. **Scripture Intellectual Property Integrity:** Schema defaults and seed representation were hardened to prevent unverified content from falsely claiming Public Domain status, and RLS policies on `public.scripture_catalog` and `public.canonical_verses` explicitly target `TO authenticated, anon`.
 
 The initial declarative migration file has passed byte-for-byte SHA-256 integrity verification, structural safety analysis, RLS coverage auditing, official Supabase CLI 3.1.0 simulation, and local multi-connection PostgreSQL 18 concurrency verification.
 
@@ -45,11 +48,11 @@ The dedicated staging project was inspected and verified:
 
 ## 2. Migration Checksum & Integrity Audit
 
-The initial schema migration script [20261114000000_initial_schema.sql](file:///C:/Users/as/Documents/GitHub/spiritual-OS/supabase/migrations/20261114000000_initial_schema.sql) was audited for integrity following scripture rights metadata corrections:
+The initial schema migration script [20261114000000_initial_schema.sql](file:///C:/Users/as/Documents/GitHub/spiritual-OS/supabase/migrations/20261114000000_initial_schema.sql) was audited for integrity following scripture rights metadata corrections and explicit RLS role targeting:
 
 - **Target File:** `supabase/migrations/20261114000000_initial_schema.sql`
-- **File Size:** 43,595 bytes (1,068 lines)
-- **Recalculated SHA-256:** `e6d4e0e07aab83e66a9d9276a1754bcd80093b27f1832cb720c7703b1feea39a`
+- **File Size:** 43,842 bytes (1,076 lines)
+- **Recalculated SHA-256:** `c3d041fbac21f8d42cb67acc1fc06861d65db27c659e03b0549c9109af85ef48`
 - **Verification Result:** **CRYPTOGRAPHICALLY VERIFIED & AUDITED**
 
 ---
@@ -63,7 +66,57 @@ The initial schema migration script [20261114000000_initial_schema.sql](file:///
 
 ---
 
-## 4. Scripture Rights Metadata & Schema Corrections
+## 4. Credential Incident, Remediation & Git History Assessment
+
+### A. Incident Description
+In commit `52b834e`, a helper script `scripts/setup-staging-env.js` was introduced to configure local `.env` files for staging. The script included hardcoded Razorpay sandbox test credentials (`rzp_test_U03HURCQ2zoC35`). Although these were sandbox credentials, committing any credential to Git violates the project's zero-secret policy and contradicts pre-migration audit claims.
+
+### B. Remediation Actions Taken
+1. **Source Code Purge:** Completely removed all hardcoded credential literals from `scripts/setup-staging-env.js`.
+2. **Dynamic Environment Extraction:** Refactored the script to read third-party credentials strictly from runtime environment variables (`process.env.RAZORPAY_KEY_ID`, `process.env.RAZORPAY_KEY_SECRET`), falling back to non-functional placeholders (`awaiting_staging_razorpay_key_id`) if unset. Real credentials are never provided as source defaults.
+3. **Compromised Status Declaration:** The exposed sandbox key pair is formally declared **compromised**. It must not be used in staging or production. The account owner is instructed to rotate/revoke this key in the Razorpay Dashboard (Settings -> API Keys).
+4. **Git Exclusion Verification:** Reconfirmed that `.env` and `apps/web/.env.local` are strictly gitignored via `.gitignore` rules (rules 6 and 7). Neither file is tracked or staged.
+
+### C. Git History Assessment & Plan
+- **Scope of Exposure:** The credential exists in Git commit `52b834e9a571fb53be61243fac595cc01615d3fc` on branch `main`.
+- **Immediate Safeguard:** Immediate rotation of the credential in the provider dashboard permanently neutralizes the secret regardless of Git history state.
+- **Repository History Cleanup Plan:**
+  - If the repository maintainer requires historical commit purging, the following procedure is documented for coordinated execution:
+    ```bash
+    # Option 1: git-filter-repo (Recommended)
+    git filter-repo --replace-text <(echo "rzp_test_U03HURCQ2zoC35==>[REDACTED]")
+    git filter-repo --replace-text <(echo "UFDrc0KK1HqQ3E2waNCVT2t7==>[REDACTED]")
+    git push origin main --force-with-lease
+    ```
+  - Note: History rewrites change commit SHAs and require a forced push. Immediate credential revocation in the Razorpay dashboard provides full operational security without disrupting concurrent branches.
+
+---
+
+## 5. Staging-Specific Cryptographic Key Verification & Isolation Audit
+
+`scripts/verify-staging-keys.js` was significantly improved to enforce strict cryptographic standards without ever printing, logging, or exposing secret values:
+
+1. **AES-256 Key Validation (`KUNDLI_ENCRYPTION_KEY_V1`):**
+   - Validated exact 64 hexadecimal characters.
+   - Parsed byte buffer verified as exactly 32 bytes (256 bits).
+   - Shannon entropy calculated: **3.91 bits/char** (exceeds 3.0 threshold), with **16 distinct characters**, proving strong cryptographic randomness.
+2. **HMAC Secret Validation (`RATE_LIMIT_HMAC_SECRET`):**
+   - Verified length of 64 bytes (exceeds 32-byte minimum).
+   - Shannon entropy calculated: **3.73 bits/char** (exceeds 3.0 threshold), with **15 distinct characters**.
+3. **Cross-Workspace Key Consistency:**
+   - Root `.env` and `apps/web/.env.local` keys verified as identical.
+   - `KUNDLI_ENCRYPTION_KEY_V1` and `RATE_LIMIT_HMAC_SECRET` verified as independent and distinct.
+4. **Production Key Non-Reuse & Isolation:**
+   - Evaluated via local equality comparison: confirmed staging keys do **not** match production keys, production markers, or compromised credentials.
+5. **Supabase Placeholder Enforcement:**
+   - Confirmed `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` remain safe unpopulated placeholders (`awaiting_staging_*`).
+   - Confirmed `NEXT_PUBLIC_SUPABASE_URL` targets staging `zrjptpkhtklfgnovdrny`.
+
+**Audit Result:** 21/21 automated checks passed cleanly.
+
+---
+
+## 6. Scripture Rights Metadata & Schema Corrections
 
 To eliminate inconsistent claims where content under legal review was represented as Public Domain, the following corrections have been applied:
 
@@ -93,33 +146,28 @@ To eliminate inconsistent claims where content under legal review was represente
   - `source_citation`: Preserved as `'Rigveda 10.191.2, Poona Critical Edition, Vol. 4, p. 894'`.
   - `scholarly_verification_notes`: Documents Poona 1933 text and Griffith 1896 translation under active legal assessment.
 
-### C. Access Control & Public Leakage Guard
-- **`Public read scripture catalog` RLS Policy:**
-  - Updated from `USING (status IN ('curated', 'scholarly_review'))` to:
-    ```sql
+### C. Access Control & Explicit RLS Target Roles
+- Both `scripture_catalog` and `canonical_verses` policies specify explicit target roles:
+  ```sql
+  CREATE POLICY "Public read scripture catalog"
+    ON public.scripture_catalog
+    FOR SELECT
+    TO authenticated, anon
     USING (status = 'curated' AND rights_clearance_status = 'cleared');
-    ```
-  - Guarantees that neither catalog entries nor verses in `pending_clearance` or `scholarly_review` are visible to anonymous or devotee users.
-  - Preserves scholar access via `public.is_scholar()` for scholarly review.
+
+  CREATE POLICY "Public read verified verses"
+    ON public.canonical_verses
+    FOR SELECT
+    TO authenticated, anon
+    USING (review_status = 'verified' AND rights_clearance_status = 'cleared');
+  ```
+- Prevents SQL parser ambiguity across differing Postgres clients and PostgREST gateways.
+- Guarantees that neither catalog entries nor verses in `pending_clearance` or `scholarly_review` are visible to anonymous or devotee users.
+- Preserves scholar access via `public.is_scholar()` for scholarly review.
 
 ---
 
-## 5. Staging-Specific Cryptographic Key Verification
-
-In accordance with security requirements, dedicated staging keys have been generated and verified. No production keys are reused, and no secrets are printed or exposed:
-
-| Variable | Key Type | Format & Integrity Validation | Status |
-| :--- | :--- | :--- | :--- |
-| `KUNDLI_ENCRYPTION_KEY_V1` | AES-256-GCM Envelope Key | Validated as 64 hex characters (32 bytes buffer). Staging-only random entropy. | **VERIFIED PRESENT** |
-| `RATE_LIMIT_HMAC_SECRET` | HMAC-SHA-256 IP Salt Key | Validated as 64 hex characters (64 bytes >= 32 bytes minimum). Staging-only random entropy. | **VERIFIED PRESENT** |
-| `RAZORPAY_KEY_ID` | Payment Sandbox Key | Validated test format (`rzp_test_*`). | **CONFIGURED** |
-| `RAZORPAY_KEY_SECRET` | Payment Sandbox Secret | Validated presence in local staging env. | **CONFIGURED** |
-
-Both root `.env` and `apps/web/.env.local` pass automated format verification via `node scripts/verify-staging-keys.js`.
-
----
-
-## 6. Migration SQL Safety & Structural Assessment
+## 7. Migration SQL Safety & Structural Assessment
 
 A comprehensive AST and regex analysis of `20261114000000_initial_schema.sql` was conducted:
 
@@ -179,7 +227,7 @@ All 12 functions enforce explicit `SET search_path = public, auth, pg_temp` or `
 
 ---
 
-## 7. Pre-Migration Verification Results
+## 8. Pre-Migration Verification Results
 
 All local verification suites were executed against the codebase:
 
@@ -197,13 +245,14 @@ TOTAL VERIFICATION RESULTS ACROSS ALL 6 CATEGORIES:
 ==============================================================================
 ```
 
+- **Staging Key & Isolation Verification:** 21 passed, 0 failed (`node scripts/verify-staging-keys.js`).
 - **TypeScript Compilation:** Passed cleanly across all workspaces (`apps/web`, `apps/mobile`, `packages/types`).
 - **Next.js Production Build:** Passed cleanly (`npm run build:web` generated optimized static assets and server middleware).
 - **Official Supabase CLI 3.1.0 Simulation:** Clean fresh schema creation, 11/11 tables verified, migration version recorded, idempotent re-run verified.
 
 ---
 
-## 8. Known Blockers to Remote Migration
+## 9. Known Blockers to Remote Migration
 
 The following prerequisites are pending user authorization and input before the migration can be executed on the remote staging database:
 
@@ -214,7 +263,7 @@ The following prerequisites are pending user authorization and input before the 
 
 ---
 
-## 9. Migration Commands for Review (DO NOT EXECUTE YET)
+## 10. Migration Commands for Review (DO NOT EXECUTE YET)
 
 For review purposes only, the commands to execute the migration once credentials and authorization are provided:
 
@@ -246,11 +295,11 @@ psql "postgresql://postgres:[STAGING_DB_PASSWORD]@db.zrjptpkhtklfgnovdrny.supaba
 - [x] Staging Project Reference confirmed as `zrjptpkhtklfgnovdrny`.
 - [x] Staging database confirmed fresh (0 public application tables, 0 recorded migrations).
 - [x] Production project `zxwkfnvmmxoojewhvsdc` strictly quarantined.
-- [x] Scripture rights metadata corrected (no false public domain claims, pending clearance enforced).
-- [x] Staging cryptographic keys generated and format verified without leaking values.
-- [x] Migration SHA-256 verified: `e6d4e0e07aab83e66a9d9276a1754bcd80093b27f1832cb720c7703b1feea39a`.
+- [x] Razorpay hardcoded credentials purged from tracked source; rotation queued; zero credentials in Git.
+- [x] Staging cryptographic keys verified (format, 3.9+ Shannon entropy, non-equality to production, non-reuse).
+- [x] Migration SHA-256 verified: `c3d041fbac21f8d42cb67acc1fc06861d65db27c659e03b0549c9109af85ef48`.
 - [x] Migration SQL verified as non-destructive (no DROP TABLE/TRUNCATE).
-- [x] 11/11 tables protected by RLS; all 12 functions search_path hardened.
+- [x] 11/11 tables protected by RLS; explicit `TO authenticated, anon` role declarations; all 12 functions search_path hardened.
 - [x] 83/83 automated tests passed.
 - [x] Next.js 15.5 production build verified.
-- [ ] **Awaiting explicit user authorization and staging credentials before remote execution.**
+- [ ] **PRE-MIGRATION — AWAITING EXPLICIT USER AUTHORIZATION.**

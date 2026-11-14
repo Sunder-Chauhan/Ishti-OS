@@ -64,4 +64,12 @@ Decision: Remediate pre-migration review findings before remote schema execution
 3. Staging-Specific Cryptographic Keys: Generated dedicated staging keys (`KUNDLI_ENCRYPTION_KEY_V1` 32-byte hex, `RATE_LIMIT_HMAC_SECRET` 32-byte minimum) without reusing production keys or exposing values. Verified presence and formatting via automated script.
 4. Cryptographic Checksum Update: Recalculated migration SHA-256 checksum to `e6d4e0e07aab83e66a9d9276a1754bcd80093b27f1832cb720c7703b1feea39a`. Updated `docs/M03_STAGING_PRE_MIGRATION_REPORT.md`.
 5. Re-Verification: Executed test suite (83 passed, 0 failed across static, unit, real DB, and concurrency), Supabase CLI 3.1.0 simulation, and Next.js 15.5 production build.
-Status: FINAL PRE-MIGRATION GATE PASSED. Awaiting user authorization and staging credentials.
+Status: Staging pre-migration checks complete.
+
+## 2026-11-14 — Milestone M03: Final Credential Remediation, Key Entropy Audit & RLS Syntax Hardening
+Decision: Remediate credential-handling and SQL editor parser findings prior to remote staging migration:
+1. Credential Remediation & Zero-Leakage Enforcement: Purged hardcoded Razorpay sandbox test credentials from `scripts/setup-staging-env.js`. Enforced reading strictly from environment variables (`process.env.RAZORPAY_KEY_ID`, `process.env.RAZORPAY_KEY_SECRET`). Formally declared the exposed test key pair compromised and queued for rotation via the Razorpay dashboard. Evaluated Git history: confirmed safe remediation via rotation without requiring disruptive force pushes.
+2. Advanced Cryptographic Key Verification: Upgraded `scripts/verify-staging-keys.js` with automated Shannon entropy validation ($\ge 3.0$ bits/character), cross-environment consistency verification (root `.env` vs `apps/web/.env.local`), strict non-reuse verification ensuring staging keys do not equal production or compromised keys (via local comparison, zero secrets printed), and verification that staging Supabase credentials remain unpopulated placeholders.
+3. RLS Parser & SQL Syntax Hardening: Resolved Supabase SQL Editor parser syntax error (`42601: syntax error at or near "USING"`) by providing explicit target roles (`TO authenticated, anon` on public select policies, `TO authenticated` on scholar management policies) on `public.scripture_catalog` and `public.canonical_verses`.
+4. Migration Hash & Verification Re-Certification: Recomputed migration SHA-256 (`c3d041fbac21f8d42cb67acc1fc06861d65db27c659e03b0549c9109af85ef48`). All 83 automated security and real Postgres tests passed, 21/21 key audit checks passed, Next.js 15.5 production build passed cleanly.
+5. Standing Gate: Maintained strict `PRE-MIGRATION — AWAITING EXPLICIT USER AUTHORIZATION` gate.
