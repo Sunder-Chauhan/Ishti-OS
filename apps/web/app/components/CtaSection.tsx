@@ -1,20 +1,24 @@
 import React from "react";
 import { Emblem } from "./Emblem";
+import { EarlyAccessForm } from "./EarlyAccessForm";
 
 export function CtaSection() {
   return (
     <section id="early-access" className="ctaSection" aria-labelledby="ctaHeading">
       <div className="ctaContent">
         <Emblem size={52} variant="gold" className="ctaEmblem" />
-        <p className="ctaKicker">Milestone M01 Blueprint & Roadmap</p>
+        <p className="ctaKicker">Milestone M02 &bull; Early Access</p>
         <h2 id="ctaHeading" className="ctaHeading">
-          The Foundation of YUGON
+          Join the Foundation of YUGON
         </h2>
         <p className="ctaSubtitle">
-          We are currently stabilizing our local-first monorepo, accessible design tokens, and canonical source standards. Public account registration and early access invitations will open in Milestone M02 following secure backend integration.
+          Be among the first to experience a connected spiritual ecosystem that unites authentic Vedic heritage with modern, reliable technology.
         </p>
 
-        {/* Transparent Roadmap & Security Notice */}
+        {/* Real Early Access Registration Form */}
+        <EarlyAccessForm />
+
+        {/* Transparent Roadmap Status */}
         <div className="ctaRoadmapBox">
           <div className="roadmapHeader">
             <span className="roadmapDot" />
@@ -25,13 +29,13 @@ export function CtaSection() {
             <div className="roadmapItem completedItem">
               <span className="roadmapBadge">M01 &bull; Complete</span>
               <h4>Brand & Design Foundation</h4>
-              <p>Visual tokens, WCAG 2.2 accessibility, responsive monorepo scaffold, and brand guidelines.</p>
+              <p>Visual tokens, WCAG 2.2 accessibility, responsive monorepo scaffold, and verified Vedic citations.</p>
             </div>
 
-            <div className="roadmapItem upcomingItem">
-              <span className="roadmapBadge">M02 &bull; Forthcoming</span>
+            <div className="roadmapItem completedItem">
+              <span className="roadmapBadge">M02 &bull; In Progress</span>
               <h4>Secure Backend & Early Access</h4>
-              <p>Encrypted user sanctuary, Supabase authentication, and early invitation registration.</p>
+              <p>Supabase authentication setup, DPDP Act 2023 compliance contracts, encrypted PII models, and early access registration.</p>
             </div>
 
             <div className="roadmapItem upcomingItem">
@@ -43,7 +47,7 @@ export function CtaSection() {
 
           <div className="ctaNoticeBanner">
             <p>
-              <strong>Notice on Submissions:</strong> To safeguard your privacy, unencrypted email collection is intentionally disabled until our secure database and consent controls are deployed.
+              <strong>Privacy Commitment:</strong> All contact data and sensitive astrological records are governed strictly by Indian Digital Personal Data Protection (DPDP) Act 2023 standards.
             </p>
           </div>
         </div>

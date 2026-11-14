@@ -12,14 +12,17 @@
 - [x] Foundation Technical & Product Audit (Auth, DB, Governance, Privacy, DPDP Act)
 
 ## M02 — Core Foundation & Security Infrastructure
-- [ ] Shared Contract Types (`packages/types`: User, Canonical, Astro, Booking)
-- [ ] Supabase Local Environment & Declarative Migrations (6 Bounded Contexts)
-- [ ] Row-Level Security (RLS) Policy Implementation
-- [ ] Phone OTP / Multi-Platform Authentication Flow
-- [ ] Sensitive Birth Data (PII) Column-Level Encryption (`pgcrypto`)
-- [ ] DPDP Act 2023 Consent & Data Principal Rights Engine
+- [x] Shared Contract Types (`packages/types`: User, Canonical, Astro, Booking, Subscriber)
+- [x] Supabase Web Client SDKs (`@supabase/supabase-js`, `@supabase/ssr`, server cookies, admin client, middleware)
+- [x] Declarative Database Migration Baseline (`supabase/migrations/20261114000000_initial_schema.sql`)
+- [x] Row-Level Security (RLS) Policy Declarations across all 6 bounded contexts
+- [x] Tier-1 PII Column-Level Encryption Specification (`pgcrypto` for DOB, TOB, coordinates)
+- [x] DPDP Act 2023 Consent Audit Logging Schema (`user_consents`)
+- [x] Early Access Registration Server Action & Interactive Accessible Form (`EarlyAccessForm.tsx`)
+- [ ] Remote Database Migration Execution (Pending DB password / PAT for direct push or SQL Editor paste)
+- [ ] Phone OTP / SMS Gateway Configuration (Twilio / Gupshup / MSG91)
 
 ## Next priorities
-1. Expand `@spiritual-os/types` with foundational entity contracts.
-2. Configure Supabase local development & migration baseline.
-3. Wire authentication and RLS policies for Web and Mobile.
+1. Execute `20261114000000_initial_schema.sql` migration against live Supabase project.
+2. Configure Supabase Phone OTP provider (Twilio or Indian SMS aggregator) in Supabase dashboard.
+3. Ingest first verified canonical scripture corpus tranche (Rigveda 10.191 Samjnana Sukta & Isha Upanishad).

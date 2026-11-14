@@ -1195,6 +1195,222 @@ button {
   color: var(--on-charcoal);
 }
 
+/* Early Access Registration Form (Milestone M02) */
+.earlyAccessCard {
+  width: 100%;
+  max-width: 680px;
+  background-color: rgba(241, 235, 221, 0.04);
+  border: 1px solid rgba(177, 138, 80, 0.35);
+  padding: 36px 32px;
+  margin-bottom: 32px;
+  text-align: left;
+}
+
+.earlyAccessCardHeader {
+  margin-bottom: 24px;
+}
+
+.earlyAccessTitle {
+  font-size: 24px;
+  line-height: 1.25;
+  color: var(--on-charcoal);
+  margin-bottom: 8px;
+}
+
+.earlyAccessDesc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--on-charcoal-muted);
+}
+
+.earlyAccessForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on-charcoal-accent);
+}
+
+.fieldInput,
+.fieldSelect {
+  width: 100%;
+  background-color: rgba(241, 235, 221, 0.08);
+  border: 1px solid rgba(177, 138, 80, 0.35);
+  color: var(--on-charcoal);
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  border-radius: 3px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.fieldSelect {
+  cursor: pointer;
+  appearance: auto;
+}
+
+.fieldSelect option {
+  background-color: var(--charcoal);
+  color: var(--on-charcoal);
+}
+
+.fieldInput:focus,
+.fieldSelect:focus {
+  outline: none;
+  border-color: var(--gold);
+  background-color: rgba(241, 235, 221, 0.12);
+}
+
+.fieldInput::placeholder {
+  color: rgba(241, 235, 221, 0.4);
+}
+
+.interestsSection {
+  margin-top: 4px;
+}
+
+.interestsTitle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on-charcoal-accent);
+  margin-bottom: 10px;
+}
+
+.interestsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.interestCheckboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(241, 235, 221, 0.06);
+  border: 1px solid rgba(177, 138, 80, 0.25);
+  padding: 6px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--on-charcoal-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.interestCheckboxLabel:hover {
+  background-color: rgba(241, 235, 221, 0.1);
+  border-color: var(--gold);
+  color: var(--on-charcoal);
+}
+
+.interestCheckboxLabel input[type="checkbox"] {
+  accent-color: var(--gold);
+}
+
+.interestCheckboxLabel:has(input[type="checkbox"]:checked) {
+  background-color: rgba(177, 138, 80, 0.18);
+  border-color: var(--gold);
+  color: var(--on-charcoal);
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.ctaSubmitButton {
+  background-color: var(--gold);
+  color: var(--charcoal);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 13px 26px;
+  border-radius: 3px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.ctaSubmitButton:hover:not(:disabled) {
+  background-color: #c49d60;
+}
+
+.ctaSubmitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.privacyDisclaimer {
+  font-size: 12px;
+  color: var(--on-charcoal-muted);
+  line-height: 1.5;
+}
+
+.statusAlertSuccess {
+  background-color: rgba(119, 123, 98, 0.25);
+  border-left: 4px solid var(--sage);
+  padding: 16px 20px;
+  color: #e5ecd9;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.statusAlertError {
+  background-color: rgba(155, 104, 78, 0.25);
+  border-left: 4px solid var(--terracotta);
+  padding: 16px 20px;
+  color: #f7ded4;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.statusAlertPending {
+  background-color: rgba(177, 138, 80, 0.2);
+  border-left: 4px solid var(--gold);
+  padding: 16px 20px;
+  color: var(--on-charcoal);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.statusAlertPending code {
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
 /* ==========================================================================
    9. REFINED FOOTER
    ========================================================================== */
