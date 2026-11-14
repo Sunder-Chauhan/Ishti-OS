@@ -160,7 +160,7 @@ async function main() {
   // 2. UNIT TESTS (CRYPTOGRAPHY, AAD CONTEXT BINDING & NETWORKING)
   // ==============================================================================
   console.log('\n======================================================');
-  console.log('--- 2. UNIT TESTS (13 TESTS) ---');
+  console.log('--- 2. UNIT TESTS (CRYPTOGRAPHY, CONTEXT BINDING & NETWORKING) ---');
   console.log('======================================================');
 
   const {
@@ -177,6 +177,7 @@ async function main() {
     isValidIp,
     hashIdentifier,
     getRateLimitHmacSecret,
+    checkRateLimit,
   } = require(path.join(ROOT_DIR, 'apps/web/lib/security/rate-limiter.ts'));
 
   const testUserId = 'usr_sarah_456';
@@ -324,74 +325,288 @@ async function main() {
     }
   });
 
-  runTest('unit', 'Rate Limiter: Strict IP format validation (rejects malformed/injected IPs)', () => {
-    if (!isValidIp('203.0.113.195')) throw new Error('Valid IPv4 rejected');
-    if (!isValidIp('2001:0db8:85a3:0000:0000:8a2e:0370:7334')) throw new Error('Valid IPv6 rejected');
-    if (!isValidIp('::1')) throw new Error('IPv6 loopback rejected');
-    if (!isValidIp('fe80::1ff:fe23:4567:890a')) throw new Error('Link-local IPv6 rejected');
+  // ----------------------------------------------------------------------------
+  // TRUSTED PROXY PROVENANCE & RATE LIMITER (10 SPECIFIC TESTS)
+  // ----------------------------------------------------------------------------
 
-    if (isValidIp('203.0.113.195; DROP TABLE users;')) throw new Error('SQL injection in IP accepted');
-    if (isValidIp('999.999.999.999')) throw new Error('Invalid IPv4 octets accepted');
-    if (isValidIp('256.1.1.1')) throw new Error('Out of range IPv4 accepted');
-    if (isValidIp('192.168.1.1:8080')) throw new Error('IP with port accepted without separation');
-    if (isValidIp('<script>alert(1)</script>')) throw new Error('XSS in IP accepted');
-    if (isValidIp('not-an-ip')) throw new Error('Arbitrary string accepted as IP');
-  });
-
-  runTest('unit', 'Rate Limiter: Deployment-aware trusted proxy verification policy', () => {
-    // 1. Cloudflare Strategy: Requires valid cf-connecting-ip and cf-ray in production
-    const cfValidHeaders = {
-      get: (h) => (h === 'cf-connecting-ip' ? '203.0.113.195' : h === 'cf-ray' ? '7f8a9b0c-IAD' : null),
-    };
-    if (extractClientIp(cfValidHeaders, 'cloudflare') !== '203.0.113.195') {
-      throw new Error('Failed to extract verified Cloudflare IP');
-    }
-
-    // Spoofed Cloudflare header without cf-ray in production returns null
+  runTest('unit', 'Trusted Proxy (1/10): Spoofed cf-connecting-ip without origin protection is rejected in production', () => {
     const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.CLOUDFLARE_EDGE_SECRET;
+    const originalProtected = process.env.CLOUDFLARE_ORIGIN_PROTECTED;
     try {
       process.env.NODE_ENV = 'production';
-      const spoofedCfHeaders = {
-        get: (h) => (h === 'cf-connecting-ip' ? '203.0.113.195' : null), // Missing cf-ray
+      delete process.env.CLOUDFLARE_EDGE_SECRET;
+      delete process.env.CLOUDFLARE_ORIGIN_PROTECTED;
+
+      // Attacker sends cf-connecting-ip directly to exposed origin
+      const spoofedHeaders = {
+        get: (h) => (h === 'cf-connecting-ip' ? '203.0.113.195' : null),
       };
-      if (extractClientIp(spoofedCfHeaders, 'cloudflare') !== null) {
-        throw new Error('Accepted spoofed cf-connecting-ip without cf-ray in production');
+      if (extractClientIp(spoofedHeaders, 'cloudflare') !== null) {
+        throw new Error('Accepted spoofed cf-connecting-ip without origin protection in production');
       }
 
-      // In production, missing/untrusted headers do NOT default to 127.0.0.1
-      const emptyHeaders = { get: () => null };
-      if (extractClientIp(emptyHeaders, 'cloudflare') !== null) {
-        throw new Error('Production unexpectedly defaulted missing IP to a loopback address');
+      // Edge secret configured on origin, but attacker does not provide matching header
+      process.env.CLOUDFLARE_EDGE_SECRET = 'super-secret-edge-token-256';
+      if (extractClientIp(spoofedHeaders, 'cloudflare') !== null) {
+        throw new Error('Accepted cf-connecting-ip without matching edge secret header in production');
       }
-      if (extractClientIp(emptyHeaders, 'none') !== null) {
-        throw new Error('Production direct origin unexpectedly defaulted missing IP to 127.0.0.1');
+
+      // Attacker supplies incorrect edge secret
+      const badSecretHeaders = {
+        get: (h) => (h === 'cf-connecting-ip' ? '203.0.113.195' : h === 'x-ishti-edge-secret' ? 'wrong' : null),
+      };
+      if (extractClientIp(badSecretHeaders, 'cloudflare') !== null) {
+        throw new Error('Accepted cf-connecting-ip with mismatched edge secret header');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalSecret) process.env.CLOUDFLARE_EDGE_SECRET = originalSecret;
+      else delete process.env.CLOUDFLARE_EDGE_SECRET;
+      if (originalProtected) process.env.CLOUDFLARE_ORIGIN_PROTECTED = originalProtected;
+      else delete process.env.CLOUDFLARE_ORIGIN_PROTECTED;
+    }
+  });
+
+  runTest('unit', 'Trusted Proxy (2/10): Spoofed cf-ray alone without origin protection is rejected in production', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.CLOUDFLARE_EDGE_SECRET;
+    const originalProtected = process.env.CLOUDFLARE_ORIGIN_PROTECTED;
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.CLOUDFLARE_EDGE_SECRET;
+      delete process.env.CLOUDFLARE_ORIGIN_PROTECTED;
+
+      // Attacker sends both cf-connecting-ip and cf-ray directly to exposed origin
+      const spoofedHeaders = {
+        get: (h) => (h === 'cf-connecting-ip' ? '203.0.113.195' : h === 'cf-ray' ? 'fake-ray-7f8a9b0c' : null),
+      };
+      if (extractClientIp(spoofedHeaders, 'cloudflare') !== null) {
+        throw new Error('Accepted spoofed cf-connecting-ip + cf-ray without verified origin protection');
+      }
+
+      // Method A: When origin protection is verified via edge secret header matching
+      process.env.CLOUDFLARE_EDGE_SECRET = 'authenticated-edge-secret';
+      const validEdgeSecretHeaders = {
+        get: (h) =>
+          h === 'cf-connecting-ip'
+            ? '203.0.113.195'
+            : h === 'cf-ray'
+            ? 'valid-ray-123'
+            : h === 'x-ishti-edge-secret'
+            ? 'authenticated-edge-secret'
+            : null,
+      };
+      if (extractClientIp(validEdgeSecretHeaders, 'cloudflare') !== '203.0.113.195') {
+        throw new Error('Failed to extract client IP under verified edge secret');
+      }
+
+      // Method B: When origin protection is verified via infrastructure network isolation (Cloudflare Tunnel / SG)
+      delete process.env.CLOUDFLARE_EDGE_SECRET;
+      process.env.CLOUDFLARE_ORIGIN_PROTECTED = 'true';
+      const validTunnelHeaders = {
+        get: (h) =>
+          h === 'cf-connecting-ip' ? '203.0.113.195' : h === 'cf-ray' ? 'valid-ray-456' : null,
+      };
+      if (extractClientIp(validTunnelHeaders, 'cloudflare') !== '203.0.113.195') {
+        throw new Error('Failed to extract client IP under verified origin isolation');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalSecret) process.env.CLOUDFLARE_EDGE_SECRET = originalSecret;
+      else delete process.env.CLOUDFLARE_EDGE_SECRET;
+      if (originalProtected) process.env.CLOUDFLARE_ORIGIN_PROTECTED = originalProtected;
+      else delete process.env.CLOUDFLARE_ORIGIN_PROTECTED;
+    }
+  });
+
+  runTest('unit', 'Trusted Proxy (3/10): Direct-origin requests ignore all forwarded headers', () => {
+    const originalEnv = process.env.NODE_ENV;
+    try {
+      const spoofedHeaders = {
+        get: (h) =>
+          h === 'cf-connecting-ip'
+            ? '198.51.100.99'
+            : h === 'x-real-ip'
+            ? '198.51.100.88'
+            : h === 'x-forwarded-for'
+            ? '198.51.100.77'
+            : null,
+      };
+
+      // In production: direct mode ignores all forwarded headers and returns null
+      process.env.NODE_ENV = 'production';
+      if (extractClientIp(spoofedHeaders, 'direct') !== null) {
+        throw new Error('Direct strategy in production accepted forwarded headers');
+      }
+      if (extractClientIp(spoofedHeaders, 'none') !== null) {
+        throw new Error('None strategy in production accepted forwarded headers');
+      }
+
+      // In non-production: direct mode ignores all forwarded headers and returns safe 127.0.0.1
+      process.env.NODE_ENV = 'development';
+      if (extractClientIp(spoofedHeaders, 'direct') !== '127.0.0.1') {
+        throw new Error('Direct strategy in development did not return 127.0.0.1');
       }
     } finally {
       process.env.NODE_ENV = originalEnv;
     }
+  });
 
-    // 2. Reverse Proxy Strategy: Evaluates x-real-ip or x-forwarded-for chain
-    const proxyHeaders = {
-      get: (h) => (h === 'x-real-ip' ? '198.51.100.2' : null),
-    };
-    if (extractClientIp(proxyHeaders, 'reverse_proxy') !== '198.51.100.2') {
-      throw new Error('Failed to extract X-Real-IP under reverse_proxy strategy');
+  runTest('unit', 'Trusted Proxy (4/10): Malformed IP addresses are strictly rejected', () => {
+    const malformedIps = [
+      '999.999.999.999',
+      '256.1.1.1',
+      '203.0.113.195; DROP TABLE users;',
+      'not-an-ip',
+      '192.168.1.1:8080',
+      '<script>alert(1)</script>',
+      '1234::5678::90ab',
+      '1.2.3.4.5',
+      '',
+    ];
+    for (const badIp of malformedIps) {
+      if (isValidIp(badIp)) {
+        throw new Error(`isValidIp incorrectly validated malformed IP: "${badIp}"`);
+      }
+      const headers = { get: (h) => (h === 'cf-connecting-ip' ? badIp : null) };
+      if (extractClientIp(headers, 'cloudflare') !== null) {
+        throw new Error(`extractClientIp accepted malformed IP: "${badIp}"`);
+      }
+    }
+  });
+
+  runTest('unit', 'Trusted Proxy (5/10): IPv4 and IPv6 syntax validation and extraction', () => {
+    const validIpv4 = '203.0.113.195';
+    const validIpv6Full = '2001:0db8:85a3:0000:0000:8a2e:0370:7334';
+    const validIpv6Loopback = '::1';
+    const validIpv6LinkLocal = 'fe80::1ff:fe23:4567:890a';
+
+    if (!isValidIp(validIpv4)) throw new Error('Valid IPv4 rejected');
+    if (!isValidIp(validIpv6Full)) throw new Error('Valid IPv6 full rejected');
+    if (!isValidIp(validIpv6Loopback)) throw new Error('Valid IPv6 loopback rejected');
+    if (!isValidIp(validIpv6LinkLocal)) throw new Error('Valid IPv6 link-local rejected');
+
+    const originalProtected = process.env.CLOUDFLARE_ORIGIN_PROTECTED;
+    const originalEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      process.env.CLOUDFLARE_ORIGIN_PROTECTED = 'true';
+
+      const ipv4Headers = {
+        get: (h) => (h === 'cf-connecting-ip' ? validIpv4 : h === 'cf-ray' ? 'ray-1' : null),
+      };
+      if (extractClientIp(ipv4Headers, 'cloudflare') !== validIpv4) {
+        throw new Error('Failed to extract valid IPv4');
+      }
+
+      const ipv6Headers = {
+        get: (h) => (h === 'cf-connecting-ip' ? validIpv6Full : h === 'cf-ray' ? 'ray-2' : null),
+      };
+      if (extractClientIp(ipv6Headers, 'cloudflare') !== validIpv6Full) {
+        throw new Error('Failed to extract valid IPv6');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalProtected) process.env.CLOUDFLARE_ORIGIN_PROTECTED = originalProtected;
+      else delete process.env.CLOUDFLARE_ORIGIN_PROTECTED;
+    }
+  });
+
+  runTest('unit', 'Trusted Proxy (6/10): Multiple x-forwarded-for hops right-to-left parsing', () => {
+    const xffChain = '203.0.113.50, 198.51.100.25, 10.0.0.1';
+    const headers = { get: (h) => (h === 'x-forwarded-for' ? xffChain : null) };
+
+    if (extractClientIp(headers, { strategy: 'reverse_proxy', trustedHops: 1 }) !== '10.0.0.1') {
+      throw new Error('Failed to extract correct IP for trustedHops = 1');
     }
 
-    const xffHeaders = {
-      get: (h) => (h === 'x-forwarded-for' ? 'malformed-hop, 198.51.100.5, 10.0.0.1' : null),
-    };
-    if (extractClientIp(xffHeaders, 'reverse_proxy') !== '198.51.100.5') {
-      throw new Error('Failed to extract first valid originating IP from X-Forwarded-For chain');
+    if (extractClientIp(headers, { strategy: 'reverse_proxy', trustedHops: 2 }) !== '198.51.100.25') {
+      throw new Error('Failed to extract correct IP for trustedHops = 2');
     }
 
-    // 3. Direct Origin Strategy ('none'): ALL forwarded headers ignored to prevent spoofing
-    const directHeadersWithSpoofing = {
-      get: (h) => (h === 'cf-connecting-ip' ? '1.1.1.1' : h === 'x-forwarded-for' ? '2.2.2.2' : null),
+    if (extractClientIp(headers, { strategy: 'reverse_proxy', trustedHops: 3 }) !== '203.0.113.50') {
+      throw new Error('Failed to extract correct IP for trustedHops = 3');
+    }
+  });
+
+  runTest('unit', 'Trusted Proxy (7/10): Trusted and untrusted reverse proxies and chain truncation', () => {
+    const truncatedHeaders = {
+      get: (h) => (h === 'x-forwarded-for' ? '198.51.100.25, 10.0.0.1' : null),
     };
-    // In dev, returns safe local loopback 127.0.0.1; ignores spoofed 1.1.1.1 / 2.2.2.2
-    if (extractClientIp(directHeadersWithSpoofing, 'none') !== '127.0.0.1') {
-      throw new Error('Direct origin strategy failed to ignore forwarded headers');
+    if (extractClientIp(truncatedHeaders, { strategy: 'reverse_proxy', trustedHops: 3 }) !== null) {
+      throw new Error('Accepted truncated X-Forwarded-For chain with fewer hops than trusted count');
+    }
+
+    const malformedHopHeaders = {
+      get: (h) => (h === 'x-forwarded-for' ? 'bad-ip-string, 10.0.0.1' : null),
+    };
+    if (extractClientIp(malformedHopHeaders, { strategy: 'reverse_proxy', trustedHops: 2 }) !== null) {
+      throw new Error('Accepted malformed IP at target hop in X-Forwarded-For chain');
+    }
+
+    const realIpHeaders = {
+      get: (h) => (h === 'x-real-ip' ? '198.51.100.88' : null),
+    };
+    if (extractClientIp(realIpHeaders, { strategy: 'reverse_proxy', trustRealIp: true }) !== '198.51.100.88') {
+      throw new Error('Failed to extract X-Real-IP when trustRealIp is true');
+    }
+    if (extractClientIp(realIpHeaders, { strategy: 'reverse_proxy', trustRealIp: false }) !== null) {
+      throw new Error('X-Real-IP was extracted even when trustRealIp is false');
+    }
+  });
+
+  runTest('unit', 'Trusted Proxy (8/10): Missing client IP returns null in production', () => {
+    const originalEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      const emptyHeaders = { get: () => null };
+
+      if (extractClientIp(emptyHeaders, 'cloudflare') !== null) {
+        throw new Error('Cloudflare strategy returned non-null for empty headers in production');
+      }
+      if (extractClientIp(emptyHeaders, 'reverse_proxy') !== null) {
+        throw new Error('Reverse proxy strategy returned non-null for empty headers in production');
+      }
+      if (extractClientIp(emptyHeaders, 'direct') !== null) {
+        throw new Error('Direct strategy returned non-null for empty headers in production');
+      }
+      if (extractClientIp(emptyHeaders, 'none') !== null) {
+        throw new Error('None strategy returned non-null for empty headers in production');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
+
+  await runAsyncTest('unit', 'Trusted Proxy (9/10): Production fail-closed behavior in checkRateLimit', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      const emptyHeaders = { get: () => null };
+      const result = await checkRateLimit(emptyHeaders, 'early_access');
+      if (result.allowed !== false || result.reason !== 'UNTRUSTED_PROXY_PROVENANCE') {
+        throw new Error(`Expected fail-closed UNTRUSTED_PROXY_PROVENANCE, got: ${JSON.stringify(result)}`);
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
+
+  runTest('unit', 'Trusted Proxy (10/10): Development behavior provides safe local loopback', () => {
+    const originalEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'development';
+      const emptyHeaders = { get: () => null };
+
+      if (extractClientIp(emptyHeaders, 'direct') !== '127.0.0.1') {
+        throw new Error('Direct strategy in development failed to return 127.0.0.1');
+      }
+      if (extractClientIp(emptyHeaders, 'none') !== '127.0.0.1') {
+        throw new Error('None strategy in development failed to return 127.0.0.1');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
     }
   });
 

@@ -26,6 +26,13 @@ export async function submitEarlyAccess(
   const rateLimitResult = await checkRateLimit(headerList, "early_access");
 
   if (!rateLimitResult.allowed) {
+    if (rateLimitResult.reason === "UNTRUSTED_PROXY_PROVENANCE") {
+      return {
+        success: false,
+        code: "UNTRUSTED_PROVENANCE",
+        message: "Registration could not be verified due to untrusted network provenance. Please try again.",
+      };
+    }
     return {
       success: false,
       code: "RATE_LIMITED",

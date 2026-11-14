@@ -58,6 +58,14 @@ export interface RateLimitResult {
 
 export type TrustedProxyStrategy = "cloudflare" | "reverse_proxy" | "direct" | "none";
 
+export interface ExtractClientIpOptions {
+  strategy?: TrustedProxyStrategy;
+  trustedHops?: number;
+  edgeSecret?: string;
+  originProtected?: boolean;
+  trustRealIp?: boolean;
+}
+
 /**
  * Validates whether a given string is a syntactically valid IPv4 or IPv6 address.
  * Uses official Node.js net.isIP standard library implementation (C++ backed).
@@ -96,10 +104,15 @@ export function getTrustedProxyStrategy(): TrustedProxyStrategy {
  *
  * Infrastructure Topology & Header Overwrites:
  * - 'cloudflare': Edge proxy terminates requests. Cloudflare strips client-supplied cf-connecting-ip
- *   and injects the authentic client IP. In production, also requires presence of cf-ray
- *   to guard against direct-origin requests spoofing Cloudflare headers.
- * - 'reverse_proxy': Internal reverse proxy (NGINX / AWS ALB / Kubernetes Ingress) overwrites
- *   x-real-ip or appends to x-forwarded-for. Extracts x-real-ip or originating client hop.
+ *   and injects the authentic client IP.
+ *   CRITICAL SECURITY REQUIREMENT:
+ *   cf-ray alone is NOT proof of Cloudflare origin because direct-origin attackers can supply any cf-ray.
+ *   In production, Cloudflare headers are only trusted if:
+ *   a) CLOUDFLARE_EDGE_SECRET is configured and matches incoming x-ishti-edge-secret (or x-origin-secret), OR
+ *   b) CLOUDFLARE_ORIGIN_PROTECTED is explicitly 'true' (infrastructure firewall/tunnel/mTLS blocks direct ingress).
+ * - 'reverse_proxy': Internal reverse proxy (NGINX / AWS ALB / Kubernetes Ingress).
+ *   Evaluates x-real-ip (if TRUST_X_REAL_IP=true) or counts hops from the right in x-forwarded-for
+ *   using TRUSTED_PROXY_HOPS (default 1). If chain has fewer hops or hop is malformed, returns null.
  * - 'direct' / 'none': Direct origin connections (local dev, test runner, private internal networks).
  *   ALL forwarded headers (cf-connecting-ip, x-real-ip, x-forwarded-for) are considered UNTRUSTED
  *   and ignored to prevent origin header spoofing attacks.
@@ -109,9 +122,22 @@ export function getTrustedProxyStrategy(): TrustedProxyStrategy {
  */
 export function extractClientIp(
   headers: { get(name: string): string | null },
-  forcedStrategy?: TrustedProxyStrategy
+  forcedStrategyOrOptions?: TrustedProxyStrategy | ExtractClientIpOptions,
+  explicitOptions?: ExtractClientIpOptions
 ): string | null {
-  const strategy = forcedStrategy || getTrustedProxyStrategy();
+  let strategy: TrustedProxyStrategy;
+  let options: ExtractClientIpOptions | undefined;
+
+  if (typeof forcedStrategyOrOptions === "string") {
+    strategy = forcedStrategyOrOptions;
+    options = explicitOptions;
+  } else if (typeof forcedStrategyOrOptions === "object" && forcedStrategyOrOptions !== null) {
+    options = forcedStrategyOrOptions;
+    strategy = options.strategy || getTrustedProxyStrategy();
+  } else {
+    options = explicitOptions;
+    strategy = getTrustedProxyStrategy();
+  }
 
   if (strategy === "cloudflare") {
     const cfIp = headers.get("cf-connecting-ip");
@@ -122,33 +148,80 @@ export function extractClientIp(
       return null;
     }
 
-    // In production, also require Cloudflare edge marker (cf-ray) to reject direct-origin spoofing
-    if (process.env.NODE_ENV === "production" && !cfRay) {
-      return null;
+    // In production, we MUST verify origin protection.
+    // cf-ray alone is not proof of Cloudflare edge origin because direct-origin attackers can supply cf-ray.
+    if (process.env.NODE_ENV === "production") {
+      const edgeSecret = options?.edgeSecret ?? process.env.CLOUDFLARE_EDGE_SECRET;
+      const isOriginProtected =
+        options?.originProtected !== undefined
+          ? options.originProtected
+          : process.env.CLOUDFLARE_ORIGIN_PROTECTED === "true";
+
+      if (edgeSecret) {
+        const incomingSecret =
+          headers.get("x-ishti-edge-secret") ||
+          headers.get("x-origin-secret");
+        if (!incomingSecret || incomingSecret !== edgeSecret) {
+          return null;
+        }
+      } else if (!isOriginProtected) {
+        // Neither edge secret nor infrastructure origin protection is established.
+        // Direct origin requests cannot be safely distinguished from edge requests.
+        return null;
+      }
+
+      if (!cfRay) {
+        return null;
+      }
     }
 
     return cfIp.trim();
   }
 
   if (strategy === "reverse_proxy") {
-    // 1. Check x-real-ip set by trusted reverse proxy
-    const realIp = headers.get("x-real-ip");
-    if (realIp && isValidIp(realIp)) {
-      return realIp.trim();
-    }
+    // 1. Check x-real-ip set by trusted reverse proxy if explicitly trusted
+    const trustRealIp =
+      options?.trustRealIp !== undefined
+        ? options.trustRealIp
+        : process.env.TRUST_X_REAL_IP === "true";
 
-    // 2. Check x-forwarded-for: extract the originating client IP (first valid IP in chain)
-    const xForwardedFor = headers.get("x-forwarded-for");
-    if (xForwardedFor) {
-      const parts = xForwardedFor.split(",").map((p) => p.trim());
-      for (const part of parts) {
-        if (isValidIp(part)) {
-          return part;
-        }
+    if (trustRealIp) {
+      const realIp = headers.get("x-real-ip");
+      if (realIp && isValidIp(realIp)) {
+        return realIp.trim();
       }
     }
 
-    return null;
+    // 2. Parse x-forwarded-for from right to left based on trusted proxy hops
+    const xForwardedFor = headers.get("x-forwarded-for");
+    if (!xForwardedFor) {
+      return null;
+    }
+
+    const parts = xForwardedFor
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    const trustedHops =
+      options?.trustedHops !== undefined
+        ? options.trustedHops
+        : parseInt(process.env.TRUSTED_PROXY_HOPS || "1", 10) || 1;
+
+    if (trustedHops < 1 || parts.length < trustedHops) {
+      // Chain has fewer hops than trusted proxies -> client provenance cannot be established
+      return null;
+    }
+
+    // Right-to-left index: the client IP as observed by the outermost trusted proxy
+    const clientHopIndex = parts.length - trustedHops;
+    const clientHop = parts[clientHopIndex];
+
+    if (!clientHop || !isValidIp(clientHop)) {
+      return null;
+    }
+
+    return clientHop;
   }
 
   // Strategy 'none' or 'direct': Direct origin access
@@ -158,6 +231,7 @@ export function extractClientIp(
   }
 
   // In production with direct strategy, forwarded headers cannot establish provenance
+  // Never silently substitute 127.0.0.1 in production!
   return null;
 }
 
@@ -238,7 +312,8 @@ export async function checkRateLimit(
   if (!rawIdentifier) {
     const extracted = extractClientIp(headers);
     if (!extracted) {
-      // In production or fail-closed endpoints, untrusted proxy provenance immediately fails closed
+      // In production, NEVER silently substitute 127.0.0.1 for an unknown/untrusted client.
+      // Fail closed immediately if provenance cannot be established.
       if (process.env.NODE_ENV === "production" || config.failClosed) {
         return {
           allowed: false,
@@ -250,6 +325,14 @@ export async function checkRateLimit(
     } else {
       rawIdentifier = extracted;
     }
+  }
+
+  if (!rawIdentifier) {
+    return {
+      allowed: false,
+      reason: "UNTRUSTED_PROXY_PROVENANCE",
+      resetSeconds: 60,
+    };
   }
 
   const identifierHash = hashIdentifier(rawIdentifier);
