@@ -62,14 +62,6 @@
 - [ ] Run `scripts/reconcile-staging-schema.ts --execute` against staging project `zrjptpkhtklfgnovdrny`
 - [ ] Execute Tier 3 hosted staging tests against live PostgREST and GoTrue endpoints
 
-## Brand Identity System — Digital Master Implementation
-- [x] Pure vector SVG master logo suite in `public/brand/` and `apps/web/public/brand/` (Primary, Secondary, Icon, Horizontal, Monochrome, Reversed)
-- [x] Centralized design tokens in `src/styles/design-tokens.css` and `src/lib/design-tokens.ts` (Temple Maroon, Vedic Saffron, Sacred Gold, Ivory Paper, Warm Sand, Temple Charcoal)
-- [x] Reusable React SVG components in `src/components/brand/` with collision-resistant `useId()` gradients, accessibility titles/descriptions, and outlined vector typography
-- [x] Responsive Brand Showcase Page at `/brand` (`apps/web/app/brand/page.tsx`) with live theme toggles, scale fidelity testing, copy-to-clipboard swatches, and WCAG 2.2 matrix
-- [x] Brand Guidelines updated to v1.1 ([docs/BRAND_GUIDELINES.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/BRAND_GUIDELINES.md))
-- [x] Monorepo TypeScript typecheck (0 errors) and Next.js 15 production build passing cleanly
-
 ## M04 — Application Foundation & User Experience Shell (Pending M03.1 Sign-Off)
 - [ ] Implement Next.js 15 application shell layout and font loading
 - [ ] Implement responsive navigation header (desktop) and bottom navigation (mobile)
