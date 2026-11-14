@@ -815,6 +815,191 @@ async function main() {
       }
     });
 
+    console.log("\n--- 7. TASK 3: LOCAL RLS BEHAVIORAL CONDITIONS (SIMULATED ENVIRONMENT) ---");
+
+    // Condition 1 & 7: anon read blocks on unapproved/unverified scripture and verses, and no 42501 function crashes
+    await recordTest("REAL_DB_SCRIPTURE", "[SIMULATED] Anon read blocks on unapproved scripture without 42501 function crash", async () => {
+      const client = await pool.connect();
+      try {
+        await setAuthSession(client, "anon");
+        const catalogRes = await client.query("SELECT * FROM public.scripture_catalog;");
+        if (catalogRes.rows.length !== 0) {
+          throw new Error(`Anon was able to query un-cleared scripture catalog! Rows: ${catalogRes.rows.length}`);
+        }
+        const verseRes = await client.query("SELECT * FROM public.canonical_verses;");
+        if (verseRes.rows.length !== 0) {
+          throw new Error(`Anon was able to query unverified verse! Rows: ${verseRes.rows.length}`);
+        }
+      } finally {
+        await resetAuthSession(client);
+        client.release();
+      }
+    });
+
+    // Condition 2: anon read blocks on private kundli profiles
+    await recordTest("REAL_DB_KUNDLI", "[SIMULATED] Anon read blocks on private kundli profiles", async () => {
+      const client = await pool.connect();
+      try {
+        await setAuthSession(client, "anon");
+        const kundliRes = await client.query("SELECT * FROM public.kundli_profiles;");
+        if (kundliRes.rows.length !== 0) {
+          throw new Error(`Anon was able to query kundli profiles! Rows: ${kundliRes.rows.length}`);
+        }
+      } finally {
+        await resetAuthSession(client);
+        client.release();
+      }
+    });
+
+    // Condition 3: scholar curation allow (scholars can insert/update scripture)
+    await recordTest("REAL_DB_SCRIPTURE", "[SIMULATED] Scholar curation allow: Scholar can insert and update scripture catalog", async () => {
+      const client = await pool.connect();
+      try {
+        await setAuthSession(client, "authenticated", scholarUserId);
+        const testSlug = `upanishad-curation-${crypto.randomBytes(4).toString("hex")}`;
+        const insertRes = await client.query(`
+          INSERT INTO public.scripture_catalog (
+            slug, title_iast, title_devanagari, category, description,
+            source_edition, publication_publisher, rights_holder, license_type,
+            commercial_rights_status, rights_clearance_status, status
+          ) VALUES (
+            '${testSlug}', 'Isha Upanishad Test', 'ईशोपनिषद् परीक्षा', 'upanishad', 'Scholarly test edition',
+            'Adyar Library 1921', 'Theosophical Publishing House', 'Pending Legal Review', 'Under Legal Review',
+            'under_legal_review', 'pending_clearance', 'draft'
+          ) RETURNING id, status;
+        `);
+        if (insertRes.rows.length !== 1) {
+          throw new Error("Scholar was unable to insert into scripture_catalog");
+        }
+        const catalogId = insertRes.rows[0].id;
+
+        // Scholar updates
+        const updateRes = await client.query(`
+          UPDATE public.scripture_catalog
+          SET title_iast = 'Isha Upanishad (Peer Review In Progress)'
+          WHERE id = '${catalogId}'
+          RETURNING id, title_iast;
+        `);
+        if (updateRes.rows.length !== 1 || !updateRes.rows[0].title_iast.includes("Peer Review")) {
+          throw new Error("Scholar was unable to update scripture_catalog entry");
+        }
+      } finally {
+        await resetAuthSession(client);
+        client.release();
+      }
+    });
+
+    // Condition 4: devotee write rejection (devotees cannot curate scripture)
+    await recordTest("REAL_DB_SCRIPTURE", "[SIMULATED] Devotee write rejection: Devotee cannot insert or update scripture catalog", async () => {
+      const client = await pool.connect();
+      try {
+        await setAuthSession(client, "authenticated", devoteeUserAId);
+        const testSlug = `devotee-leak-${crypto.randomBytes(4).toString("hex")}`;
+        let insertBlocked = false;
+        try {
+          await client.query(`
+            INSERT INTO public.scripture_catalog (
+              slug, title_iast, title_devanagari, category, description,
+              source_edition, publication_publisher, rights_holder, license_type,
+              commercial_rights_status, rights_clearance_status, status
+            ) VALUES (
+              '${testSlug}', 'Devotee Book', 'भक्त ग्रन्थ', 'upanishad', 'Devotee text',
+              'Self Published', 'Self', 'Devotee Self', 'Public Domain',
+              'public_domain_unrestricted', 'cleared', 'curated'
+            );
+          `);
+        } catch (err: unknown) {
+          insertBlocked = true;
+          const msg = err instanceof Error ? err.message : String(err);
+          if (!msg.includes("violates row-level security policy")) {
+            throw new Error(`Expected RLS violation, got: ${msg}`);
+          }
+        }
+        if (!insertBlocked) {
+          throw new Error("Devotee was improperly allowed to insert into scripture_catalog!");
+        }
+
+        // Devotee update rejection
+        const updateRes = await client.query(`
+          UPDATE public.scripture_catalog
+          SET title_iast = 'Devotee Overwrite'
+          WHERE slug = 'bhagavad-gita';
+        `);
+        if (updateRes.rowCount !== 0) {
+          throw new Error(`Devotee was improperly allowed to update scripture_catalog! Rows affected: ${updateRes.rowCount}`);
+        }
+      } finally {
+        await resetAuthSession(client);
+        client.release();
+      }
+    });
+
+    // Condition 5: devotee booking creation allow
+    await recordTest("REAL_DB_BOOKING", "[SIMULATED] Devotee booking creation allow: Devotee can create booking for unbooked slot", async () => {
+      const client = await pool.connect();
+      try {
+        await resetAuthSession(client);
+        const newSlotId = crypto.randomUUID();
+        await client.query(`
+          INSERT INTO public.consultation_slots (id, expert_id, start_time, end_time, is_booked)
+          VALUES ('${newSlotId}', 'c0000000-0000-0000-0000-000000000001', NOW() + INTERVAL '2 days', NOW() + INTERVAL '2 days 1 hour', FALSE);
+        `);
+
+        // Authenticate as Devotee A
+        await setAuthSession(client, "authenticated", devoteeUserAId);
+        const bookingRes = await client.query(`
+          INSERT INTO public.booking_requests (user_id, expert_id, slot_id, service_type, amount_inr, status, payment_status)
+          VALUES ('${devoteeUserAId}', 'c0000000-0000-0000-0000-000000000001', '${newSlotId}', 'online_consultation', 1100, 'pending_confirmation', 'pending')
+          RETURNING id, status, payment_status;
+        `);
+        if (bookingRes.rows.length !== 1 || bookingRes.rows[0].status !== "pending_confirmation") {
+          throw new Error("Devotee booking creation failed or returned unexpected status");
+        }
+      } finally {
+        await resetAuthSession(client);
+        client.release();
+      }
+    });
+
+    // Condition 6: admin consent audit access
+    await recordTest("REAL_DB_AUDIT", "[SIMULATED] Admin consent audit access: Admin can view all consents, devotee isolated to self", async () => {
+      const client = await pool.connect();
+      try {
+        await resetAuthSession(client);
+        // Create consents for Devotee A and Devotee B
+        await client.query(`
+          INSERT INTO public.user_consents (user_id, purpose, granted, consent_version)
+          VALUES
+            ('${devoteeUserAId}', 'kundli_astrology', TRUE, 'v1.0'),
+            ('${devoteeUserBId}', 'kundli_astrology', TRUE, 'v1.0');
+        `);
+
+        // Devotee A queries consents
+        await setAuthSession(client, "authenticated", devoteeUserAId);
+        const devoteeRes = await client.query("SELECT * FROM public.user_consents;");
+        if (devoteeRes.rows.length !== 1 || devoteeRes.rows[0].user_id !== devoteeUserAId) {
+          throw new Error(`Devotee consent isolation failure: expected 1 own record, got ${devoteeRes.rows.length}`);
+        }
+
+        // Admin queries consents
+        await setAuthSession(client, "authenticated", adminUserId);
+        const adminRes = await client.query("SELECT * FROM public.user_consents;");
+        if (adminRes.rows.length < 2) {
+          throw new Error(`Admin consent access failure: expected >= 2 records, got ${adminRes.rows.length}`);
+        }
+
+        // Anon queries consents
+        await setAuthSession(client, "anon");
+        const anonRes = await client.query("SELECT * FROM public.user_consents;");
+        if (anonRes.rows.length !== 0) {
+          throw new Error(`Anon leaked consent records! Rows: ${anonRes.rows.length}`);
+        }
+      } finally {
+        await resetAuthSession(client);
+        client.release();
+      }
+    });
+
     console.log("\n==============================================================================");
     console.log("REAL DATABASE VERIFICATION SUMMARY");
     console.log("==============================================================================");

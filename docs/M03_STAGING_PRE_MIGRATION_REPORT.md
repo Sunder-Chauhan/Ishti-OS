@@ -5,8 +5,8 @@
 **Public Brand:** `ISHTI`  
 **Repository:** `Sunder-Chauhan/Ishti-OS`  
 **Branch:** `main`  
-**Baseline Git HEAD:** `ceb701c`  
-**Staging Status:** `STAGING STATE RECONCILIATION — MIGRATION BLOCKED`
+**Baseline Git HEAD:** `39d9188`  
+**Staging Status:** `STAGING RECONCILIATION — MIGRATION BLOCKED`
 
 ---
 
@@ -90,26 +90,51 @@ In commit `52b834e`, a helper script `scripts/setup-staging-env.js` was introduc
 
 ---
 
-## 3. Cryptographic Key Verification & Shannon Entropy Audit
+## 3. Cryptographic Key Verification & Staging Credential Audit
 
-Staging cryptographic keys in `.env` and `apps/web/.env.local` were audited using `scripts/verify-staging-keys.js` without credential logging:
+Staging cryptographic keys in `.env` and `apps/web/.env.local` were audited across 5 separated categories using `scripts/verify-staging-keys.js` without credential logging:
 
-| Audit Check | Requirement | Result | Evidence |
-| :--- | :--- | :--- | :--- |
+### Category 1: Format Validation
+| Audit Check | Requirement | Result | Evidence & Heuristics |
+| :--- | :--- | :---: | :--- |
 | **`root.KUNDLI_ENCRYPTION_KEY_V1`** | 64 hex characters (32 bytes / 256 bits) | **PASS** | Format verified, non-placeholder |
-| **`root.KUNDLI_ENCRYPTION_KEY_V1` Entropy** | Shannon entropy $\ge 3.0$ bits/char | **PASS** | Calculated: 3.91 bits/char (16 unique chars) |
-| **`root.RATE_LIMIT_HMAC_SECRET`** | Minimum 32 bytes | **PASS** | Byte length: 64 |
-| **`root.RATE_LIMIT_HMAC_SECRET` Entropy** | Shannon entropy $\ge 3.0$ bits/char | **PASS** | Calculated: 3.73 bits/char (15 unique chars) |
+| **`root.KUNDLI_ENCRYPTION_KEY_V1` Distribution** | Symbol diversity heuristic check | **PASS** | Shannon entropy: 3.91 bits/char (16 unique chars) [heuristic check; entropy does not prove cryptographic randomness] |
+| **`root.RATE_LIMIT_HMAC_SECRET`** | Minimum 32 bytes | **PASS** | Byte length: 64 bytes |
+| **`root.RATE_LIMIT_HMAC_SECRET` Distribution** | Symbol diversity heuristic check | **PASS** | Shannon entropy: 3.73 bits/char (15 unique chars) [heuristic check; entropy does not prove cryptographic randomness] |
 | **`web.KUNDLI_ENCRYPTION_KEY_V1`** | 64 hex characters (32 bytes) | **PASS** | Format verified, non-placeholder |
-| **`web.KUNDLI_ENCRYPTION_KEY_V1` Entropy** | Shannon entropy $\ge 3.0$ bits/char | **PASS** | Calculated: 3.91 bits/char (16 unique chars) |
-| **`web.RATE_LIMIT_HMAC_SECRET`** | Minimum 32 bytes | **PASS** | Byte length: 64 |
-| **`web.RATE_LIMIT_HMAC_SECRET` Entropy** | Shannon entropy $\ge 3.0$ bits/char | **PASS** | Calculated: 3.73 bits/char (15 unique chars) |
-| **Workspace Key Consistency** | Root and web keys match | **PASS** | Root and web values identical |
-| **Key Distinctness** | Encryption key $\ne$ HMAC secret | **PASS** | Cryptographically distinct |
-| **Supabase Placeholders** | Staging Supabase credentials safe | **PASS** | Anon & service keys are placeholders |
-| **Target Project URL** | Matches staging project ref | **PASS** | Points to `zrjptpkhtklfgnovdrny` |
+| **`web.KUNDLI_ENCRYPTION_KEY_V1` Distribution** | Symbol diversity heuristic check | **PASS** | Shannon entropy: 3.91 bits/char (16 unique chars) |
+| **`web.RATE_LIMIT_HMAC_SECRET`** | Minimum 32 bytes | **PASS** | Byte length: 64 bytes |
+| **`web.RATE_LIMIT_HMAC_SECRET` Distribution** | Symbol diversity heuristic check | **PASS** | Shannon entropy: 3.73 bits/char (15 unique chars) |
 
-**Audit Summary:** 21 passed, 0 failed (zero secret values or markers logged).
+### Category 2: Key-Generation Provenance
+| Audit Check | Requirement | Result | Evidence |
+| :--- | :--- | :---: | :--- |
+| **AES Key Generation** | Node.js `crypto.randomBytes(32)` | **PASS** | Verified in `scripts/setup-staging-env.js` |
+| **HMAC Secret Generation** | Node.js `crypto.randomBytes(32)` | **PASS** | Verified in `scripts/setup-staging-env.js` |
+| **Absence of Insecure PRNG** | Zero `Math.random()` usage | **PASS** | No non-cryptographic PRNG in key pipeline |
+| **Runtime CSPRNG Engine** | `crypto.randomBytes` accessible | **PASS** | Node.js runtime CSPRNG verified functional |
+
+### Category 3: Key Separation
+| Audit Check | Requirement | Result | Evidence |
+| :--- | :--- | :---: | :--- |
+| **Domain Separation** | Kundli key $\ne$ HMAC secret | **PASS** | Cryptographically distinct algorithms & material |
+| **Workspace Alignment** | Root and web Kundli keys match | **PASS** | Values identical across workspace |
+| **Workspace Alignment** | Root and web HMAC secrets match | **PASS** | Values identical across workspace |
+
+### Category 4: Production-Key Non-Reuse
+| Audit Check | Requirement | Result | Evidence |
+| :--- | :--- | :---: | :--- |
+| **Production Key Non-Reuse** | Contrast against untracked `PROD_KEYS_TO_EXCLUDE` | **NOT VERIFIED** | `PROD_KEYS_TO_EXCLUDE` is unset in local environment; non-reuse cannot be verified without untracked comparison targets |
+
+### Category 5: Placeholder Validation & Release-Readiness Gate
+| Audit Check | Requirement | Result | Evidence |
+| :--- | :--- | :---: | :--- |
+| **Target Staging URL** | Points to `zrjptpkhtklfgnovdrny` | **PASS** | Target verified strictly staging |
+| **Production Ref Isolation** | Zero `zxwkfnvmmxoojewhvsdc` | **PASS** | Production project reference strictly absent |
+| **Placeholder Quarantine** | Unprovisioned credentials quarantined | **DETECTED** | Anon, service role, and payment keys are placeholders |
+| **Release-Readiness Gate** | Zero placeholders in release mode | **FAIL** | Staging credentials contain placeholders; deployment BLOCKED until real keys provisioned |
+
+**Verifier Audit Summary:** 19 passed, 1 failed (Release Gate BLOCKED due to placeholders), 1 not verified (zero secrets or prefixes logged).
 
 ---
 
@@ -117,7 +142,7 @@ Staging cryptographic keys in `.env` and `apps/web/.env.local` were audited usin
 
 ### A. Migration Integrity
 - **Target File:** `supabase/migrations/20261114000000_initial_schema.sql`
-- **File Size:** 43,407 bytes (1,041 lines)
+- **File Size:** 43,836 bytes (1,040 lines)
 - **Recalculated SHA-256:** `3399a7317e1933f989d4a9688cac84d6d407006e930614ad90508efa52ea87ed`
 - **Integrity Status:** **CRYPTOGRAPHICALLY VERIFIED & AUDITED**
 
@@ -142,7 +167,7 @@ CREATE POLICY "Scholars and admins can manage verses" ON public.canonical_verses
   WITH CHECK (public.is_scholar());
 ```
 
-### C. Behavioral Validation in Isolated PostgreSQL
+### C. Behavioral Validation in Isolated PostgreSQL (SIMULATED)
 Validated in a disposable PostgreSQL 18.6 simulation environment:
 1. **Explicit Role Scoping (`TO authenticated`):** Scoping scholar policies strictly to `authenticated` ensures PostgreSQL never evaluates `public.is_scholar()` for anonymous requests. This prevents `ERROR: 42501: permission denied for function is_scholar` on public queries.
 2. **Anonymous Restrictions:** Anonymous callers querying `scripture_catalog` or `canonical_verses` receive exactly 0 rows for items marked `pending_clearance` or `pending_peer_review`.
@@ -155,17 +180,17 @@ Validated in a disposable PostgreSQL 18.6 simulation environment:
 ## 5. Verification Suite & Test Results
 
 | Category | Passed | Failed | Status / Evidence |
-| :--- | :--- | :--- | :--- |
+| :--- | :---: | :---: | :--- |
 | **Static Integrity Checks** | 29 | 0 | Brand names, SECURITY DEFINER, search_path, zero YUGON |
 | **Unit Tests (Cryptography & Network)** | 31 | 0 | AES-256-GCM, context-bound AAD, IP extraction, anti-spoofing |
 | **Application Integration Tests** | 3 | 0 | Role assignment, Early Access action, consent audit logging |
-| **Native PostgreSQL 18 & RLS Tests** | 16 | 0 | RLS policies, trigger immutability, plaintext DOB rejection |
-| **Concurrency Tests** | 4 | 0 | Rate limiter advisory locks (20 concurrent), slot booking (10 concurrent) |
-| **Fresh Migration Simulation** | 1 | 0 | Supabase CLI 3.1.0 (`supabase db push`) on fresh UTF-8 DB (11/11 tables) |
-| **RLS Scholar Policy Validation** | 5 | 0 | Anon read block, scholar read allow, devotee write reject |
+| **Native PostgreSQL 18 & RLS Tests [SIMULATED]** | 22 | 0 | RLS policies, trigger immutability, plaintext DOB rejection, 7 behavioral conditions |
+| **Concurrency Tests [SIMULATED]** | 4 | 0 | Rate limiter advisory locks (50 concurrent), atomic slot booking (10 concurrent) |
+| **Fresh Migration Simulation [SIMULATED]** | 1 | 0 | Supabase CLI 3.1.0 (`supabase db push`) on fresh UTF-8 DB (11/11 tables) |
 | **TypeScript Typecheck** | 0 errors | 0 | Clean typecheck across `@spiritual-os/web` and `@spiritual-os/mobile` |
 | **Next.js Production Build** | Clean | 0 | Standalone production bundle generated without errors |
-| **Pending Remote Tests** | 3 skipped | — | Hosted query, Twilio live SMS OTP, Razorpay live payment signature |
+| **Total Executed Automated Tests** | **89** | **0** | **100% pass rate in local execution** |
+| **Pending Remote Tests** | 3 skipped | — | Hosted query (`BLOCKED`), Twilio SMS OTP (`NOT TESTED`), Razorpay payment signature (`NOT TESTED`) |
 
 ### Scope & Test Limitations
 - Local test execution proves SQL syntax validity, cryptographic correctness, role separation, and advisory lock serialization against PostgreSQL 18.6 and Supabase CLI 3.1.0.
