@@ -118,3 +118,17 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   4. Build interactive brand showcase at `/brand` featuring visual rendering, SVG download endpoints, clickable hex swatches, clear-space rules, and icon scale verification down to 16px.
   5. Upgrade Brand Guidelines to v1.1.
 - **Verification:** All 89 security and integrity tests passed; full Next.js 15 production build compiled cleanly with 0 errors.
+
+---
+
+## 2026-11-15: ADR-010 — Milestone M03.1.2: Final Staging Reconciliation Safety Gate
+- **Context:** Following the M03.1.1 audit, four technical conditions required remediation and formalization prior to any staging database execution: (1) strict endpoint URL parsing to replace naive substring checks, (2) verification of Supabase migration history registration conventions under CLI 3.1.0, (3) reconciliation of inconsistent backup commands, and (4) clear separation of database connection credentials from application and payment API keys.
+- **Decision:**
+  1. **Strict Staging Endpoint Validation:** Created dedicated security module `scripts/validate-staging-url.ts` using WHATWG URL parsing. Enforces exact hostname equality against `db.zrjptpkhtklfgnovdrny.supabase.co` (port 5432) or `aws-0-ap-south-1.pooler.supabase.com` (port 6543/5432 with `postgres.zrjptpkhtklfgnovdrny` user prefix). Enforces strict production quarantine rejection, database name restriction (`/postgres`), unsupported port rejection, and credential masking in sanitized output.
+  2. **Supabase Migration Registration Compatibility:** Audited `supabase_migrations.schema_migrations` schema and confirmed CLI 3.1.0 conventions. Verified that recording version `20261114000000` atomically within the reconciliation transaction satisfies subsequent `supabase db push` and `migration list` checks. Documented `supabase migration repair --status applied` as the official CLI alternative.
+  3. **Standardized Backup Specification:** Resolved M03.1.1 command conflicts by identifying that `--data` is invalid in Supabase CLI 3.1.0 and that full recoverability requires three distinct passes: DDL schema (`--schema public,supabase_migrations`), live table data (`--data-only --use-copy`), and cluster roles (`--role-only`). Authored `docs/M03_1_2_BACKUP_VALIDATION.md`.
+  4. **Credential Partitioning:** Formally segregated credentials across Phase 1 (Reconciliation: `STAGING_DATABASE_URL` only), Phase 2 (Hosted App Tests: Supabase anon/service-role, encryption keys), and Phase 3 (Payment Sandbox: Razorpay). Verified that `SUPABASE_SERVICE_ROLE_KEY` is never exposed client-side. Authored `docs/M03_1_2_CREDENTIAL_REQUIREMENTS.md`.
+  5. **Razorpay Exposure Status:** Maintained strict security gate marking Razorpay sandbox credentials as **BLOCKED / PENDING OPERATOR CONFIRMATION** of dashboard key rotation.
+  6. **Automated Testing:** Expanded test suite from 89 to 98 tests by adding 9 dedicated unit tests covering all valid/invalid URL allowlist cases. All 98 tests pass (100%). TypeScript typecheck passes with 0 errors.
+- **Final Gate Verdict:** `NOT READY — CREDENTIAL BLOCKERS` (Awaiting operator credential provisioning, dashboard key rotation, and explicit execution approval).
+- **Standing Gate:** Zero remote database mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.

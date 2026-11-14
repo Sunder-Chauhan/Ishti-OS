@@ -858,6 +858,127 @@ async function main() {
     if (normalizedPhone !== '+919876543210') throw new Error('Phone normalization failed');
   });
 
+  // M03.1.2: Staging Database Endpoint & URL Validation Security Unit Tests
+  const { validateStagingDatabaseUrl } = require('./validate-staging-url');
+
+  runTest('unit', 'Staging URL Validator (1/9): Valid direct endpoint accepted', () => {
+    const endpoint = validateStagingDatabaseUrl('postgresql://postgres:secretpassword123@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres');
+    if (endpoint.hostname !== 'db.zrjptpkhtklfgnovdrny.supabase.co') throw new Error('Hostname mismatch');
+    if (endpoint.connectionType !== 'direct') throw new Error('Connection type mismatch');
+    if (endpoint.port !== 5432) throw new Error('Port mismatch');
+    if (endpoint.database !== 'postgres') throw new Error('Database mismatch');
+    if (endpoint.sanitizedUrl.includes('secretpassword123')) throw new Error('Sanitized URL leaked password');
+    if (!endpoint.sanitizedUrl.includes(':*****@')) throw new Error('Sanitized URL failed to mask password');
+  });
+
+  runTest('unit', 'Staging URL Validator (2/9): Valid pooler endpoint accepted (transaction & session)', () => {
+    const endpointTx = validateStagingDatabaseUrl('postgresql://postgres.zrjptpkhtklfgnovdrny:poolerpass123@aws-0-ap-south-1.pooler.supabase.com:6543/postgres');
+    if (endpointTx.connectionType !== 'pooler' || endpointTx.port !== 6543) throw new Error('Pooler transaction config failed');
+
+    const endpointSession = validateStagingDatabaseUrl('postgresql://postgres.zrjptpkhtklfgnovdrny:poolerpass123@aws-0-ap-south-1.pooler.supabase.com:5432/postgres');
+    if (endpointSession.connectionType !== 'pooler' || endpointSession.port !== 5432) throw new Error('Pooler session config failed');
+  });
+
+  runTest('unit', 'Staging URL Validator (3/9): Production direct endpoint strictly rejected', () => {
+    let threw = false;
+    try {
+      validateStagingDatabaseUrl('postgresql://postgres:pass@db.zxwkfnvmmxoojewhvsdc.supabase.co:5432/postgres');
+    } catch (err) {
+      threw = true;
+      if (!err.message.includes('Production project reference')) throw new Error(`Unexpected error message: ${err.message}`);
+    }
+    if (!threw) throw new Error('Production direct endpoint failed to reject');
+  });
+
+  runTest('unit', 'Staging URL Validator (4/9): Production pooler endpoint strictly rejected', () => {
+    let threw = false;
+    try {
+      validateStagingDatabaseUrl('postgresql://postgres.zxwkfnvmmxoojewhvsdc:pass@aws-0-ap-south-1.pooler.supabase.com:6543/postgres');
+    } catch (err) {
+      threw = true;
+      if (!err.message.includes('Production project reference')) throw new Error(`Unexpected error message: ${err.message}`);
+    }
+    if (!threw) throw new Error('Production pooler endpoint failed to reject');
+  });
+
+  runTest('unit', 'Staging URL Validator (5/9): URL containing staging ref only in query rejected', () => {
+    let threw = false;
+    try {
+      validateStagingDatabaseUrl('postgresql://postgres:pass@evil-attacker.com:5432/postgres?ref=zrjptpkhtklfgnovdrny');
+    } catch (err) {
+      threw = true;
+      if (!err.message.includes('Forbidden database host')) throw new Error(`Unexpected error message: ${err.message}`);
+    }
+    if (!threw) throw new Error('Query param spoofing failed to reject');
+  });
+
+  runTest('unit', 'Staging URL Validator (6/9): Similar-looking & subdomain spoofing rejected', () => {
+    const maliciousHosts = [
+      'postgresql://postgres:pass@db.zrjptpkhtklfgnovdrny.supabase.co.evil.com:5432/postgres',
+      'postgresql://postgres:pass@zrjptpkhtklfgnovdrny.attacker.com:5432/postgres',
+      'postgresql://postgres:pass@aws-0-ap-south-1.pooler.supabase.com.evil.com:6543/postgres',
+    ];
+    for (const badUrl of maliciousHosts) {
+      let threw = false;
+      try {
+        validateStagingDatabaseUrl(badUrl);
+      } catch (err) {
+        threw = true;
+      }
+      if (!threw) throw new Error(`Failed to reject spoofed host: ${badUrl}`);
+    }
+  });
+
+  runTest('unit', 'Staging URL Validator (7/9): Arbitrary PostgreSQL hosts rejected', () => {
+    const forbidden = [
+      'postgresql://postgres:pass@localhost:5432/postgres',
+      'postgresql://postgres:pass@127.0.0.1:5432/postgres',
+      'postgresql://postgres:pass@10.0.0.1:5432/postgres',
+    ];
+    for (const url of forbidden) {
+      let threw = false;
+      try {
+        validateStagingDatabaseUrl(url);
+      } catch {
+        threw = true;
+      }
+      if (!threw) throw new Error(`Failed to reject arbitrary host: ${url}`);
+    }
+  });
+
+  runTest('unit', 'Staging URL Validator (8/9): Unexpected database name and unsupported port rejected', () => {
+    let threwDb = false;
+    try {
+      validateStagingDatabaseUrl('postgresql://postgres:pass@db.zrjptpkhtklfgnovdrny.supabase.co:5432/other_db');
+    } catch (err) {
+      threwDb = true;
+      if (!err.message.includes('Forbidden database name')) throw new Error(`Unexpected error: ${err.message}`);
+    }
+    if (!threwDb) throw new Error('Unexpected database name failed to reject');
+
+    let threwPort = false;
+    try {
+      validateStagingDatabaseUrl('postgresql://postgres:pass@db.zrjptpkhtklfgnovdrny.supabase.co:9999/postgres');
+    } catch (err) {
+      threwPort = true;
+      if (!err.message.includes('Invalid port')) throw new Error(`Unexpected error: ${err.message}`);
+    }
+    if (!threwPort) throw new Error('Unsupported port failed to reject');
+  });
+
+  runTest('unit', 'Staging URL Validator (9/9): Malformed URLs and empty strings fail closed', () => {
+    const invalidInputs = ['', 'not_a_url', 'http://db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres', 'ftp://somehost/postgres'];
+    for (const inp of invalidInputs) {
+      let threw = false;
+      try {
+        validateStagingDatabaseUrl(inp);
+      } catch {
+        threw = true;
+      }
+      if (!threw) throw new Error(`Failed to reject invalid input: "${inp}"`);
+    }
+  });
+
   // ==============================================================================
   // 3. REAL APPLICATION INTEGRATION TESTS
   // ==============================================================================

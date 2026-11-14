@@ -1,21 +1,27 @@
 import { Client } from "pg";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  validateStagingDatabaseUrl,
+  ValidatedStagingEndpoint,
+  APPROVED_STAGING_PROJECT_REF,
+  QUARANTINED_PRODUCTION_PROJECT_REF,
+} from "./validate-staging-url";
 
 /**
- * ISHTI Milestone M03.1.1: Staging Schema Reconciliation & Verification Runner
+ * ISHTI Milestone M03.1.2: Staging Schema Reconciliation & Verification Runner
  *
  * SAFETY & GOVERNANCE RESTRICTIONS:
  * - This script is designed for STAGING RECONCILIATION ONLY (Target: zrjptpkhtklfgnovdrny).
  * - Production project (zxwkfnvmmxoojewhvsdc) is HARD-CODED AS A STRICT FATAL PROHIBITION.
- * - Staging project reference (zrjptpkhtklfgnovdrny) is ENFORCED VIA MANDATORY ALLOWLIST.
+ * - Staging project reference (zrjptpkhtklfgnovdrny) is ENFORCED VIA STRICT URL & HOSTNAME ALLOWLIST.
  * - By default, this script runs in DRY-RUN mode (inspects schema drift, outputs diff, mutates zero objects).
  * - To execute live reconciliation, the operator must explicitly pass --execute and STAGING_DATABASE_URL.
  * - NEVER drops tables, alters table columns, or truncates seed data.
  */
 
-const PRODUCTION_PROJECT_REF = "zxwkfnvmmxoojewhvsdc";
-const STAGING_PROJECT_REF = "zrjptpkhtklfgnovdrny";
+const PRODUCTION_PROJECT_REF = QUARANTINED_PRODUCTION_PROJECT_REF;
+const STAGING_PROJECT_REF = APPROVED_STAGING_PROJECT_REF;
 
 const EXPECTED_TABLES = [
   "profiles",
@@ -108,33 +114,26 @@ async function runReconciliation() {
   const dbUrl = process.env.STAGING_DATABASE_URL || "";
 
   console.log("==============================================================================");
-  console.log("ISHTI M03.1.1: CONTROLLED STAGING SCHEMA RECONCILIATION");
+  console.log("ISHTI M03.1.2: CONTROLLED STAGING SCHEMA RECONCILIATION");
   console.log("==============================================================================");
   console.log(`Execution Mode:     ${isExecute ? "LIVE EXECUTION (--execute)" : "DRY-RUN INSPECTION (Read-Only)"}`);
-  console.log(`Target Staging Ref: ${STAGING_PROJECT_REF} (ALLOWLIST ENFORCED)`);
-  console.log(`Prohibited Target:  ${PRODUCTION_PROJECT_REF} (HARD BLOCK)`);
+  console.log(`Target Staging Ref: ${STAGING_PROJECT_REF} (EXACT HOSTNAME ALLOWLIST ENFORCED)`);
+  console.log(`Prohibited Target:  ${PRODUCTION_PROJECT_REF} (STRICT PRODUCTION QUARANTINE)`);
   console.log("==============================================================================\n");
 
-  // Step 1: Precondition & Environment Boundaries
-  if (!dbUrl) {
-    console.error("FATAL: STAGING_DATABASE_URL environment variable is required.");
-    console.error("Usage: STAGING_DATABASE_URL=\"postgresql://...\" npx tsx scripts/reconcile-staging-schema.ts [--execute]");
+  // Step 1: Precondition & Strict Environment Boundaries
+  let endpoint: ValidatedStagingEndpoint;
+  try {
+    endpoint = validateStagingDatabaseUrl(dbUrl);
+  } catch (err: any) {
+    console.error(`\nCRITICAL SECURITY VIOLATION: ${err.message}`);
     process.exit(1);
   }
 
-  // Production Quarantine Hard-Block
-  if (dbUrl.includes(PRODUCTION_PROJECT_REF)) {
-    console.error("CRITICAL SECURITY VIOLATION: Production project reference detected in database URL!");
-    console.error(`Refusing to connect. Production project ${PRODUCTION_PROJECT_REF} is strictly quarantined.`);
-    process.exit(1);
-  }
-
-  // Staging Project Allowlist Enforcement
-  if (!dbUrl.includes(STAGING_PROJECT_REF)) {
-    console.error("CRITICAL SECURITY VIOLATION: Database URL does not match staging project reference!");
-    console.error(`Refusing to connect. Connection string must target staging project allowlist (${STAGING_PROJECT_REF}).`);
-    process.exit(1);
-  }
+  console.log(`Endpoint Verified:  ${endpoint.sanitizedUrl}`);
+  console.log(`Connection Mode:    ${endpoint.connectionType === "direct" ? "Direct PostgreSQL (5432)" : "Supabase Pooler (6543/5432)"}`);
+  console.log(`Host & Port:        ${endpoint.hostname}:${endpoint.port}`);
+  console.log(`Database Name:      ${endpoint.database}\n`);
 
   const client = new Client({
     connectionString: dbUrl,

@@ -56,8 +56,21 @@
 - [x] Review proposed logical backup process (`supabase db dump`) and author Rollback & Recovery Review ([docs/M03_1_1_ROLLBACK_AND_RECOVERY_REVIEW.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_1_ROLLBACK_AND_RECOVERY_REVIEW.md))
 - [x] Execute automated test suite (89 passed, 0 failed across static, cryptographic, PostgreSQL 18 simulation, and concurrency suites)
 - [x] Author Execution Readiness Checklist with formal verdict `NOT READY — CREDENTIAL BLOCKERS` ([docs/M03_1_1_EXECUTION_READINESS_CHECKLIST.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_1_EXECUTION_READINESS_CHECKLIST.md))
-- [ ] Obtain user explicit authorization to execute reconciliation against staging database
-- [ ] Populate staging credentials (`STAGING_DATABASE_URL`, anon key, service role key)
+
+## M03.1.2 — Final Staging Reconciliation Safety Gate
+- [x] Strict Staging Endpoint & URL Validation: Replaced substring matching with WHATWG URL parsing and exact hostname allowlist ([scripts/validate-staging-url.ts](file:///C:/Users/as/Documents/GitHub/spiritual-OS/scripts/validate-staging-url.ts))
+- [x] Hard-block production project `zxwkfnvmmxoojewhvsdc` across host, username, and query params
+- [x] Reject arbitrary hosts, query parameter smuggling, subdomain spoofing, unexpected database names (`!= postgres`), and unsupported ports
+- [x] Credential hygiene: Zero logging of passwords or raw connection strings (sanitized output masks credentials)
+- [x] Supabase Migration History Compatibility Audit: Verified `supabase_migrations.schema_migrations` schema conventions under CLI 3.1.0 and atomic transaction registration
+- [x] Backup Procedure Validation: Reconciled M03.1.1 command conflicts; formulated 3-pass backup specification (`schema`, `data-only --use-copy`, `role-only`) ([docs/M03_1_2_BACKUP_VALIDATION.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_2_BACKUP_VALIDATION.md))
+- [x] Credential Partitioning: Formally segregated credentials across Phase 1 (Reconciliation), Phase 2 (Hosted App Tests), and Phase 3 (Payment Sandbox) ([docs/M03_1_2_CREDENTIAL_REQUIREMENTS.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_2_CREDENTIAL_REQUIREMENTS.md))
+- [x] Razorpay Incident Tracking: Evaluated historical exposure in commit `52b834e`; marked status as `BLOCKED / PENDING DASHBOARD ROTATION`
+- [x] Author Final Execution Safety Audit deliverable ([docs/M03_1_2_FINAL_EXECUTION_SAFETY_AUDIT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_2_FINAL_EXECUTION_SAFETY_AUDIT.md))
+- [x] Automated Testing: Expanded test suite to 98 tests passed (100% pass rate) with 9 dedicated URL validation test cases
+- [ ] Obtain operator explicit authorization to execute reconciliation against staging database
+- [ ] Rotate Razorpay sandbox credentials in Razorpay Dashboard
+- [ ] Populate staging credentials (`STAGING_DATABASE_URL`)
 - [ ] Execute pre-reconciliation backup (`supabase db dump`)
 - [ ] Run `scripts/reconcile-staging-schema.ts --execute` against staging project `zrjptpkhtklfgnovdrny`
 - [ ] Execute Tier 3 hosted staging tests against live PostgREST and GoTrue endpoints
@@ -82,6 +95,6 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.1.1 — NOT READY — CREDENTIAL BLOCKERS`
+- **Status:** `M03.1.2 — NOT READY — CREDENTIAL BLOCKERS`
 - **Restrictions:** Zero remote database mutations. No `supabase db push`. Production quarantined.
-- **Action Required:** Operator must rotate Razorpay sandbox key in dashboard, populate staging credentials (`STAGING_DATABASE_URL`, anon key, service role key), and grant explicit execution approval before running reconciliation.
+- **Action Required:** Operator must rotate Razorpay sandbox key in dashboard, populate staging credentials (`STAGING_DATABASE_URL`), execute pre-reconciliation backup (`supabase db dump`), and grant explicit execution approval before running reconciliation.
