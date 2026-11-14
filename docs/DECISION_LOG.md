@@ -106,3 +106,18 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
 4. Automated Testing & Verification: Verified all safety guards via CLI (missing DB URL exits 1, production ref exits 1, non-staging ref exits 1, dry-run default). Executed comprehensive test suite (89 passed, 0 failed across static, cryptographic, PostgreSQL 18 simulation, and concurrency suites) and passed TypeScript typecheck cleanly (0 errors).
 5. Final Execution Readiness Verdict: Authored `docs/M03_1_1_EXECUTION_READINESS_CHECKLIST.md` and assigned the explicit verdict: `NOT READY — CREDENTIAL BLOCKERS`. While the script is hardened and verified, execution is strictly blocked by unset `STAGING_DATABASE_URL`, unpopulated staging Supabase API key placeholders, unrotated Razorpay sandbox keys, and pending operator approval.
 6. Standing Gate: Absolute zero remote mutation maintained. Zero DDL/DML executed against staging or production.
+
+## 2026-11-15 — ISHTI Brand Identity System Implementation
+Decision: Convert the approved ISHTI master visual truth (`media_1794686197230_b2cc9f44.jpg`) into a production-ready digital brand system:
+1. Approved Vector Logo Family: Designed and delivered 6 pure vector SVG logo assets in `public/brand/` and `apps/web/public/brand/`:
+   - Primary Logo (`ishti-logo-primary.svg`): Sacred symbol + Outlined Wordmark + Dual Taglines ("TRANSFORMATIVE RITUALS & OFFERINGS", "Vedic Essence & Rituals").
+   - Secondary Logo (`ishti-logo-secondary.svg`): Sacred symbol + Outlined Wordmark.
+   - Icon / Symbol (`ishti-logo-icon.svg`): 4-tier isometric stepped altar + Agni flame + golden bindu seed + floating embers.
+   - Horizontal Logo (`ishti-logo-horizontal.svg`): Symbol on left, wordmark & stacked tagline on right.
+   - Monochrome Logo (`ishti-logo-monochrome.svg`): Single-color Temple Charcoal (`#302B2A`) with negative-space facet grooves.
+   - Reversed Logo (`ishti-logo-reversed.svg`): Light artwork on Temple Charcoal background block.
+2. Centralized Working Tokens: Established centralized working colors (Temple Maroon `#711B16`, Vedic Saffron `#EF7428`, Sacred Gold `#D7A64A`, Ivory Paper `#F8F4ED`, Warm Sand `#D1A477`, Temple Charcoal `#302B2A`) and extended facet tones across `src/styles/design-tokens.css`, `src/lib/design-tokens.ts`, `apps/web/app/design-tokens.css`, and `packages/types/src/brand.ts`.
+3. Reusable React SVG Components: Engineered `IshtiLogo`, `IshtiIcon`, `IshtiWordmark`, `IshtiLogoPrimary`, `IshtiLogoSecondary`, `IshtiLogoHorizontal`, `IshtiLogoMonochrome`, `IshtiLogoReversed` in `src/components/brand/` and `apps/web/app/components/brand/`. Implemented collision-resistant SVG gradient IDs using React `useId()`, accessibility titles/descriptions, decorative attributes, and pure outlined vector typography (zero reliance on external font files).
+4. Responsive Brand Showcase Page: Built interactive showcase at `/brand` (`apps/web/app/brand/page.tsx`) with live light/dark card previews, multi-scale icon fidelity testing (16px to 256px), interactive color palette with one-click hex copy, typography hierarchy specimens, clear-space exclusion diagrams, WCAG 2.2 contrast compliance table, and direct SVG downloads.
+5. Guidelines Update: Updated `docs/BRAND_GUIDELINES.md` to version 1.1 documenting master geometry, minimum sizes, clear space ($0.5X$), misuse restrictions, and vector limitations disclosure.
+6. Validation: Verified 0 TypeScript errors via `npm run typecheck`, successful static generation via `npm run build:web`, and 89/89 passing automated security and integrity tests. Zero database, auth, or backend changes.

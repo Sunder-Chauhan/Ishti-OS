@@ -1,5 +1,5 @@
 import React from "react";
-import { Emblem } from "./Emblem";
+import { IshtiIcon } from "./brand";
 
 export function Footer() {
   return (
@@ -8,7 +8,7 @@ export function Footer() {
         {/* Brand identity column */}
         <div className="footerBrandColumn">
           <div className="footerBrand">
-            <Emblem size={38} variant="gold" />
+            <IshtiIcon size={38} decorative={true} />
             <div className="footerBrandText">
               <span className="footerBrandName">ISHTI</span>
             </div>
@@ -76,7 +76,7 @@ export function Footer() {
           &copy; {new Date().getFullYear()} ISHTI. Rooted in Tradition. Connected to Today. All rights reserved.
         </p>
         <div className="footerBottomMeta">
-          <span>Brand Guidelines v1.0</span>
+          <a href="/brand" style={{ color: "inherit", textDecoration: "none" }}>Brand Identity System</a>
           <span className="metaDivider">&bull;</span>
           <span>WCAG 2.2 Accessible System</span>
         </div>

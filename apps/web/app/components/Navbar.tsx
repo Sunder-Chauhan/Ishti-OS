@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Emblem } from "./Emblem";
+import { IshtiIcon } from "./brand";
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -14,7 +14,7 @@ export function Navbar() {
       <div className="headerContainer">
         {/* Brand identity */}
         <a href="/" className="brandLink" aria-label="ISHTI - Rooted in Tradition. Connected to Today.">
-          <Emblem size={34} variant="gold" />
+          <IshtiIcon size={34} decorative={true} />
           <div className="brandText">
             <span className="brandName">ISHTI</span>
           </div>
@@ -34,6 +34,9 @@ export function Navbar() {
             </li>
             <li>
               <a href="#experience" className="navItem">Daily Practice</a>
+            </li>
+            <li>
+              <a href="/brand" className="navItem">Brand System</a>
             </li>
           </ul>
         </nav>
@@ -94,6 +97,12 @@ export function Navbar() {
                 <a href="#experience" onClick={closeMobile} className="mobileNavItem">
                   Daily Practice
                   <span className="mobileNavDesc">A day in the life with ISHTI</span>
+                </a>
+              </li>
+              <li>
+                <a href="/brand" onClick={closeMobile} className="mobileNavItem">
+                  Brand System
+                  <span className="mobileNavDesc">Approved vector logo family & tokens</span>
                 </a>
               </li>
             </ul>
