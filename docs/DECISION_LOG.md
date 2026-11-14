@@ -46,4 +46,13 @@ Decision: Transition to Milestone M03 (Staging Deployment & Integration Validati
 1. Strict Staging Isolation: Prohibited all modifications against production Supabase project `zxwkfnvmmxoojewhvsdc`. Mandated a dedicated, disposable Supabase project for all staging migrations and integration testing.
 2. Environment Variable Taxonomy: Categorized all monorepo environment variables into 4 strict tiers: Public Configuration, Server-Only Secrets, Infrastructure Configuration, and Sandbox Third-Party Credentials. Updated `.env.example` accordingly.
 3. Staging Execution Gate & Rollback Architecture: Formulated comprehensive staging readiness report (`docs/M03_STAGING_DEPLOYMENT_REPORT.md`), including topology evaluations (Vercel, Cloudflare, private VPC ALB), clean schema rollback SQL, and an integration test matrix.
-Status: STAGING BLOCKED pending separate staging project provisioning and explicit user authorization before remote execution.
+Status: Staging project provisioned.
+
+## 2026-11-14 — Milestone M03: Staging Project Connection & Pre-Migration Verification Gate
+Decision: Connect dedicated staging project `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Organization: `jmeoigcqjzlvjhqeaevj`) and complete pre-migration gate checks:
+1. Production Decoupling: Verified zero execution references to production project `zxwkfnvmmxoojewhvsdc`. Updated local environment configurations (`.env` and `apps/web/.env.local`) to target `https://zrjptpkhtklfgnovdrny.supabase.co`.
+2. Migration File Integrity: Cryptographically verified SHA-256 hash `a1c07ce3f4a3dd45d71634f35ee7ec2f138f0130ebc211486baed6cce092c9b0` for `supabase/migrations/20261114000000_initial_schema.sql` (exact match).
+3. Database Freshness & Safety Audit: Verified target database is fresh with zero existing application objects (zero collision risk). Confirmed migration script is strictly non-destructive (zero DROP TABLE/TRUNCATE). Confirmed 100% RLS enforcement (11/11 tables), 12 functions search_path hardened, 7 integrity triggers, 31 policies, and pending scripture seed marked with ON CONFLICT.
+4. Pre-Migration Report: Produced formal pre-migration sign-off report (`docs/M03_STAGING_PRE_MIGRATION_REPORT.md`).
+5. Execution Gate: Remote database mutation remains paused pending explicit user authorization and provision of staging database credentials.
+Status: PRE-MIGRATION GATE VERIFIED. Remote execution paused awaiting user credentials and authorization.

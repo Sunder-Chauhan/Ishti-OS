@@ -26,13 +26,14 @@
 - [x] Milestone M02 Security Sign-off: STAGING READY (Authenticated proxy provenance, anti-spoofing, and 100% test pass rate)
 
 ## M03 — Staging Deployment & Integration Validation
-- [x] Repository audit & HEAD baseline verification (`95ce7a0`)
+- [x] Repository audit & HEAD baseline verification (`bc5b6d1`)
 - [x] Environment variable taxonomy & template documented ([.env.example](file:///C:/Users/as/Documents/GitHub/spiritual-OS/.env.example))
 - [x] Hosting & proxy topology evaluation (Vercel, Cloudflare Edge, NGINX / ALB in private subnet)
 - [x] Reverse-proxy and Cloudflare origin protection verification ([docs/TRUSTED_PROXY_POLICY.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/TRUSTED_PROXY_POLICY.md))
 - [x] Staging Supabase prerequisites, verification matrix & rollback procedure ([docs/M03_STAGING_DEPLOYMENT_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_DEPLOYMENT_REPORT.md))
 - [x] Fresh database simulation via Supabase CLI 3.1.0 (`npm run test:fresh-migration`)
-- [ ] Provision separate disposable Supabase staging project (strict constraint: NOT `zxwkfnvmmxoojewhvsdc`)
+- [x] Provision separate disposable Supabase staging project (`zrjptpkhtklfgnovdrny`, Region: `ap-south-1`)
+- [x] Pre-migration inspection, SHA-256 integrity check, and safety audit ([docs/M03_STAGING_PRE_MIGRATION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_PRE_MIGRATION_REPORT.md))
 - [ ] Obtain user authorization & execute remote migration on staging database
 - [ ] Verify 11 tables, RLS policies, triggers, and partial indexes on remote staging
 - [ ] Deploy web application to staging environment and verify end-to-end workflows (Auth, RLS, Kundli, Booking)
@@ -40,6 +41,6 @@
 - [ ] Achieve final staging validation status (`STAGING VALIDATED`)
 
 ## Next priorities
-1. Await user provisioning of separate Supabase staging project reference and explicit migration approval.
+1. Await explicit user authorization and staging database credentials (db password or dashboard SQL Editor execution).
 2. Execute remote migration against staging database upon authorization.
 3. Validate staging deployment and authenticate real user flows against live GoTrue and database services.

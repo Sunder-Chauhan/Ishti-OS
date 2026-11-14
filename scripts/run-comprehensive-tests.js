@@ -959,7 +959,7 @@ async function main() {
   console.log('\n======================================================');
   console.log('--- 6. TESTS NOT YET EXECUTABLE (REMOTE DEPLOYMENT PENDING) ---');
   console.log('======================================================');
-  console.log('  [SKIPPED - PENDING REMOTE DEPLOYMENT] Live hosted PostgreSQL query against zxwkfnvmmxoojewhvsdc (Awaiting approved migration execution)');
+  console.log('  [SKIPPED - PENDING REMOTE DEPLOYMENT] Live hosted PostgreSQL query against staging project zrjptpkhtklfgnovdrny (Awaiting approved migration execution)');
   console.log('  [SKIPPED - PENDING REMOTE DEPLOYMENT] Live Twilio / SMS Gateway Phone OTP delivery (Requires live carrier integration & SMS API key)');
   console.log('  [SKIPPED - PENDING REMOTE DEPLOYMENT] Live Razorpay / Cashfree webhook payment signature verification (Requires active merchant account)');
 
