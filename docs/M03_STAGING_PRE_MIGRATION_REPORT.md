@@ -51,8 +51,8 @@ The dedicated staging project was inspected and verified:
 The initial schema migration script [20261114000000_initial_schema.sql](file:///C:/Users/as/Documents/GitHub/spiritual-OS/supabase/migrations/20261114000000_initial_schema.sql) was audited for integrity following scripture rights metadata corrections and explicit RLS role targeting:
 
 - **Target File:** `supabase/migrations/20261114000000_initial_schema.sql`
-- **File Size:** 43,842 bytes (1,076 lines)
-- **Recalculated SHA-256:** `c3d041fbac21f8d42cb67acc1fc06861d65db27c659e03b0549c9109af85ef48`
+- **File Size:** 43,361 bytes (1,068 lines)
+- **Recalculated SHA-256:** `e6d4e0e07aab83e66a9d9276a1754bcd80093b27f1832cb720c7703b1feea39a`
 - **Verification Result:** **CRYPTOGRAPHICALLY VERIFIED & AUDITED**
 
 ---
@@ -297,7 +297,7 @@ psql "postgresql://postgres:[STAGING_DB_PASSWORD]@db.zrjptpkhtklfgnovdrny.supaba
 - [x] Production project `zxwkfnvmmxoojewhvsdc` strictly quarantined.
 - [x] Razorpay hardcoded credentials purged from tracked source; rotation queued; zero credentials in Git.
 - [x] Staging cryptographic keys verified (format, 3.9+ Shannon entropy, non-equality to production, non-reuse).
-- [x] Migration SHA-256 verified: `c3d041fbac21f8d42cb67acc1fc06861d65db27c659e03b0549c9109af85ef48`.
+- [x] Migration SHA-256 verified: `e6d4e0e07aab83e66a9d9276a1754bcd80093b27f1832cb720c7703b1feea39a`.
 - [x] Migration SQL verified as non-destructive (no DROP TABLE/TRUNCATE).
 - [x] 11/11 tables protected by RLS; explicit `TO authenticated, anon` role declarations; all 12 functions search_path hardened.
 - [x] 83/83 automated tests passed.
