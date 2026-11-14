@@ -1,5 +1,5 @@
 /**
- * User and Identity Types for YUGON (Ishti-OS)
+ * User and Identity Types for ISHTI (Ishti-OS)
  * Conforms to DPDP Act 2023 consent tracking and RBAC principles.
  */
 

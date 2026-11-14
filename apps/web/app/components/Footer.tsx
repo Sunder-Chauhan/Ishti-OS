@@ -10,7 +10,7 @@ export function Footer() {
           <div className="footerBrand">
             <Emblem size={38} variant="gold" />
             <div className="footerBrandText">
-              <span className="footerBrandName">YUGON</span>
+              <span className="footerBrandName">ISHTI</span>
             </div>
           </div>
           <p className="footerTagline">Rooted in Tradition. Connected to Today.</p>
@@ -28,12 +28,12 @@ export function Footer() {
           <div className="footerColumn">
             <h4 className="footerColumnTitle">Our Ecosystem</h4>
             <ul className="footerLinksList">
-              <li><a href="#ecosystem">YUGON Puja</a></li>
-              <li><a href="#ecosystem">YUGON Astro</a></li>
-              <li><a href="#ecosystem">YUGON Bhakti</a></li>
-              <li><a href="#ecosystem">YUGON Panchang</a></li>
-              <li><a href="#ecosystem">YUGON Experts</a></li>
-              <li><a href="#ecosystem">YUGON Community</a></li>
+              <li><a href="#ecosystem">ISHTI Puja</a></li>
+              <li><a href="#ecosystem">ISHTI Astro</a></li>
+              <li><a href="#ecosystem">ISHTI Bhakti</a></li>
+              <li><a href="#ecosystem">ISHTI Panchang</a></li>
+              <li><a href="#ecosystem">ISHTI Experts</a></li>
+              <li><a href="#ecosystem">ISHTI Community</a></li>
             </ul>
           </div>
 
@@ -53,7 +53,7 @@ export function Footer() {
             <ul className="footerLinksList">
               <li><a href="#philosophy">Our Purpose & Vision</a></li>
               <li><a href="#philosophy">Tradition & Technology</a></li>
-              <li><a href="#experience">A Day with YUGON</a></li>
+              <li><a href="#experience">A Day with ISHTI</a></li>
               <li><a href="#early-access">Request Early Access</a></li>
             </ul>
           </div>
@@ -73,7 +73,7 @@ export function Footer() {
       {/* Bottom Bar */}
       <div className="footerBottom">
         <p className="copyrightText">
-          &copy; {new Date().getFullYear()} YUGON. Rooted in Tradition. Connected to Today. All rights reserved.
+          &copy; {new Date().getFullYear()} ISHTI. Rooted in Tradition. Connected to Today. All rights reserved.
         </p>
         <div className="footerBottomMeta">
           <span>Brand Guidelines v1.0</span>
@@ -84,4 +84,3 @@ export function Footer() {
     </footer>
   );
 }
-

@@ -9,7 +9,7 @@ export function CtaSection() {
         <Emblem size={52} variant="gold" className="ctaEmblem" />
         <p className="ctaKicker">Milestone M02 &bull; Early Access</p>
         <h2 id="ctaHeading" className="ctaHeading">
-          Join the Foundation of YUGON
+          Join the Foundation of ISHTI
         </h2>
         <p className="ctaSubtitle">
           Be among the first to experience a connected spiritual ecosystem that unites authentic Vedic heritage with modern, reliable technology.

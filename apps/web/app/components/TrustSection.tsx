@@ -20,14 +20,14 @@ const trustPillars: TrustPillar[] = [
     devanagari: "सम्प्रदाय एवं विविधता",
     summary: "Respecting the nuanced distinctions of India's diverse regional traditions.",
     detail:
-      "A Satyanarayan Puja in Bengal, Gujarat, or Tamil Nadu follows distinct traditions. YUGON’s platform architecture is designed to honor regional sampradaya variations rather than imposing an artificial, homogenized single standard.",
+      "A Satyanarayan Puja in Bengal, Gujarat, or Tamil Nadu follows distinct traditions. ISHTI’s platform architecture is designed to honor regional sampradaya variations rather than imposing an artificial, homogenized single standard.",
   },
   {
     title: "Approved-Source Grounding & Uncertainty Disclosure",
     devanagari: "मर्यादित तन्त्रज्ञान",
     summary: "AI as a bounded retrieval guide, never an authoritative religious oracle.",
     detail:
-      "Rather than making impossible guarantees of zero error, our AI architecture enforces strict approved-source grounding. When an answer is ambiguous or absent from canonical literature, YUGON is programmed to transparently declare uncertainty rather than inventing ritual instructions.",
+      "Rather than making impossible guarantees of zero error, our AI architecture enforces strict approved-source grounding. When an answer is ambiguous or absent from canonical literature, ISHTI is programmed to transparently declare uncertainty rather than inventing ritual instructions.",
   },
   {
     title: "Human Expert Escalation",
@@ -47,7 +47,7 @@ export function TrustSection() {
           Our Commitment to Sacred Knowledge Accuracy
         </h2>
         <p className="sectionSubtitle">
-          In an era where algorithmic distortion spreads unvetted religious claims, YUGON’s platform blueprint is governed by strict source attribution, explicit uncertainty disclosure, and respectful technology.
+          In an era where algorithmic distortion spreads unvetted religious claims, ISHTI’s platform blueprint is governed by strict source attribution, explicit uncertainty disclosure, and respectful technology.
         </p>
       </div>
 
@@ -75,7 +75,7 @@ export function TrustSection() {
         <blockquote>
           “Tradition deserves preservation. Technology should make it more accessible, never distort it.”
         </blockquote>
-        <cite>— The YUGON Brand Charter, Principle 1</cite>
+        <cite>— The ISHTI Brand Charter, Principle 1</cite>
       </div>
     </section>
   );

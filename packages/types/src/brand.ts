@@ -1,5 +1,5 @@
 /**
- * YUGON visual tokens, brand guidelines v1.0.
+ * ISHTI visual tokens, brand guidelines v1.0.
  * Palette hex values are the proposed brand colours. Text roles below were
  * checked against WCAG 2.2 before use.
  *

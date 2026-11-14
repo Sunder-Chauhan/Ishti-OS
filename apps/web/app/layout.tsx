@@ -26,8 +26,22 @@ const devanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
-  title: "YUGON",
-  description: "Rooted in Tradition. Connected to Today. A modern spiritual ecosystem for authentic knowledge, practice and community.",
+  title: "ISHTI | Rooted in Tradition. Connected to Today.",
+  description:
+    "A modern spiritual ecosystem rooted in Indian wisdom. Authentic religious knowledge, canonical Vedic practices, and vetted spiritual experts.",
+  openGraph: {
+    title: "ISHTI | Rooted in Tradition. Connected to Today.",
+    description:
+      "A modern spiritual ecosystem rooted in Indian wisdom. Authentic religious knowledge, canonical Vedic practices, and vetted spiritual experts.",
+    siteName: "ISHTI",
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ISHTI | Rooted in Tradition. Connected to Today.",
+    description: "A modern spiritual ecosystem rooted in Indian wisdom.",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

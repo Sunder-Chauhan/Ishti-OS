@@ -1,6 +1,6 @@
 /**
  * Canonical Scripture Corpus & Verified Knowledge Models
- * Governed by scholarly review and strict source citations.
+ * Governed by scholarly review, strict source citations, and rights clearance.
  */
 
 export type ScriptureCategory =
@@ -12,9 +12,22 @@ export type ScriptureCategory =
   | "stotra"
   | "agamas";
 
-export type ScriptureLanguage = "sanskrit" | "prakrit" | "hindi";
+export type ScriptureLanguage = "sanskrit" | "prakrit" | "hindi" | "tamil";
 
 export type ScholarlyStatus = "curated" | "scholarly_review" | "draft";
+
+export type LicenseType =
+  | "Public Domain"
+  | "CC-BY-4.0"
+  | "CC-BY-NC-4.0"
+  | "Academic Fair Use"
+  | "Licensed Commercial";
+
+export type CommercialRightsStatus =
+  | "public_domain_unrestricted"
+  | "non_commercial_only"
+  | "commercial_license_secured"
+  | "under_legal_review";
 
 export interface ScriptureCatalogItem {
   id: string;
@@ -25,10 +38,20 @@ export interface ScriptureCatalogItem {
   description: string;
   total_verses?: number;
   language: ScriptureLanguage;
+  tradition_sampradaya: string;
+  source_edition: string;
+  publication_publisher: string;
+  publication_year?: number;
+  editor_or_compiler?: string;
+  rights_holder: string;
+  license_type: LicenseType;
+  permitted_use: string;
+  commercial_rights_status: CommercialRightsStatus;
   status: ScholarlyStatus;
 }
 
 export type ReviewStatus = "verified" | "pending_peer_review" | "flagged";
+export type RightsClearanceStatus = "cleared" | "restricted" | "pending_clearance";
 
 export interface WordAnalysis {
   sanskrit: string;
@@ -58,7 +81,11 @@ export interface CanonicalVerse {
   meter_chandas?: string;
   deity_devata?: string;
   seer_rishi?: string;
-  reviewed_by?: string;
+  source_citation: string;
+  scholarly_peer_reviewer?: string;
+  peer_review_date?: string;
+  scholarly_verification_notes?: string;
+  rights_clearance_status: RightsClearanceStatus;
   review_status: ReviewStatus;
   created_at: string;
 }

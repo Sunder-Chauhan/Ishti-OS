@@ -11,7 +11,7 @@ export function EarlyAccessForm() {
   return (
     <div className="earlyAccessCard">
       <div className="earlyAccessCardHeader">
-        <h3 className="earlyAccessTitle">Request Early Access to YUGON</h3>
+        <h3 className="earlyAccessTitle">Request Early Access to ISHTI</h3>
         <p className="earlyAccessDesc">
           Join our inaugural cohort of devotees, scholars, and practitioners. We respect your sacred attention and privacy under the DPDP Act 2023.
         </p>

@@ -11,7 +11,7 @@ interface Step {
 const steps: Step[] = [
   {
     time: "06:00 AM",
-    family: "YUGON Panchang & Bhakti",
+    family: "ISHTI Panchang & Bhakti",
     title: "Dawn Sandhya & Solar Alignment",
     description:
       "Envisioned micro-calculated sunrise coordinates for your location. View the day's Tithi, Nakshatra, and commence contemplative meditation with a morning raga stotra stream.",
@@ -19,7 +19,7 @@ const steps: Step[] = [
   },
   {
     time: "11:30 AM",
-    family: "YUGON Puja & AI Pandit",
+    family: "ISHTI Puja & AI Pandit",
     title: "Guided Family Ritual Preparation",
     description:
       "Envisioned preparation for family pujas: an itemized samagri checklist with verified regional substitutes, step-by-step ritual sequence, and verified Sanskrit sankalpa recitation.",
@@ -27,7 +27,7 @@ const steps: Step[] = [
   },
   {
     time: "03:15 PM",
-    family: "YUGON Experts & Astro",
+    family: "ISHTI Experts & Astro",
     title: "Transparent Scholar Consultation",
     description:
       "Envisioned milestone consultations: connecting with vetted Vedic astrologers or Sanskrit Acharyas with fixed honorariums, zero fear-based claims, and privacy guarantees.",
@@ -35,7 +35,7 @@ const steps: Step[] = [
   },
   {
     time: "07:30 PM",
-    family: "YUGON Community",
+    family: "ISHTI Community",
     title: "Evening Aarti & Sacred Satsang",
     description:
       "Envisioned collective fellowship: peaceful temple evening sandhya broadcasts and moderated cross-generational philosophical discussions.",
@@ -52,7 +52,7 @@ export function ExperiencePreview() {
           Envisioned Rhythm in Everyday Living
         </h2>
         <p className="sectionSubtitle">
-          Designed not for endless scrolling, but for purposeful, reverent moments throughout the day. Below is an architectural preview of how the planned YUGON ecosystem will accompany a seeker's daily routine once fully deployed.
+          Designed not for endless scrolling, but for purposeful, reverent moments throughout the day. Below is an architectural preview of how the planned ISHTI ecosystem will accompany a seeker's daily routine once fully deployed.
         </p>
       </div>
 

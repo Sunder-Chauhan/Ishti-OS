@@ -21,13 +21,13 @@ export default function App() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={brandColor.ivory} />
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={[styles.brand, { fontFamily: display }]}>YUGON</Text>
+        <Text style={[styles.brand, { fontFamily: display }]}>ISHTI</Text>
         <Text style={[styles.tagline, { fontFamily: sans }]}>Rooted in Tradition. Connected to Today.</Text>
         <View style={styles.rule} />
         <Text style={[styles.kicker, { fontFamily: sansStrong }]}>A modern spiritual ecosystem</Text>
         <Text style={[styles.title, { fontFamily: displayBody }]}>Authentic knowledge, practice and community, made accessible.</Text>
         <Text style={[styles.copy, { fontFamily: sans }]}>
-          YUGON is inspired by India’s timeless traditions. Technology should make them easier to reach and live with, and it should never distort them.
+          ISHTI is inspired by India’s timeless traditions. Technology should make them easier to reach and live with, and it should never distort them.
         </Text>
         <Text style={[styles.heading, { fontFamily: display }]}>Six families, one identity</Text>
         {platformPillars.map((pillar, index) => (
@@ -39,11 +39,11 @@ export default function App() {
           </View>
         ))}
         <Text style={[styles.integrity, { fontFamily: sans }]}>
-          Ritual guidance is shown only from approved sources. When an answer is uncertain, YUGON says so.
+          Ritual guidance is shown only from approved sources. When an answer is uncertain, ISHTI says so.
         </Text>
       </ScrollView>
       <View style={styles.footer}>
-        <Text style={[styles.footerMark, { fontFamily: display }]}>YUGON</Text>
+        <Text style={[styles.footerMark, { fontFamily: display }]}>ISHTI</Text>
         <Text style={[styles.footerCopy, { fontFamily: sans }]}>Rooted in Tradition. Connected to Today.</Text>
       </View>
     </SafeAreaView>

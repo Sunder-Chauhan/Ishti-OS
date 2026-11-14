@@ -7,7 +7,7 @@ interface EmblemProps {
 }
 
 /**
- * YUGON Emblem
+ * ISHTI Emblem
  * A sacred geometric synthesis of:
  * 1. The Rising Sun (Udaya / Yug): dawn of a new era of accessibility.
  * 2. Indian Sacred Geometry: 8-fold concentric symmetry (Ashta-dala) and bindu center.

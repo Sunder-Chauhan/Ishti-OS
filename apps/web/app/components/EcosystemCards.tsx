@@ -14,7 +14,7 @@ interface PillarData {
 const pillars: PillarData[] = [
   {
     id: "puja",
-    name: "YUGON Puja",
+    name: "ISHTI Puja",
     devanagari: "पूजा एवं विधि",
     tagline: "Authentic Ritual Guidance & AI Pandit",
     description:
@@ -39,7 +39,7 @@ const pillars: PillarData[] = [
   },
   {
     id: "astrology",
-    name: "YUGON Astro",
+    name: "ISHTI Astro",
     devanagari: "ज्योतिष शास्त्र",
     tagline: "Kundli, Dasha & Planetary Transits",
     description:
@@ -64,7 +64,7 @@ const pillars: PillarData[] = [
   },
   {
     id: "music",
-    name: "YUGON Bhakti",
+    name: "ISHTI Bhakti",
     devanagari: "भक्ति संगीत",
     tagline: "Sacred Chants & Traditional Ragas",
     description:
@@ -90,7 +90,7 @@ const pillars: PillarData[] = [
   },
   {
     id: "panchang",
-    name: "YUGON Panchang",
+    name: "ISHTI Panchang",
     devanagari: "पञ्चाङ्ग एवं मुहूर्त",
     tagline: "Exact Solar, Lunar & Muhurat Coordinates",
     description:
@@ -116,7 +116,7 @@ const pillars: PillarData[] = [
   },
   {
     id: "experts",
-    name: "YUGON Experts",
+    name: "ISHTI Experts",
     devanagari: "प्रमाणित आचार्य",
     tagline: "Vetted Pandits, Astrologers & Gurus",
     description:
@@ -141,7 +141,7 @@ const pillars: PillarData[] = [
   },
   {
     id: "community",
-    name: "YUGON Community",
+    name: "ISHTI Community",
     devanagari: "सत्संग एवं समुदाय",
     tagline: "Satsangs, Festivals & Shared Heritage",
     description:

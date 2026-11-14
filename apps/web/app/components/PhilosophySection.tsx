@@ -9,7 +9,7 @@ export function PhilosophySection() {
           Rooted in Tradition. Connected to Today.
         </h2>
         <p className="sectionSubtitle">
-          Millions of seekers seek authentic connection with their heritage, yet encounter fragmented websites, commercially motivated fear-mongering, and unverified information. YUGON exists to rebuild that sacred trust.
+          Millions of seekers seek authentic connection with their heritage, yet encounter fragmented websites, commercially motivated fear-mongering, and unverified information. ISHTI exists to rebuild that sacred trust.
         </p>
       </div>
 

@@ -8,7 +8,7 @@
 - [x] Install dependencies on Windows
 - [x] Run web and mobile locally (Web build and dev server verified; mobile shell configured)
 - [x] Verify TypeScript checks
-- [x] Confirm navigation/design (YUGON Brand Guidelines v1.0 applied and WCAG 2.2 contrast validated)
+- [x] Confirm navigation/design (ISHTI Brand Guidelines v1.0 applied and WCAG 2.2 contrast validated)
 - [x] Foundation Technical & Product Audit (Auth, DB, Governance, Privacy, DPDP Act)
 
 ## M02 — Core Foundation & Security Infrastructure

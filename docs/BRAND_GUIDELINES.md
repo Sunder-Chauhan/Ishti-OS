@@ -1,9 +1,11 @@
-# YUGON
+# ISHTI
 ## Official Brand Guidelines — Version 1.0
 
 **Brand tagline:** Rooted in Tradition. Connected to Today.
 
-**Brand positioning:** A modern spiritual ecosystem inspired by India's timeless traditions, built to make authentic spiritual knowledge, practices and communities accessible through technology.
+**Brand positioning:** A modern spiritual ecosystem rooted in Indian wisdom, built to make authentic spiritual knowledge, practices and communities accessible through technology.
+
+**Internal project codename:** spiritual-OS
 
 ---
 
@@ -28,7 +30,7 @@ Tradition deserves preservation. Technology should make it more accessible, neve
 
 # 2. Brand personality
 
-YUGON should feel like a trusted Indian spiritual institution brought into the modern digital age.
+ISHTI should feel like a trusted Indian spiritual institution brought into the modern digital age.
 
 | Attribute | Brand expression |
 |---|---|
@@ -39,7 +41,7 @@ YUGON should feel like a trusted Indian spiritual institution brought into the m
 | Premium | Refined, not extravagant |
 | Welcoming | Accessible and inclusive |
 
-YUGON must not appear overly commercial, excessively religious, superstitious or technologically cold.
+ISHTI must not appear overly commercial, excessively religious, superstitious or technologically cold.
 
 # 3. Visual identity
 
@@ -77,12 +79,12 @@ Headings should feel editorial and timeless. Interface text should remain clean 
 # 5. Logo system
 
 ## Primary logo
-A custom YUGON wordmark with a distinctive emblem.
+A custom ISHTI wordmark with a distinctive emblem.
 
 ## Symbol concept
 Combine three visual ideas:
-1. Rising sun: A new age and the meaning associated with Yug.
-2. Sacred geometry: Indian heritage and spiritual symbolism.
+1. Rising sun: A new dawn of accessibility and spiritual awakening.
+2. Sacred geometry: Indian heritage, Ashta-dala lotus geometry, and central bindu.
 3. Contemporary geometry: Technology, connection and progress.
 
 ## Logo variations
@@ -150,22 +152,22 @@ The website and mobile apps should share the same design system.
 
 # 9. Brand architecture
 
-YUGON is the master brand.
+ISHTI is the master brand.
 
 Proposed product families:
 
-- YUGON Puja — Puja guides and AI Pandit.
-- YUGON Astro — Astrology and Kundli.
-- YUGON Bhakti — Devotional music.
-- YUGON Panchang — Panchang and Muhurat.
-- YUGON Experts — Verified Pandits and astrologers.
-- YUGON Community — Spiritual communities and gatherings.
+- ISHTI Puja — Puja guides and AI Pandit.
+- ISHTI Astro — Astrology and Kundli.
+- ISHTI Bhakti — Devotional music.
+- ISHTI Panchang — Panchang and Muhurat.
+- ISHTI Experts — Verified Pandits and astrologers.
+- ISHTI Community — Spiritual communities and gatherings.
 
-All product families should maintain the primary YUGON identity.
+All product families should maintain the primary ISHTI identity.
 
 # 10. Brand voice
 
-YUGON communicates with warmth, clarity, respect and humility.
+ISHTI communicates with warmth, clarity, respect and humility.
 
 Preferred language:
 - Simple and accessible.
@@ -182,7 +184,7 @@ Avoid:
 
 # 11. Religious knowledge integrity
 
-YUGON must distinguish verified religious knowledge from general AI-generated explanations.
+ISHTI must distinguish verified religious knowledge from general AI-generated explanations.
 
 - Ritual procedures, mantras, shlokas and samagri lists require approved sources.
 - Tradition and regional differences must be preserved.
@@ -218,7 +220,7 @@ The following deliverables remain to be designed and approved:
 
 ---
 
-**YUGON**
+**ISHTI**
 
 *Rooted in Tradition. Connected to Today.*
 

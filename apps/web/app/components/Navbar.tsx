@@ -13,10 +13,10 @@ export function Navbar() {
     <header className="siteHeader" role="banner">
       <div className="headerContainer">
         {/* Brand identity */}
-        <a href="/" className="brandLink" aria-label="YUGON - Rooted in Tradition. Connected to Today.">
+        <a href="/" className="brandLink" aria-label="ISHTI - Rooted in Tradition. Connected to Today.">
           <Emblem size={34} variant="gold" />
           <div className="brandText">
-            <span className="brandName">YUGON</span>
+            <span className="brandName">ISHTI</span>
           </div>
         </a>
 
@@ -93,7 +93,7 @@ export function Navbar() {
               <li>
                 <a href="#experience" onClick={closeMobile} className="mobileNavItem">
                   Daily Practice
-                  <span className="mobileNavDesc">A day in the life with YUGON</span>
+                  <span className="mobileNavDesc">A day in the life with ISHTI</span>
                 </a>
               </li>
             </ul>
@@ -101,7 +101,7 @@ export function Navbar() {
 
           <div className="mobileDrawerFooter">
             <a href="#ecosystem" onClick={closeMobile} className="mobileBtnExplore">
-              Explore YUGON
+              Explore ISHTI
             </a>
             <a href="#early-access" onClick={closeMobile} className="mobileSignIn">
               Sign In (Planned for M02)

@@ -31,7 +31,7 @@ export default function Home() {
               </h1>
 
               <p className="heroLead">
-                YUGON is being built to make authentic Vedic rituals, deterministic astronomical panchang, verified religious knowledge, and qualified spiritual practitioners accessible through serene, respectful technology.
+                ISHTI is being built to make authentic Vedic rituals, deterministic astronomical panchang, verified religious knowledge, and qualified spiritual practitioners accessible through serene, respectful technology.
               </p>
 
               <div className="heroActions">
