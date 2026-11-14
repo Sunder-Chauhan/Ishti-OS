@@ -80,6 +80,11 @@ export function validateStagingDatabaseUrl(rawUrl: string | undefined | null): V
     if (resolvedPort !== 5432) {
       throw new Error(`Validation Error: Invalid port '${resolvedPort}' for direct connection. Staging direct endpoint strictly requires port 5432.`);
     }
+
+    // Direct connections strictly require username 'postgres'
+    if (rawUser && rawUser !== "postgres") {
+      throw new Error(`Validation Error: Invalid direct username '${rawUser}'. Supabase direct connections strictly require username 'postgres'.`);
+    }
   } else if (rawHost === APPROVED_STAGING_POOLER_HOST) {
     connectionType = "pooler";
     resolvedPort = parsed.port ? parseInt(parsed.port, 10) : 6543;
@@ -87,10 +92,10 @@ export function validateStagingDatabaseUrl(rawUrl: string | undefined | null): V
       throw new Error(`Validation Error: Invalid port '${resolvedPort}' for Supabase pooler. Expected port 6543 (transaction mode) or 5432 (session mode).`);
     }
 
-    // Pooler connections MUST have username scoped to staging project: e.g. postgres.zrjptpkhtklfgnovdrny
-    const expectedUserPrefix = `postgres.${APPROVED_STAGING_PROJECT_REF}`;
-    if (!rawUser.startsWith(expectedUserPrefix)) {
-      throw new Error(`Validation Error: Invalid pooler username '${rawUser}'. Supabase pooler requires username prefixed with '${expectedUserPrefix}'.`);
+    // Pooler connections MUST have username strictly matching staging project: postgres.zrjptpkhtklfgnovdrny
+    const expectedPoolerUser = `postgres.${APPROVED_STAGING_PROJECT_REF}`;
+    if (rawUser !== expectedPoolerUser) {
+      throw new Error(`Validation Error: Invalid pooler username '${rawUser}'. Supabase pooler strictly requires exact username '${expectedPoolerUser}'.`);
     }
   } else {
     // Fail closed: Any other host (localhost, 127.0.0.1, arbitrary AWS hosts, spoofed subdomains) is rejected.

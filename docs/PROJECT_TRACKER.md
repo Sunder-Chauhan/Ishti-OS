@@ -68,10 +68,21 @@
 - [x] Razorpay Incident Tracking: Evaluated historical exposure in commit `52b834e`; marked status as `BLOCKED / PENDING DASHBOARD ROTATION`
 - [x] Author Final Execution Safety Audit deliverable ([docs/M03_1_2_FINAL_EXECUTION_SAFETY_AUDIT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_2_FINAL_EXECUTION_SAFETY_AUDIT.md))
 - [x] Automated Testing: Expanded test suite to 98 tests passed (100% pass rate) with 9 dedicated URL validation test cases
+
+## M03.1.3 — Independent Evidence Verification & Release Readiness Proof
+- [x] Failed CLI Experiment Post-Mortem & Resolution: Root cause identified as PowerShell inline string template escaping, external scratch directory module resolution failure (`MODULE_NOT_FOUND`), and Supabase CLI `postgres://` protocol requirement. Resolved by authoring in-repo test suite `scripts/verify-migration-compat.ts` which executed with exit code 0.
+- [x] Migration History Compatibility Verification: Verified exact `schema_migrations` table structure (`version TEXT PRIMARY KEY`, `statements TEXT[]`, `name TEXT`). Confirmed `supabase migration list` recognizes version `20261114000000` and `supabase db push --dry-run` reports `"Remote database is up to date."`. Proved repeat-run idempotency and atomic transaction rollback.
+- [x] 3-Pass Backup Command & Local Restoration Validation: Inspected Supabase CLI 3.1.0 engine via `--dry-run` across schema, data, and role passes. Verified local restoration into clean disposable database with 100% parity across 11 tables, RLS, 31 policies, seed data, and user records with 0 errors (`scripts/verify-backup-restore.ts`).
+- [x] Staging Endpoint Validator Hardening: Enforced exact pooler username equality (`postgres.zrjptpkhtklfgnovdrny`), direct username equality (`postgres`), and query parameter injection rejection; expanded unit tests from 9 to 13 (102 tests total, 100% pass rate).
+- [x] Validated Backup Runner: Authored `scripts/backup-staging.ts` ensuring all remote execution paths validate the strict staging allowlist and mask credentials.
+- [x] Exact Policy Verification Matrix: Audited all 31 RLS policies against migration SQL AST; confirmed `TO authenticated` and `REVOKE EXECUTE FROM PUBLIC` on `public.is_scholar()`.
+- [x] Author Independent Evidence Report deliverable ([docs/M03_1_3_INDEPENDENT_EVIDENCE_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_3_INDEPENDENT_EVIDENCE_REPORT.md))
+- [x] Author Migration History Compatibility deliverable ([docs/M03_1_3_MIGRATION_HISTORY_COMPATIBILITY.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_3_MIGRATION_HISTORY_COMPATIBILITY.md))
+- [x] Author Backup & Restoration Validation deliverable ([docs/M03_1_3_BACKUP_RESTORE_TEST.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_3_BACKUP_RESTORE_TEST.md))
 - [ ] Obtain operator explicit authorization to execute reconciliation against staging database
 - [ ] Rotate Razorpay sandbox credentials in Razorpay Dashboard
 - [ ] Populate staging credentials (`STAGING_DATABASE_URL`)
-- [ ] Execute pre-reconciliation backup (`supabase db dump`)
+- [ ] Execute pre-reconciliation backup (`scripts/backup-staging.ts --execute` or `supabase db dump`)
 - [ ] Run `scripts/reconcile-staging-schema.ts --execute` against staging project `zrjptpkhtklfgnovdrny`
 - [ ] Execute Tier 3 hosted staging tests against live PostgREST and GoTrue endpoints
 
@@ -95,6 +106,6 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.1.2 — NOT READY — CREDENTIAL BLOCKERS`
-- **Restrictions:** Zero remote database mutations. No `supabase db push`. Production quarantined.
-- **Action Required:** Operator must rotate Razorpay sandbox key in dashboard, populate staging credentials (`STAGING_DATABASE_URL`), execute pre-reconciliation backup (`supabase db dump`), and grant explicit execution approval before running reconciliation.
+- **Status:** `M03.1.3 — NOT READY — CREDENTIAL BLOCKERS`
+- **Restrictions:** Strictly read-only milestone completed. Zero remote database mutations executed. No remote backups or DDL/DML sent to remote projects. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
+- **Action Required:** Operator must confirm Razorpay key revocation in dashboard, supply `STAGING_DATABASE_URL` via local untracked environment, grant explicit staging backup authorization, verify backup integrity, and grant explicit reconciliation execution authorization before proceeding to M04.

@@ -966,7 +966,7 @@ async function main() {
     if (!threwPort) throw new Error('Unsupported port failed to reject');
   });
 
-  runTest('unit', 'Staging URL Validator (9/9): Malformed URLs and empty strings fail closed', () => {
+  runTest('unit', 'Staging URL Validator (9/13): Malformed URLs and empty strings fail closed', () => {
     const invalidInputs = ['', 'not_a_url', 'http://db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres', 'ftp://somehost/postgres'];
     for (const inp of invalidInputs) {
       let threw = false;
@@ -977,6 +977,67 @@ async function main() {
       }
       if (!threw) throw new Error(`Failed to reject invalid input: "${inp}"`);
     }
+  });
+
+  runTest('unit', 'Staging URL Validator (10/13): Suffix-extended pooler username strictly rejected (Exact match check)', () => {
+    const badPoolerUsers = [
+      'postgresql://postgres.zrjptpkhtklfgnovdrny_extra:pass@aws-0-ap-south-1.pooler.supabase.com:6543/postgres',
+      'postgresql://postgres.zrjptpkhtklfgnovdrny.admin:pass@aws-0-ap-south-1.pooler.supabase.com:6543/postgres',
+      'postgresql://postgres.zrjptpkhtklfgnovdrny-attacker:pass@aws-0-ap-south-1.pooler.supabase.com:6543/postgres',
+    ];
+    for (const badUrl of badPoolerUsers) {
+      let threw = false;
+      try {
+        validateStagingDatabaseUrl(badUrl);
+      } catch (err) {
+        threw = true;
+        if (!err.message.includes('Invalid pooler username') && !err.message.includes('exact username')) {
+          throw new Error(`Unexpected error message: ${err.message}`);
+        }
+      }
+      if (!threw) throw new Error(`Failed to reject suffix-extended pooler username in URL: ${badUrl}`);
+    }
+  });
+
+  runTest('unit', 'Staging URL Validator (11/13): Non-postgres username on direct staging connection rejected', () => {
+    const badDirectUsers = [
+      'postgresql://root:pass@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres',
+      'postgresql://admin:pass@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres',
+      'postgresql://attacker:pass@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres',
+    ];
+    for (const badUrl of badDirectUsers) {
+      let threw = false;
+      try {
+        validateStagingDatabaseUrl(badUrl);
+      } catch (err) {
+        threw = true;
+        if (!err.message.includes('Invalid direct username')) {
+          throw new Error(`Unexpected error message: ${err.message}`);
+        }
+      }
+      if (!threw) throw new Error(`Failed to reject non-postgres username on direct connection: ${badUrl}`);
+    }
+  });
+
+  runTest('unit', 'Staging URL Validator (12/13): Query string containing production ref rejected even with staging host', () => {
+    let threw = false;
+    try {
+      validateStagingDatabaseUrl('postgresql://postgres:pass@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres?fallback=zxwkfnvmmxoojewhvsdc');
+    } catch (err) {
+      threw = true;
+      if (!err.message.includes('Production project reference')) {
+        throw new Error(`Unexpected error message: ${err.message}`);
+      }
+    }
+    if (!threw) throw new Error('Failed to reject production reference in query string');
+  });
+
+  runTest('unit', 'Staging URL Validator (13/13): Zero credential exposure in sanitized outputs and exceptions', () => {
+    const rawSecret = 'SUPER_SECRET_COMPLEX_PASS_9988$$!!';
+    const rawUrl = `postgresql://postgres:${encodeURIComponent(rawSecret)}@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres`;
+    const res = validateStagingDatabaseUrl(rawUrl);
+    if (res.sanitizedUrl.includes(rawSecret)) throw new Error('Raw password found in sanitized URL');
+    if (!res.sanitizedUrl.includes(':*****@')) throw new Error('Missing password masking token in sanitized URL');
   });
 
   // ==============================================================================

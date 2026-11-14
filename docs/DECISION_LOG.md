@@ -132,3 +132,24 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   6. **Automated Testing:** Expanded test suite from 89 to 98 tests by adding 9 dedicated unit tests covering all valid/invalid URL allowlist cases. All 98 tests pass (100%). TypeScript typecheck passes with 0 errors.
 - **Final Gate Verdict:** `NOT READY — CREDENTIAL BLOCKERS` (Awaiting operator credential provisioning, dashboard key rotation, and explicit execution approval).
 - **Standing Gate:** Zero remote database mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.
+
+---
+
+## 2026-11-15: ADR-011 — Milestone M03.1.3: Independent Evidence Verification, Migration Bookkeeping & Backup Restoration Proof
+- **Context:** Following the M03.1.2 audit, independent verification was required to resolve four remaining technical uncertainties prior to any hosted staging execution: (1) investigation of the failed CLI experiment in the M03.1.2 execution log, (2) empirical proof of migration history compatibility with Supabase CLI 3.1.0, (3) empirical validation and local restoration testing of the 3-pass backup strategy, and (4) tightening of the endpoint validator to exact pooler username matching across all remote execution paths.
+- **Decision:**
+  1. **Failed CLI Experiment Post-Mortem:** Root cause identified as PowerShell inline string template escaping and external scratch directory module resolution failure (`MODULE_NOT_FOUND: embedded-postgres`), rather than any database or Supabase CLI defect. Additionally discovered that Supabase CLI strictly expects the `postgres://` protocol scheme rather than `postgresql://`. Resolved by creating in-repo test suite `scripts/verify-migration-compat.ts` in the repository `scripts/` directory, normalizing the protocol prefix, and demonstrating clean exit code 0 execution.
+  2. **Migration History Compatibility Proof:** Verified that `supabase_migrations.schema_migrations` contains columns `version text primary key`, `statements text[] nullable`, and `name text nullable`. Tested atomic insertion of `('20261114000000', 'initial_schema')` in an isolated PostgreSQL 18 instance. Verified that `supabase migration list --remote="postgres://..."` reports version `20261114000000` as synchronized (`local: 20261114000000, remote: 20261114000000`) and `supabase db push --dry-run` reports `"upToDate": true` (`"Remote database is up to date."`). Proved repeat-run idempotency (`ON CONFLICT (version) DO UPDATE`) and atomic transaction rollback.
+  3. **Backup Architecture & Local Restoration Proof:** Authored `scripts/verify-backup-restore.ts`. Inspected official Supabase CLI 3.1.0 engine via `--dry-run` across schema (`--schema public,supabase_migrations --keep-comments`), data (`--schema public,supabase_migrations --data-only --use-copy`), and role (`--role-only`) passes. Dissected CLI sed scripts (converting to `IF NOT EXISTS`, disabling triggers during data restore via `SET session_replication_role = replica;`, and stripping reserved platform roles). Successfully executed full schema, migration history, seed data, and user profile/consent restoration into a secondary disposable database with 100% parity, 31/31 policies active, and 0 errors. Documented Docker prerequisite for non-dry-run CLI dumps and established strict rule prohibiting role dump restores into hosted Supabase projects.
+  4. **Endpoint Security Tightening:** Updated `scripts/validate-staging-url.ts` to require exact pooler username (`postgres.zrjptpkhtklfgnovdrny`) and exact direct username (`postgres`). Created dedicated `scripts/backup-staging.ts` runner ensuring all remote operations validate the strict staging allowlist. Expanded unit test suite with 4 new tests (13 total URL validator tests; 102 automated tests in full suite, all passing).
+  5. **Policy Verification (31 Policies):** Independently verified the exact SQL definition of all 31 policies in Section 11 of `20261114000000_initial_schema.sql`, confirming `TO authenticated` and `REVOKE ALL ON FUNCTION public.is_scholar() FROM PUBLIC; GRANT EXECUTE ... TO authenticated;` on both scholar policies.
+  6. **Razorpay Key Rotation:** Retained status `BLOCKED / PENDING DASHBOARD REVOCATION`.
+  7. **Final Gate Verdict:** Maintained strict gate: `NOT READY — CREDENTIAL BLOCKERS`. Zero remote mutations executed against staging (`zrjptpkhtklfgnovdrny`) or production (`zxwkfnvmmxoojewhvsdc`).
+- **Deliverables:**
+  - `docs/M03_1_3_INDEPENDENT_EVIDENCE_REPORT.md`
+  - `docs/M03_1_3_MIGRATION_HISTORY_COMPATIBILITY.md`
+  - `docs/M03_1_3_BACKUP_RESTORE_TEST.md`
+  - `scripts/verify-migration-compat.ts`
+  - `scripts/verify-backup-restore.ts`
+  - `scripts/backup-staging.ts`
+
