@@ -1,6 +1,11 @@
 /**
  * Astrological Profile (Kundli) & Planetary Models
- * Protected under DPDP Act 2023 with Authenticated AES-256-GCM application-layer encryption.
+ *
+ * Security Architecture:
+ * - Technical Safeguards: Authenticated AES-256-GCM application-layer envelope encryption.
+ * - Legal Safeguards: Fulfills DPDP Act 2023 Section 8(5) reasonable security safeguards to prevent
+ *   unauthorized disclosure of sensitive personal parameters.
+ * - ISHTI Security Classification: Level 4 — Highly Confidential (Birth Time & Coordinates).
  */
 
 export type AyanamshaSystem =
@@ -31,7 +36,6 @@ export interface KundliProfileDTO {
   encryption_auth_tag: string;
   ayanamsha: AyanamshaSystem;
   is_primary: boolean;
-  storage_guard_active: boolean;
   created_at: string;
   updated_at: string;
 }

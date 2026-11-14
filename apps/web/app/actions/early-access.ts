@@ -2,7 +2,7 @@
 
 import { createClient } from "../../lib/supabase/server";
 import { headers } from "next/headers";
-import crypto from "node:crypto";
+import { checkDistributedRateLimit, hashClientIp, extractClientIp } from "../../lib/security/rate-limiter";
 
 export interface EarlyAccessResult {
   success: boolean;
@@ -10,62 +10,34 @@ export interface EarlyAccessResult {
   code?: string;
 }
 
-// In-memory rate limiting sliding window (IP Hash -> { count, windowStart })
-const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_REQUESTS_PER_WINDOW = 4;
-const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
-
-function isRateLimited(identifier: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitStore.get(identifier);
-
-  if (!entry) {
-    rateLimitStore.set(identifier, { count: 1, windowStart: now });
-    return false;
-  }
-
-  if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    // Reset window
-    rateLimitStore.set(identifier, { count: 1, windowStart: now });
-    return false;
-  }
-
-  if (entry.count >= MAX_REQUESTS_PER_WINDOW) {
-    return true;
-  }
-
-  entry.count += 1;
-  return false;
-}
-
 export async function submitEarlyAccess(
   _prevState: EarlyAccessResult | null,
   formData: FormData
 ): Promise<EarlyAccessResult> {
-  // 1. Anti-bot honeypot check
+  // 1. Anti-bot honeypot check (secondary measure)
   const honeypot = formData.get("hp_field");
   if (honeypot) {
-    // Silently succeed for automated scrapers
+    // Silently return success to waste bot scraper resources
     return { success: true, message: "Thank you for registering." };
   }
 
-  // 2. Derive privacy-preserving IP hash for abuse prevention
+  // 2. Distributed rate limiting check (primary defense)
   const headerList = await headers();
-  const forwardedFor = headerList.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const realIp = headerList.get("x-real-ip")?.trim() || forwardedFor || "127.0.0.1";
-  const salt = process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 16) || "ishti-static-salt";
-  const ipHash = crypto.createHash("sha256").update(realIp + salt).digest("hex");
+  const rateLimitResult = await checkDistributedRateLimit(headerList, {
+    bucket: "early_access_submission",
+    maxRequests: 5,
+    windowSeconds: 600, // 5 requests per 10 minutes
+  });
 
-  // 3. Check rate limiting
-  if (isRateLimited(ipHash)) {
+  if (!rateLimitResult.allowed) {
     return {
       success: false,
       code: "RATE_LIMITED",
-      message: "Too many submission attempts. Please wait a few minutes before trying again.",
+      message: "Too many registration attempts. Please wait a few minutes before trying again.",
     };
   }
 
-  // 4. Extract and normalize fields
+  // 3. Extract and normalize fields
   const emailRaw = formData.get("email")?.toString().trim();
   const phoneRaw = formData.get("phone")?.toString().trim();
   const tradition = formData.get("tradition")?.toString().trim() || undefined;
@@ -100,6 +72,9 @@ export async function submitEarlyAccess(
     }
   }
 
+  const clientIp = extractClientIp(headerList);
+  const ipHash = hashClientIp(clientIp);
+
   try {
     const supabase = await createClient();
 
@@ -115,15 +90,15 @@ export async function submitEarlyAccess(
     ]);
 
     if (error) {
-      // Duplicate registration check (Postgres code 23505)
+      // Duplicate registration check (PostgreSQL code 23505)
       if (error.code === "23505") {
         return {
           success: true,
-          message: "Dhanyavad! This email address is already safely registered for early access invitations.",
+          message: "Dhanyavad! This contact is already safely registered for early access invitations.",
         };
       }
 
-      // Differentiate between unmigrated table vs other operational errors
+      // Handle unmigrated database table
       if (
         error.code === "PGRST205" ||
         error.code === "42P01" ||

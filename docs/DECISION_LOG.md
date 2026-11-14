@@ -16,13 +16,13 @@ Status: Contracts, clients, initial migration script, and early access form impl
 Open: Direct execution of migrations via Supabase SQL Editor / database password; SMS aggregator credentials.
 ## 2026-11-14 — Brand Migration to ISHTI & Security Remediation (Pre-Deployment)
 Decision: Official public-facing brand name is migrated from interim codename YUGON to ISHTI across all web and mobile touchpoints, page metadata, navigation, footer, design system documents, and product families (ISHTI Puja, ISHTI Astro, ISHTI Bhakti, ISHTI Panchang, ISHTI Experts, ISHTI Community). Internal technical identifiers (`spiritual-OS` codename, package namespaces `@spiritual-os/*`, repository `Ishti-OS`) are preserved.
-Security Remediation: Complete architectural overhaul of `supabase/migrations/20261114000000_initial_schema.sql` prior to production deployment:
-1. Fix privilege escalation: hardcode default `role = 'devotee'` in `handle_new_user()`; disallow self-promotion via `profiles` trigger.
-2. Fix profile privacy: remove public select policy on `profiles` to eliminate personal phone/email leaks; isolate public expert data to `expert_profiles`.
-3. Fix encryption architecture: define application-layer AES-256-GCM envelope encryption for Kundli sensitive birth data with keys outside PostgreSQL; mark storage pre-deployment guarded.
-4. Harden database functions: explicit `SET search_path = public, auth` on all SECURITY DEFINER functions and revoke execute from PUBLIC.
-5. Fix expert & booking integrity: prevent experts from editing verification/ratings; enforce booking payment validation and slot double-booking prevention.
-6. Enhance knowledge governance: add source provenance, edition, publisher, license, and commercial clearance fields to canonical scriptures.
-7. Early access security: normalize email/phone, implement timing and honeypot abuse protection, and restrict read access strictly to platform admins.
-Status: Remediations verified and tested.
-
+## 2026-11-14 — Second Security Audit & Critical Remediation
+Decision: Resolve deep correctness and production security flaws identified in M02 pre-deployment review:
+1. Eliminate recursive RLS on `public.profiles` by introducing `public.is_admin()` and `public.is_scholar()` SECURITY DEFINER helper functions with search_path hardening.
+2. Establish a trusted administrative role assignment mechanism: create `public.role_assignment_audit` and `public.assign_user_role()`, ensuring service-role and admin operations succeed while client self-promotion is strictly blocked.
+3. Replace superficial database byte checks with a production application-layer AES-256-GCM envelope encryption service (`apps/web/lib/crypto/kundli-encryption.ts`) utilizing fresh 96-bit IVs, 128-bit authentication tags, and user-bound AAD.
+4. Replace in-memory rate limiting with an atomic, distributed PostgreSQL sliding-window table (`public.rate_limit_events`) and RPC function (`public.check_rate_limit()`) supporting proxy header extraction and dynamic cryptographic salting.
+5. Fix booking lifecycle deadlock: replace naive table unique constraint with a partial unique index (`idx_unique_active_slot_booking WHERE status NOT IN ('cancelled', 'refunded')`), enabling cancelled/refunded consultation slots to be safely rebooked without destroying booking history.
+6. Reassess scripture provenance: un-mark hardcoded verification on Rigveda 10.191.2 seed, setting `review_status = 'pending_peer_review'` and recording Griffith 1896 public-domain citation honestly without fabricated reviewers.
+7. Correct DPDP Act 2023 terminology: separate statutory compliance obligations from internal ISHTI data sensitivity classifications (Level 4 — Highly Confidential).
+Status: Expanded test suite (45 automated checks across static, unit, integration, and database simulation) passing 100%. Pre-deployment constraints preserved.

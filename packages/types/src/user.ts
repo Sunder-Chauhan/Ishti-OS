@@ -1,6 +1,11 @@
 /**
  * User and Identity Types for ISHTI (Ishti-OS)
- * Conforms to DPDP Act 2023 consent tracking and RBAC principles.
+ *
+ * Governance:
+ * - Implements role-based access control (RBAC).
+ * - Tracks user consents aligned with Digital Personal Data Protection Act, 2023 principles
+ *   (purpose specification, consent logging, and revocation tracking).
+ * - Internal Security Classification: Level 3 — Confidential (Profile data).
  */
 
 export type UserRole =
@@ -41,4 +46,15 @@ export interface UserConsentLog {
   user_agent?: string;
   granted_at: string;
   revoked_at?: string;
+}
+
+export interface RoleAssignmentAudit {
+  id: string;
+  user_id: string;
+  previous_role: string;
+  new_role: UserRole;
+  assigned_by?: string;
+  assigned_by_system: boolean;
+  reason: string;
+  created_at: string;
 }

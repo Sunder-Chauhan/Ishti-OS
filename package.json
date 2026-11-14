@@ -1,1 +1,20 @@
-{"name":"spiritual-os","private":true,"version":"0.1.0","workspaces":["apps/*","packages/*"],"scripts":{"dev":"npm run dev:web","dev:web":"npm run dev --workspace @spiritual-os/web","dev:mobile":"npm run start --workspace @spiritual-os/mobile","build:web":"npm run build --workspace @spiritual-os/web","typecheck":"npm run typecheck --workspaces --if-present"},"engines":{"node":">=22"}}
+{
+  "name": "spiritual-os",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:web",
+    "dev:web": "npm run dev --workspace @spiritual-os/web",
+    "dev:mobile": "npm run start --workspace @spiritual-os/mobile",
+    "build:web": "npm run build --workspace @spiritual-os/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:security": "npx tsx scripts/run-comprehensive-tests.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
