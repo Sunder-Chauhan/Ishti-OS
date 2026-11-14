@@ -21,7 +21,9 @@ import "server-only";
  *       hex keys (e.g. KUNDLI_ENCRYPTION_KEY_V1) are mandatory. Fails fast if missing.
  *     * Multi-version decryption allows seamless rolling key rotation without downtime.
  *
- * ISHTI Security Classification: Level 4 — Highly Confidential (DPDP Act 2023 §8(5))
+ * ISHTI Internal Data Classification: Level 4 — Highly Confidential
+ * (Internal technical governance tier designed to satisfy reasonable security safeguard obligations
+ *  under DPDP Act 2023 §8(5); not an official statutory government classification).
  */
 
 import crypto from "node:crypto";

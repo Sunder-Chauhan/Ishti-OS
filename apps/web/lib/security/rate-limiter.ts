@@ -6,15 +6,18 @@ import "server-only";
  * Security Architecture:
  * - Server-only execution: strictly prevented from entering client/mobile bundles.
  * - Distributed storage via PostgreSQL atomic RPC function `check_rate_limit()`.
- * - Advisory transaction locking prevents race conditions and concurrent limit overruns.
- * - Server-controlled allowlist of buckets and quotas (clients cannot choose arbitrary limits).
- * - HMAC-SHA-256 for privacy-preserving identifier hashing with server secret.
- * - Trusted proxy policy: validates IPv4/IPv6 format, rejects malformed/injected values.
- * - Configurable fail-closed behavior for sensitive submission endpoints (early access, auth).
+ * - 64-bit advisory transaction locking prevents concurrent limit overruns while substantially
+ *   reducing hash collision probabilities compared to 32-bit hashtext.
+ * - Server-controlled allowlist of buckets and quotas (clients cannot dictate limits).
+ * - HMAC-SHA-256 for privacy-preserving identifier hashing with validated 32-byte server secret.
+ * - Deployment-aware trusted proxy verification policy (Cloudflare edge termination vs reverse proxy vs direct origin).
+ * - Strict Node.js net-backed IP address validation.
+ * - Safe fail-closed behavior for sensitive endpoints when provenance cannot be established.
  * - Internal service_role execution: anonymous and authenticated clients cannot call RPC directly.
  */
 
 import crypto from "node:crypto";
+import net from "node:net";
 import { createAdminClient } from "../supabase/admin";
 
 export const RATE_LIMIT_CONFIGS = {
@@ -53,78 +56,155 @@ export interface RateLimitResult {
   reason?: string;
 }
 
+export type TrustedProxyStrategy = "cloudflare" | "reverse_proxy" | "direct" | "none";
+
 /**
  * Validates whether a given string is a syntactically valid IPv4 or IPv6 address.
- * Prevents header injection and malformed proxy values.
+ * Uses official Node.js net.isIP standard library implementation (C++ backed).
  */
-export function isValidIp(ip: string): boolean {
+export function isValidIp(ip: string | null | undefined): boolean {
   if (!ip || typeof ip !== "string") return false;
   const trimmed = ip.trim();
-  if (trimmed.length < 3 || trimmed.length > 45) return false;
-
-  // Strict IPv4 validation
-  const ipv4Regex = /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-  if (ipv4Regex.test(trimmed)) return true;
-
-  // Strict IPv6 validation
-  const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$|^([0-9a-fA-F]{1,4}:)+:([0-9a-fA-F]{1,4}:)*[0-9a-fA-F]{1,4}$/;
-  return ipv6Regex.test(trimmed);
+  return net.isIP(trimmed) !== 0;
 }
 
 /**
- * Extracts client IP following a trusted proxy policy.
- * Evaluates standard reverse proxy headers in priority order, rejecting malformed IPs.
+ * Determines the active trusted proxy strategy based on deployment environment.
+ * Hierarchy:
+ * 1. Explicit TRUSTED_PROXY_STRATEGY env ('cloudflare' | 'reverse_proxy' | 'direct' | 'none')
+ * 2. In production: defaults to 'cloudflare' (standard production edge topology)
+ * 3. In non-production: defaults to 'none' (direct origin / local testing)
  */
-export function extractClientIp(headers: { get(name: string): string | null }): string {
-  // 1. Cloudflare connecting IP (Edge termination)
-  const cfIp = headers.get("cf-connecting-ip");
-  if (cfIp && isValidIp(cfIp)) {
+export function getTrustedProxyStrategy(): TrustedProxyStrategy {
+  const envStrategy = process.env.TRUSTED_PROXY_STRATEGY?.toLowerCase().trim();
+  if (
+    envStrategy === "cloudflare" ||
+    envStrategy === "reverse_proxy" ||
+    envStrategy === "direct" ||
+    envStrategy === "none"
+  ) {
+    return envStrategy;
+  }
+  if (process.env.NODE_ENV === "production") {
+    return "cloudflare";
+  }
+  return "none";
+}
+
+/**
+ * Extracts client IP following a deployment-aware trusted proxy policy.
+ *
+ * Infrastructure Topology & Header Overwrites:
+ * - 'cloudflare': Edge proxy terminates requests. Cloudflare strips client-supplied cf-connecting-ip
+ *   and injects the authentic client IP. In production, also requires presence of cf-ray
+ *   to guard against direct-origin requests spoofing Cloudflare headers.
+ * - 'reverse_proxy': Internal reverse proxy (NGINX / AWS ALB / Kubernetes Ingress) overwrites
+ *   x-real-ip or appends to x-forwarded-for. Extracts x-real-ip or originating client hop.
+ * - 'direct' / 'none': Direct origin connections (local dev, test runner, private internal networks).
+ *   ALL forwarded headers (cf-connecting-ip, x-real-ip, x-forwarded-for) are considered UNTRUSTED
+ *   and ignored to prevent origin header spoofing attacks.
+ *
+ * In production:
+ * - If trusted proxy provenance cannot be established, returns null (does NOT silently group under 127.0.0.1).
+ */
+export function extractClientIp(
+  headers: { get(name: string): string | null },
+  forcedStrategy?: TrustedProxyStrategy
+): string | null {
+  const strategy = forcedStrategy || getTrustedProxyStrategy();
+
+  if (strategy === "cloudflare") {
+    const cfIp = headers.get("cf-connecting-ip");
+    const cfRay = headers.get("cf-ray");
+
+    // Require valid cf-connecting-ip
+    if (!cfIp || !isValidIp(cfIp)) {
+      return null;
+    }
+
+    // In production, also require Cloudflare edge marker (cf-ray) to reject direct-origin spoofing
+    if (process.env.NODE_ENV === "production" && !cfRay) {
+      return null;
+    }
+
     return cfIp.trim();
   }
 
-  // 2. Real-IP header from trusted reverse proxy
-  const realIp = headers.get("x-real-ip");
-  if (realIp && isValidIp(realIp)) {
-    return realIp.trim();
-  }
+  if (strategy === "reverse_proxy") {
+    // 1. Check x-real-ip set by trusted reverse proxy
+    const realIp = headers.get("x-real-ip");
+    if (realIp && isValidIp(realIp)) {
+      return realIp.trim();
+    }
 
-  // 3. X-Forwarded-For chain: extract the originating client IP (first valid IP)
-  const xForwardedFor = headers.get("x-forwarded-for");
-  if (xForwardedFor) {
-    const parts = xForwardedFor.split(",").map((p) => p.trim());
-    for (const part of parts) {
-      if (isValidIp(part)) {
-        return part;
+    // 2. Check x-forwarded-for: extract the originating client IP (first valid IP in chain)
+    const xForwardedFor = headers.get("x-forwarded-for");
+    if (xForwardedFor) {
+      const parts = xForwardedFor.split(",").map((p) => p.trim());
+      for (const part of parts) {
+        if (isValidIp(part)) {
+          return part;
+        }
       }
     }
+
+    return null;
   }
 
-  // 4. Default safe fallback for local/untrusted connections
-  return "127.0.0.1";
+  // Strategy 'none' or 'direct': Direct origin access
+  // Do NOT trust any forwarded headers sent by client.
+  if (process.env.NODE_ENV !== "production") {
+    return "127.0.0.1"; // Safe developer loopback for local offline development
+  }
+
+  // In production with direct strategy, forwarded headers cannot establish provenance
+  return null;
 }
 
 /**
- * Retrieves the HMAC secret key for privacy-preserving IP hashing.
- * In production, strictly requires RATE_LIMIT_HMAC_SECRET or SUPABASE_SERVICE_ROLE_KEY.
+ * Retrieves and validates the HMAC secret key for privacy-preserving IP hashing.
+ *
+ * Encoding Specifications:
+ * - Hex-encoded: 64 hexadecimal characters representing 32 bytes (256 bits).
+ * - Raw UTF-8: Minimum 32 bytes (Buffer.byteLength(secret, 'utf8') >= 32).
+ *
+ * Security Requirements:
+ * - Minimum byte length: 32 bytes. Secrets under 32 bytes are strictly rejected.
+ * - Production: Missing or invalid secrets throw fast. Development fallback secrets
+ *   are NEVER permitted in production.
  */
 export function getRateLimitHmacSecret(): string {
-  const customSecret = process.env.RATE_LIMIT_HMAC_SECRET;
-  if (customSecret && customSecret.length >= 16) {
+  const customSecret = process.env.RATE_LIMIT_HMAC_SECRET?.trim();
+
+  if (customSecret) {
+    const isHex = /^[0-9a-fA-F]{64}$/.test(customSecret);
+    const byteLength = isHex ? 32 : Buffer.byteLength(customSecret, "utf8");
+
+    if (byteLength < 32) {
+      throw new Error(
+        `CRITICAL SECURITY CONFIGURATION ERROR: RATE_LIMIT_HMAC_SECRET must be at least 32 bytes (got ${byteLength} bytes).`
+      );
+    }
+
     return customSecret;
   }
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (serviceKey) {
-    return crypto.createHmac("sha256", "ishti-rate-limit-salt-v1").update(serviceKey).digest("hex");
+    const serviceKeyBytes = Buffer.byteLength(serviceKey, "utf8");
+    if (serviceKeyBytes >= 32) {
+      return crypto.createHmac("sha256", "ishti-rate-limit-salt-v1").update(serviceKey).digest("hex");
+    }
   }
 
   if (process.env.NODE_ENV === "production") {
     throw new Error(
-      "CRITICAL SECURITY CONFIGURATION ERROR: RATE_LIMIT_HMAC_SECRET or SUPABASE_SERVICE_ROLE_KEY must be configured in production."
+      "CRITICAL SECURITY CONFIGURATION ERROR: A valid 32-byte RATE_LIMIT_HMAC_SECRET (or 32+ byte SUPABASE_SERVICE_ROLE_KEY) is required in production. Server startup halted."
     );
   }
 
-  return "ishti-development-rate-limit-hmac-secret-32b";
+  // Development & test fallback only (never reachable in production)
+  return "ishti-development-rate-limit-hmac-secret-32b-deterministic";
 }
 
 /**
@@ -132,13 +212,16 @@ export function getRateLimitHmacSecret(): string {
  * Never stores or transmits raw client IP addresses.
  */
 export function hashIdentifier(identifier: string, secret?: string): string {
+  if (!identifier || typeof identifier !== "string") {
+    throw new Error("Cannot hash an invalid or empty identifier.");
+  }
   const hmacKey = secret || getRateLimitHmacSecret();
   return crypto.createHmac("sha256", hmacKey).update(identifier.trim()).digest("hex");
 }
 
 /**
  * Evaluates rate limit against the distributed PostgreSQL atomic sliding window.
- * Uses advisory locks for concurrency safety and honors configurable fail-closed settings.
+ * Uses 64-bit advisory locks for concurrency safety and honors configurable fail-closed settings.
  */
 export async function checkRateLimit(
   headers: { get(name: string): string | null },
@@ -150,7 +233,25 @@ export async function checkRateLimit(
     throw new Error(`Unknown rate limit bucket: ${bucketKey}`);
   }
 
-  const rawIdentifier = identifierOverride || extractClientIp(headers);
+  let rawIdentifier: string | null = identifierOverride || null;
+
+  if (!rawIdentifier) {
+    const extracted = extractClientIp(headers);
+    if (!extracted) {
+      // In production or fail-closed endpoints, untrusted proxy provenance immediately fails closed
+      if (process.env.NODE_ENV === "production" || config.failClosed) {
+        return {
+          allowed: false,
+          reason: "UNTRUSTED_PROXY_PROVENANCE",
+          resetSeconds: 60,
+        };
+      }
+      rawIdentifier = "127.0.0.1";
+    } else {
+      rawIdentifier = extracted;
+    }
+  }
+
   const identifierHash = hashIdentifier(rawIdentifier);
 
   try {

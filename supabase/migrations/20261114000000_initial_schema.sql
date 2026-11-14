@@ -54,6 +54,11 @@ CREATE TABLE IF NOT EXISTS public.role_assignment_audit (
 CREATE INDEX IF NOT EXISTS idx_role_audit_user ON public.role_assignment_audit(user_id);
 
 -- Enforce Append-Only Immutability on Role Assignment Audit
+-- Security Boundary: Rejects UPDATE and DELETE operations issued by application roles, authenticated users,
+-- and administrative callers under standard SQL execution.
+-- Technical Disclosure: In PostgreSQL, superusers (postgres) retain engine-level bypass capabilities
+-- (e.g. session_replication_role = 'replica', DISABLE TRIGGER, or direct table drop). Within the application
+-- and transactional execution boundary, this trigger guarantees strict append-only tamper resistance.
 CREATE OR REPLACE FUNCTION public.prevent_audit_log_tampering()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -757,7 +762,9 @@ BEGIN
   END IF;
 
   -- 3. Acquire 64-bit transaction-level advisory xact lock to serialize concurrent requests for this bucket + identifier
-  -- Uses 64-bit bigint lock space via MD5 hex slice to eliminate 32-bit hashtext collisions across millions of keys
+  -- Uses 64-bit bigint lock space via MD5 hex slice to substantially reduce collision probability (birthday bound ~5 billion keys
+  -- vs ~65k keys for 32-bit hashtext). Note: while hash collisions are reduced by orders of magnitude compared to 32-bit hashtext,
+  -- collisions remain theoretically possible across astronomical key spaces and are handled safely by transaction isolation.
   PERFORM pg_advisory_xact_lock(('x' || substr(md5(p_bucket || ':' || p_identifier_hash), 1, 16))::bit(64)::bigint);
 
   v_window_start := NOW() - (p_window_seconds || ' seconds')::INTERVAL;

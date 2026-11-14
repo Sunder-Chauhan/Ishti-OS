@@ -746,12 +746,28 @@ async function main() {
   }
 }
 
-export async function runRealPostgresTests(): Promise<{ total: number; passed: number; failed: number }> {
+export interface RealDbRunResult {
+  total: number;
+  passed: number;
+  failed: number;
+  results: TestResult[];
+  countsByCategory: Record<string, { passed: number; failed: number }>;
+}
+
+export async function runRealPostgresTests(): Promise<RealDbRunResult> {
   results.length = 0; // reset results
   await main();
   const passed = results.filter((r) => r.passed).length;
   const failed = results.filter((r) => !r.passed).length;
-  return { total: results.length, passed, failed };
+  const countsByCategory: Record<string, { passed: number; failed: number }> = {};
+  for (const r of results) {
+    if (!countsByCategory[r.category]) {
+      countsByCategory[r.category] = { passed: 0, failed: 0 };
+    }
+    if (r.passed) countsByCategory[r.category].passed++;
+    else countsByCategory[r.category].failed++;
+  }
+  return { total: results.length, passed, failed, results, countsByCategory };
 }
 
 if (process.argv[1]?.includes("run-real-postgres-tests")) {

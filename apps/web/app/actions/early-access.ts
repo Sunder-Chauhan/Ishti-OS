@@ -69,7 +69,7 @@ export async function submitEarlyAccess(
   }
 
   const clientIp = extractClientIp(headerList);
-  const ipHash = hashIdentifier(clientIp);
+  const ipHash = clientIp ? hashIdentifier(clientIp) : null;
 
   try {
     const supabase = await createClient();

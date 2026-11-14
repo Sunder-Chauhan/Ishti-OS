@@ -328,36 +328,128 @@ async function main() {
     if (!isValidIp('203.0.113.195')) throw new Error('Valid IPv4 rejected');
     if (!isValidIp('2001:0db8:85a3:0000:0000:8a2e:0370:7334')) throw new Error('Valid IPv6 rejected');
     if (!isValidIp('::1')) throw new Error('IPv6 loopback rejected');
+    if (!isValidIp('fe80::1ff:fe23:4567:890a')) throw new Error('Link-local IPv6 rejected');
 
     if (isValidIp('203.0.113.195; DROP TABLE users;')) throw new Error('SQL injection in IP accepted');
     if (isValidIp('999.999.999.999')) throw new Error('Invalid IPv4 octets accepted');
+    if (isValidIp('256.1.1.1')) throw new Error('Out of range IPv4 accepted');
+    if (isValidIp('192.168.1.1:8080')) throw new Error('IP with port accepted without separation');
     if (isValidIp('<script>alert(1)</script>')) throw new Error('XSS in IP accepted');
     if (isValidIp('not-an-ip')) throw new Error('Arbitrary string accepted as IP');
   });
 
-  runTest('unit', 'Rate Limiter: Trusted header priority (Cloudflare -> Real-IP -> Forwarded-For)', () => {
-    const headers1 = {
-      get: (h) => (h === 'cf-connecting-ip' ? '203.0.113.1' : h === 'x-forwarded-for' ? '198.51.100.1' : null),
+  runTest('unit', 'Rate Limiter: Deployment-aware trusted proxy verification policy', () => {
+    // 1. Cloudflare Strategy: Requires valid cf-connecting-ip and cf-ray in production
+    const cfValidHeaders = {
+      get: (h) => (h === 'cf-connecting-ip' ? '203.0.113.195' : h === 'cf-ray' ? '7f8a9b0c-IAD' : null),
     };
-    if (extractClientIp(headers1) !== '203.0.113.1') throw new Error('Failed to prioritize CF-Connecting-IP');
+    if (extractClientIp(cfValidHeaders, 'cloudflare') !== '203.0.113.195') {
+      throw new Error('Failed to extract verified Cloudflare IP');
+    }
 
-    const headers2 = {
-      get: (h) => (h === 'x-real-ip' ? '198.51.100.2' : h === 'x-forwarded-for' ? '192.0.2.1, 10.0.0.1' : null),
-    };
-    if (extractClientIp(headers2) !== '198.51.100.2') throw new Error('Failed to prioritize X-Real-IP');
+    // Spoofed Cloudflare header without cf-ray in production returns null
+    const originalEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      const spoofedCfHeaders = {
+        get: (h) => (h === 'cf-connecting-ip' ? '203.0.113.195' : null), // Missing cf-ray
+      };
+      if (extractClientIp(spoofedCfHeaders, 'cloudflare') !== null) {
+        throw new Error('Accepted spoofed cf-connecting-ip without cf-ray in production');
+      }
 
-    const headers3 = {
-      get: (h) => (h === 'x-forwarded-for' ? 'malformed-ip, 198.51.100.5' : null),
+      // In production, missing/untrusted headers do NOT default to 127.0.0.1
+      const emptyHeaders = { get: () => null };
+      if (extractClientIp(emptyHeaders, 'cloudflare') !== null) {
+        throw new Error('Production unexpectedly defaulted missing IP to a loopback address');
+      }
+      if (extractClientIp(emptyHeaders, 'none') !== null) {
+        throw new Error('Production direct origin unexpectedly defaulted missing IP to 127.0.0.1');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+
+    // 2. Reverse Proxy Strategy: Evaluates x-real-ip or x-forwarded-for chain
+    const proxyHeaders = {
+      get: (h) => (h === 'x-real-ip' ? '198.51.100.2' : null),
     };
-    if (extractClientIp(headers3) !== '198.51.100.5') throw new Error('Failed to skip malformed IP in X-Forwarded-For');
+    if (extractClientIp(proxyHeaders, 'reverse_proxy') !== '198.51.100.2') {
+      throw new Error('Failed to extract X-Real-IP under reverse_proxy strategy');
+    }
+
+    const xffHeaders = {
+      get: (h) => (h === 'x-forwarded-for' ? 'malformed-hop, 198.51.100.5, 10.0.0.1' : null),
+    };
+    if (extractClientIp(xffHeaders, 'reverse_proxy') !== '198.51.100.5') {
+      throw new Error('Failed to extract first valid originating IP from X-Forwarded-For chain');
+    }
+
+    // 3. Direct Origin Strategy ('none'): ALL forwarded headers ignored to prevent spoofing
+    const directHeadersWithSpoofing = {
+      get: (h) => (h === 'cf-connecting-ip' ? '1.1.1.1' : h === 'x-forwarded-for' ? '2.2.2.2' : null),
+    };
+    // In dev, returns safe local loopback 127.0.0.1; ignores spoofed 1.1.1.1 / 2.2.2.2
+    if (extractClientIp(directHeadersWithSpoofing, 'none') !== '127.0.0.1') {
+      throw new Error('Direct origin strategy failed to ignore forwarded headers');
+    }
   });
 
-  runTest('unit', 'Rate Limiter: HMAC-SHA-256 identifier hashing with server secret', () => {
-    const secret = 'ishti-test-hmac-secret-at-least-16-bytes';
-    const hash1 = hashIdentifier('203.0.113.1', secret);
-    const hash2 = hashIdentifier('203.0.113.2', secret);
-    if (hash1 === hash2) throw new Error('Identical hashes for different IPs');
-    if (hash1.length !== 64) throw new Error('Invalid HMAC-SHA-256 digest length');
+  runTest('unit', 'Rate Limiter: HMAC secret validation & 32-byte minimum enforcement', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.RATE_LIMIT_HMAC_SECRET;
+    const originalServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    try {
+      // 1. Valid 64-char hex secret (32 bytes)
+      process.env.RATE_LIMIT_HMAC_SECRET = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+      const hexSecret = getRateLimitHmacSecret();
+      if (hexSecret !== process.env.RATE_LIMIT_HMAC_SECRET) {
+        throw new Error('Failed to accept valid 64-character hex secret');
+      }
+
+      // 2. Valid raw UTF-8 secret >= 32 bytes
+      process.env.RATE_LIMIT_HMAC_SECRET = 'ishti-production-rate-limit-secret-32-bytes!';
+      const utf8Secret = getRateLimitHmacSecret();
+      if (utf8Secret !== process.env.RATE_LIMIT_HMAC_SECRET) {
+        throw new Error('Failed to accept valid 32-byte UTF-8 secret');
+      }
+
+      // 3. Short secret (< 32 bytes) must be rejected
+      process.env.RATE_LIMIT_HMAC_SECRET = 'short-secret-16b';
+      let rejectedShort = false;
+      try {
+        getRateLimitHmacSecret();
+      } catch (err) {
+        rejectedShort = true;
+        if (!err.message.includes('must be at least 32 bytes')) {
+          throw new Error(`Unexpected error message for short secret: ${err.message}`);
+        }
+      }
+      if (!rejectedShort) throw new Error('Accepted secret shorter than 32 bytes');
+
+      // 4. In production mode, missing secret throws fast and fallback secret cannot be used
+      process.env.NODE_ENV = 'production';
+      delete process.env.RATE_LIMIT_HMAC_SECRET;
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      let threwMissingInProd = false;
+      try {
+        getRateLimitHmacSecret();
+      } catch (err) {
+        threwMissingInProd = true;
+        if (!err.message.includes('is required in production')) {
+          throw new Error(`Unexpected production error message: ${err.message}`);
+        }
+      }
+      if (!threwMissingInProd) throw new Error('Production mode failed to halt on missing secret');
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalSecret) process.env.RATE_LIMIT_HMAC_SECRET = originalSecret;
+      else delete process.env.RATE_LIMIT_HMAC_SECRET;
+      if (originalServiceKey) process.env.SUPABASE_SERVICE_ROLE_KEY = originalServiceKey;
+      else delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    }
   });
 
   runTest('unit', 'Early Access: Email & Phone Normalization', () => {
@@ -457,9 +549,23 @@ async function main() {
   const { runRealPostgresTests } = require(path.join(ROOT_DIR, 'scripts/run-real-postgres-tests.ts'));
   const realDbResults = await runRealPostgresTests();
 
-  counts.real_db.passed = 13;
-  counts.real_db.failed = realDbResults.failed;
-  counts.concurrency.passed = 2;
+  const realDbCategories = ['REAL_DB_RLS', 'REAL_DB_AUDIT', 'REAL_DB_KUNDLI', 'REAL_DB_BOOKING', 'REAL_DB_SCRIPTURE'];
+  let realDbPassed = 0;
+  let realDbFailed = 0;
+  for (const cat of realDbCategories) {
+    if (realDbResults.countsByCategory[cat]) {
+      realDbPassed += realDbResults.countsByCategory[cat].passed;
+      realDbFailed += realDbResults.countsByCategory[cat].failed;
+    }
+  }
+
+  const concurrencyPassed = realDbResults.countsByCategory['REAL_DB_CONCURRENCY']?.passed || 0;
+  const concurrencyFailed = realDbResults.countsByCategory['REAL_DB_CONCURRENCY']?.failed || 0;
+
+  counts.real_db.passed = realDbPassed;
+  counts.real_db.failed = realDbFailed;
+  counts.concurrency.passed = concurrencyPassed;
+  counts.concurrency.failed = concurrencyFailed;
 
   // ==============================================================================
   // 6. TESTS NOT YET EXECUTABLE (REMOTE INFRASTRUCTURE PENDING)

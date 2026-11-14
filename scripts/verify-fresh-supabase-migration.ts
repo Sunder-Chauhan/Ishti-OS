@@ -1,18 +1,31 @@
 import EmbeddedPostgres from "embedded-postgres";
 import { Client } from "pg";
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 
 /**
- * ISHTI Fresh Supabase-Compatible Database & Migration History Verification
+ * ISHTI Milestone M02: Supabase-Compatible PostgreSQL Simulation & Official CLI Migration Verification
  *
- * Verifies that:
- * 1. An entirely fresh, empty PostgreSQL database can be provisioned from scratch.
- * 2. Supabase standard baseline schemas (auth, extensions, supabase_migrations) are established.
- * 3. The initial migration `20261114000000_initial_schema.sql` applies cleanly without warnings or errors.
- * 4. Supabase migration history tracking table (`supabase_migrations.schema_migrations`) records version 20261114000000.
- * 5. All 11 core tables are created with strict Row-Level Security (RLS) enabled.
- * 6. The migration script is 100% idempotent: applying it a second time completes with zero errors.
+ * TECHNICAL DISCLOSURE & ENVIRONMENT BOUNDARY:
+ * --------------------------------------------------------------------------------------------------
+ * This test suite provisions an isolated, native PostgreSQL 18.6 instance with standard Supabase
+ * schema stubs (auth, extensions) and invokes the official Supabase CLI migration engine (supabase db push).
+ *
+ * Scope of Local Proof:
+ * - Proves declarative SQL syntax validity against PostgreSQL 18.
+ * - Proves execution of initial schema migration via official Supabase CLI migration runner.
+ * - Proves automated migration history recording in `supabase_migrations.schema_migrations`.
+ * - Proves all 11 core tables are created with Row-Level Security (RLS) enabled.
+ * - Proves migration script idempotency under both Supabase CLI and raw repeat execution.
+ *
+ * Explicit Boundary Limitation:
+ * - This local suite is a Supabase-compatible PostgreSQL simulation. It does NOT prove full compatibility
+ *   with managed Supabase cloud infrastructure (e.g., hosted GoTrue auth server, PostgREST internal routing,
+ *   managed Vault, or hosted extension catalogs).
+ * - Full hosted compatibility must be verified against the official Supabase local docker stack
+ *   (when Docker Desktop daemon is running) or a disposable remote staging project before production deployment.
  */
 
 const DB_PORT = 54321;
@@ -20,8 +33,15 @@ const FRESH_DB_NAME = "fresh_supabase_test";
 
 async function main() {
   console.log("==============================================================================");
-  console.log("ISHTI M02: FRESH SUPABASE DATABASE & MIGRATION VERIFICATION");
+  console.log("ISHTI M02: SUPABASE-COMPATIBLE SIMULATION & CLI MIGRATION VERIFICATION");
   console.log("==============================================================================\n");
+
+  const migrationFilePath = path.resolve(process.cwd(), "supabase/migrations/20261114000000_initial_schema.sql");
+  const migrationSql = fs.readFileSync(migrationFilePath, "utf8");
+  const migrationChecksum = crypto.createHash("sha256").update(migrationSql).digest("hex");
+
+  console.log(`Migration File:     supabase/migrations/20261114000000_initial_schema.sql`);
+  console.log(`Migration SHA-256:  ${migrationChecksum}\n`);
 
   const pgServer = new EmbeddedPostgres({
     port: DB_PORT,
@@ -29,11 +49,11 @@ async function main() {
     password: "password",
   });
 
-  console.log("[1/6] Initializing isolated native PostgreSQL server...");
+  console.log("[1/6] Initializing isolated native PostgreSQL server on port 54321...");
   await pgServer.start();
 
   // Step 1: Connect to maintenance database and recreate a completely fresh UTF-8 database
-  console.log(`[2/6] Provisioning clean test database '${FRESH_DB_NAME}' with UTF-8 encoding...`);
+  console.log(`[2/6] Provisioning clean simulation database '${FRESH_DB_NAME}' with UTF-8 encoding...`);
   const adminClient = new Client({
     host: "127.0.0.1",
     port: DB_PORT,
@@ -44,7 +64,6 @@ async function main() {
 
   await adminClient.connect();
   try {
-    // Terminate existing connections to fresh database if any
     await adminClient.query(`
       SELECT pg_terminate_backend(pid)
       FROM pg_stat_activity
@@ -56,8 +75,8 @@ async function main() {
     await adminClient.end();
   }
 
-  // Step 2: Connect to the fresh database and configure standard Supabase baseline environment
-  console.log("[3/6] Setting up Supabase baseline schemas (auth, extensions, supabase_migrations)...");
+  // Step 2: Connect to the fresh database and configure baseline Supabase extensions and auth stubs
+  console.log("[3/6] Configuring Supabase baseline stubs (auth, extensions, standard roles)...");
   const targetClient = new Client({
     host: "127.0.0.1",
     port: DB_PORT,
@@ -69,15 +88,11 @@ async function main() {
   await targetClient.connect();
 
   try {
-    // Standard Supabase Extensions Schema
     await targetClient.query(`
       CREATE SCHEMA IF NOT EXISTS extensions;
       CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
       CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
-    `);
 
-    // Standard Supabase Auth Schema & Stubs
-    await targetClient.query(`
       CREATE SCHEMA IF NOT EXISTS auth;
       CREATE TABLE IF NOT EXISTS auth.users (
         id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
@@ -98,55 +113,43 @@ async function main() {
 
       DO $$
       BEGIN
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN
-          CREATE ROLE anon NOLOGIN;
-        END IF;
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
-          CREATE ROLE authenticated NOLOGIN;
-        END IF;
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN
-          CREATE ROLE service_role NOLOGIN;
-        END IF;
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_admin') THEN
-          CREATE ROLE supabase_admin NOLOGIN;
-        END IF;
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-          CREATE ROLE supabase_auth_admin NOLOGIN;
-        END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_admin') THEN CREATE ROLE supabase_admin NOLOGIN; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN CREATE ROLE supabase_auth_admin NOLOGIN; END IF;
       END
       $$;
     `);
+  } finally {
+    await targetClient.end();
+  }
 
-    // Supabase CLI Migration History Tracking Schema
-    await targetClient.query(`
-      CREATE SCHEMA IF NOT EXISTS supabase_migrations;
-      CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (
-        version TEXT PRIMARY KEY,
-        statements TEXT[],
-        name TEXT
-      );
-    `);
+  // Step 3: Execute Official Supabase CLI db push runner
+  console.log("[4/6] Executing official Supabase CLI migration runner (supabase db push)...");
+  const cliPushStart = Date.now();
+  const dbUrl = `postgresql://postgres:password@127.0.0.1:${DB_PORT}/${FRESH_DB_NAME}`;
 
-    // Step 3: Apply the initial schema migration
-    console.log("[4/6] Applying migration '20261114000000_initial_schema.sql' to fresh database...");
-    const migrationFilePath = path.resolve(process.cwd(), "supabase/migrations/20261114000000_initial_schema.sql");
-    const migrationSql = fs.readFileSync(migrationFilePath, "utf8");
+  const cliOutputRaw = execSync(
+    `npx.cmd supabase db push --yes --include-all --remote="${dbUrl}"`,
+    { encoding: "utf8" }
+  );
+  const cliPushElapsed = Date.now() - cliPushStart;
+  console.log(`      ✓ Supabase CLI applied migration in ${cliPushElapsed}ms.`);
 
-    const migrationStart = Date.now();
-    await targetClient.query(migrationSql);
-    const migrationElapsed = Date.now() - migrationStart;
-    console.log(`      Migration applied successfully in ${migrationElapsed}ms.`);
+  // Step 4: Verify schema integrity, RLS configuration, and migration history recorded by Supabase CLI
+  console.log("[5/6] Verifying schema integrity, RLS configuration, and Supabase CLI history table...");
+  const verifyClient = new Client({
+    host: "127.0.0.1",
+    port: DB_PORT,
+    user: "postgres",
+    password: "password",
+    database: FRESH_DB_NAME,
+  });
 
-    // Record migration history
-    await targetClient.query(`
-      INSERT INTO supabase_migrations.schema_migrations (version, name)
-      VALUES ('20261114000000', 'initial_schema')
-      ON CONFLICT (version) DO NOTHING;
-    `);
+  await verifyClient.connect();
 
-    // Step 4: Verify schema integrity and Row-Level Security
-    console.log("[5/6] Verifying schema integrity, RLS configuration, and migration history...");
-
+  try {
     const expectedTables = [
       "profiles",
       "role_assignment_audit",
@@ -161,7 +164,7 @@ async function main() {
       "rate_limit_events",
     ];
 
-    const tablesRes = await targetClient.query(`
+    const tablesRes = await verifyClient.query(`
       SELECT tablename, rowsecurity
       FROM pg_tables
       WHERE schemaname = 'public';
@@ -182,34 +185,47 @@ async function main() {
       console.log(`      ✓ public.${expectedTable.padEnd(26)} [RLS ENABLED]`);
     }
 
-    // Verify migration history
-    const historyRes = await targetClient.query(`
+    // Verify migration history recorded by Supabase CLI runner (no manual row insertion)
+    const historyRes = await verifyClient.query(`
       SELECT version, name FROM supabase_migrations.schema_migrations;
     `);
     if (historyRes.rows.length !== 1 || historyRes.rows[0].version !== "20261114000000") {
       throw new Error(`Migration history tracking failure: expected version '20261114000000', got ${JSON.stringify(historyRes.rows)}`);
     }
-    console.log(`      ✓ supabase_migrations.schema_migrations recorded version: ${historyRes.rows[0].version} (${historyRes.rows[0].name})`);
+    console.log(`      ✓ supabase_migrations.schema_migrations automatically recorded: ${historyRes.rows[0].version} (${historyRes.rows[0].name})`);
 
-    // Step 5: Test Idempotency (re-running the exact migration on the same DB)
-    console.log("[6/6] Testing Migration Idempotency (Re-running migration script)...");
-    const idempotencyStart = Date.now();
-    await targetClient.query(migrationSql);
-    const idempotencyElapsed = Date.now() - idempotencyStart;
-    console.log(`      ✓ Migration script re-executed cleanly with 0 errors in ${idempotencyElapsed}ms (Idempotency Confirmed)`);
+    // Step 5: Test Idempotency under official Supabase CLI runner
+    console.log("[6/6] Testing Migration Idempotency via Supabase CLI repeat push...");
+    const repeatCliStart = Date.now();
+    const repeatOutputRaw = execSync(
+      `npx.cmd supabase db push --yes --include-all --remote="${dbUrl}"`,
+      { encoding: "utf8" }
+    );
+    const repeatCliElapsed = Date.now() - repeatCliStart;
+
+    if (!repeatOutputRaw.includes('"upToDate":true') && !repeatOutputRaw.includes("up to date")) {
+      throw new Error(`Supabase CLI repeat push failed idempotency check. Output: ${repeatOutputRaw}`);
+    }
+    console.log(`      ✓ Supabase CLI repeat push confirmed: "Remote database is up to date." in ${repeatCliElapsed}ms`);
+
+    // Step 6: Also verify raw script re-execution idempotency
+    await verifyClient.query(migrationSql);
+    console.log(`      ✓ Raw declarative SQL script re-executed cleanly with 0 errors (Idempotency Confirmed).`);
 
     console.log("\n==============================================================================");
-    console.log("FRESH SUPABASE DATABASE MIGRATION VERIFICATION: PASSED");
+    console.log("SUPABASE-COMPATIBLE SIMULATION MIGRATION VERIFICATION: PASSED");
     console.log("==============================================================================");
     console.log("Evidence Summary:");
-    console.log(`- Fresh Database:                   ${FRESH_DB_NAME} (UTF-8)`);
-    console.log(`- Supabase Baseline Schemas:        auth, extensions, supabase_migrations`);
+    console.log(`- Simulation Database:              ${FRESH_DB_NAME} (UTF-8, Native PostgreSQL 18.6)`);
+    console.log(`- Migration SHA-256:                ${migrationChecksum}`);
+    console.log(`- Migration Runner:                 Official Supabase CLI 3.1.0 (supabase db push)`);
     console.log(`- Tables Created & RLS Verified:    ${expectedTables.length}/11 tables`);
-    console.log(`- Migration History Version:        20261114000000`);
-    console.log(`- Idempotency Test:                 PASS (0 errors on repeat run)`);
+    console.log(`- CLI Migration History Version:    20261114000000`);
+    console.log(`- CLI Idempotency Check:            PASS ("Remote database is up to date")`);
+    console.log(`- Raw SQL Script Idempotency:       PASS (0 errors on repeat run)`);
     console.log("==============================================================================");
   } finally {
-    await targetClient.end();
+    await verifyClient.end();
     await pgServer.stop();
     console.log("Isolated PostgreSQL server stopped cleanly.");
   }
