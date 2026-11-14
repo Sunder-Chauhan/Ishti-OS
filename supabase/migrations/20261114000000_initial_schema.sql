@@ -240,6 +240,18 @@ BEGIN
     IF current_setting('ishti.authorized_role_assignment', true) IS DISTINCT FROM 'true' THEN
       RAISE EXCEPTION 'Direct role modification prohibited. Use assign_user_role().';
     END IF;
+
+    -- Multi-layer defense: Even if session setting was manipulated, non-admin / non-service callers are blocked
+    IF auth.uid() IS NOT NULL AND NOT public.is_admin() THEN
+      RAISE EXCEPTION 'Privilege escalation blocked: Non-administrative caller cannot modify user roles.';
+    END IF;
+
+    IF auth.uid() IS NULL AND COALESCE(auth.role(), 'anon') <> 'service_role' AND SESSION_USER NOT IN ('postgres', 'supabase_admin') THEN
+      RAISE EXCEPTION 'Privilege escalation blocked: Unauthorized backend session cannot modify user roles.';
+    END IF;
+
+    -- Reset authorization token immediately upon consumption to prevent reuse within the same transaction
+    PERFORM set_config('ishti.authorized_role_assignment', 'false', true);
   END IF;
 
   IF (NEW.is_verified IS DISTINCT FROM OLD.is_verified) THEN
@@ -740,12 +752,13 @@ BEGIN
     RAISE EXCEPTION 'Invalid window_seconds: must be between 1 and 86400';
   END IF;
 
-  IF p_identifier_hash IS NULL OR LENGTH(TRIM(p_identifier_hash)) < 16 THEN
-    RAISE EXCEPTION 'Invalid identifier_hash: must be a valid cryptographic digest';
+  IF p_identifier_hash IS NULL OR p_identifier_hash !~ '^[0-9a-fA-F]{16,64}$' THEN
+    RAISE EXCEPTION 'Invalid identifier_hash: must be a valid hexadecimal cryptographic digest between 16 and 64 characters';
   END IF;
 
-  -- 3. Acquire transaction-level advisory xact lock to serialize concurrent requests for this bucket + identifier
-  PERFORM pg_advisory_xact_lock(hashtext(p_bucket || ':' || p_identifier_hash));
+  -- 3. Acquire 64-bit transaction-level advisory xact lock to serialize concurrent requests for this bucket + identifier
+  -- Uses 64-bit bigint lock space via MD5 hex slice to eliminate 32-bit hashtext collisions across millions of keys
+  PERFORM pg_advisory_xact_lock(('x' || substr(md5(p_bucket || ':' || p_identifier_hash), 1, 16))::bit(64)::bigint);
 
   v_window_start := NOW() - (p_window_seconds || ' seconds')::INTERVAL;
 

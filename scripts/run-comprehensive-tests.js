@@ -139,9 +139,15 @@ async function main() {
     if (!sql.includes('CREATE OR REPLACE FUNCTION public.assign_user_role')) throw new Error('Missing assign_user_role function');
   });
 
-  runTest('static', 'Distributed Rate Limiting: Advisory lock and rate_limit_events table present', () => {
+  runTest('static', 'Distributed Rate Limiting: 64-bit advisory lock and hex validation present', () => {
     if (!sql.includes('CREATE TABLE IF NOT EXISTS public.rate_limit_events')) throw new Error('Missing rate_limit_events table');
     if (!sql.includes('pg_advisory_xact_lock')) throw new Error('Missing pg_advisory_xact_lock in check_rate_limit');
+    if (!sql.includes("('x' || substr(md5(p_bucket || ':' || p_identifier_hash), 1, 16))::bit(64)::bigint")) {
+      throw new Error('check_rate_limit does not use 64-bit MD5 bigint advisory lock');
+    }
+    if (!sql.includes("p_identifier_hash !~ '^[0-9a-fA-F]{16,64}$'")) {
+      throw new Error('check_rate_limit does not validate cryptographic hex digest format');
+    }
   });
 
   runTest('static', 'Scripture Provenance: Seed marked pending_peer_review and Griffith 1896 cited', () => {
@@ -267,6 +273,32 @@ async function main() {
       rejected = true;
     }
     if (!rejected) throw new Error('Coordinates ciphertext was accepted when decrypted as DOB');
+  });
+
+  runTest('unit', 'Context-Bound AAD: Delimiter injection attacks into userId or profileId are strictly rejected', () => {
+    let rejectedColonUser = false;
+    try {
+      buildKundliAad('user:attacker:injected', testProfileId, 'dob', 1);
+    } catch {
+      rejectedColonUser = true;
+    }
+    if (!rejectedColonUser) throw new Error('buildKundliAad accepted colon delimiter injection in userId');
+
+    let rejectedColonProfile = false;
+    try {
+      buildKundliAad(testUserId, 'profile:subprofile:dob', 'dob', 1);
+    } catch {
+      rejectedColonProfile = true;
+    }
+    if (!rejectedColonProfile) throw new Error('buildKundliAad accepted colon delimiter injection in profileId');
+
+    let rejectedInvalidVersion = false;
+    try {
+      buildKundliAad(testUserId, testProfileId, 'dob', 0);
+    } catch {
+      rejectedInvalidVersion = true;
+    }
+    if (!rejectedInvalidVersion) throw new Error('buildKundliAad accepted invalid keyVersion 0');
   });
 
   runTest('unit', 'Key Loading: Production mode requires explicit 32-byte key (No silent dev fallback)', () => {

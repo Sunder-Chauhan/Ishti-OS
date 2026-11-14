@@ -3,6 +3,14 @@ import { Pool, PoolClient } from "pg";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import Module from "node:module";
+
+// Allow test runner in CLI node environment to load server-only modules
+const originalRequire = (Module.prototype as any).require;
+(Module.prototype as any).require = function (id: string) {
+  if (id === "server-only") return {};
+  return originalRequire.apply(this, arguments);
+};
 
 /**
  * ISHTI Real PostgreSQL & Concurrency Verification Test Suite
@@ -140,14 +148,12 @@ async function main() {
         ('${scholarUserId}', 'scholar@ishti.test');
       `);
 
-      // Elevate admin, expert, scholar via superuser update for test baseline
-      // Use local authorized flag for direct test fixture setup
+      // Elevate admin, expert, scholar via trusted assign_user_role function
       await setupClient.query(`
-        SELECT set_config('ishti.authorized_role_assignment', 'true', false);
-        UPDATE public.profiles SET role = 'platform_admin' WHERE id = '${adminUserId}';
-        UPDATE public.profiles SET role = 'expert_pandit', is_verified = TRUE WHERE id = '${expertUserId}';
-        UPDATE public.profiles SET role = 'content_scholar', is_verified = TRUE WHERE id = '${scholarUserId}';
-        SELECT set_config('ishti.authorized_role_assignment', 'false', false);
+        SELECT public.assign_user_role('${adminUserId}', 'platform_admin', 'Initial test admin setup');
+        SELECT public.assign_user_role('${expertUserId}', 'expert_pandit', 'Initial test expert setup');
+        SELECT public.assign_user_role('${scholarUserId}', 'content_scholar', 'Initial test scholar setup');
+        UPDATE public.profiles SET is_verified = TRUE WHERE id IN ('${expertUserId}', '${scholarUserId}');
       `);
 
       // Create expert profile record for booking tests
@@ -199,7 +205,7 @@ async function main() {
         await setAuthSession(client, "anon");
         let threw = false;
         try {
-          await client.query("SELECT public.check_rate_limit('early_access', 'testhash1234567890', 5, 60);");
+          await client.query("SELECT public.check_rate_limit('early_access', '0123456789abcdef0123456789abcdef', 5, 60);");
         } catch (err: unknown) {
           threw = true;
           const msg = err instanceof Error ? err.message : String(err);
@@ -250,6 +256,29 @@ async function main() {
           }
         }
         if (!threw) throw new Error("Direct role update by devotee succeeded when it must fail");
+      } finally {
+        await resetAuthSession(client);
+        client.release();
+      }
+    });
+
+    await recordTest("REAL_DB_RLS", "Devotee cannot bypass trigger even if attempting session token spoofing", async () => {
+      const client = await pool.connect();
+      try {
+        await setAuthSession(client, "authenticated", devoteeUserAId);
+        let threw = false;
+        try {
+          // Attacker attempts to spoof transaction-local authorization setting
+          await client.query("SELECT set_config('ishti.authorized_role_assignment', 'true', false);");
+          await client.query(`UPDATE public.profiles SET role = 'platform_admin' WHERE id = '${devoteeUserAId}';`);
+        } catch (err: unknown) {
+          threw = true;
+          const msg = err instanceof Error ? err.message : String(err);
+          if (!msg.includes("Privilege escalation blocked")) {
+            throw new Error(`Expected privilege escalation blocked error, got: ${msg}`);
+          }
+        }
+        if (!threw) throw new Error("Devotee successfully elevated role via session token spoofing!");
       } finally {
         await resetAuthSession(client);
         client.release();
@@ -415,16 +444,52 @@ async function main() {
       }
     });
 
+    await recordTest("REAL_DB_KUNDLI", "Kundli AAD Delimiter Injection attack is rejected by application layer", async () => {
+      const { buildKundliAad } = await import("../apps/web/lib/crypto/kundli-encryption");
+      let threwColon = false;
+      try {
+        buildKundliAad("user_123:injected", "prof_456_valid", "dob", 1);
+      } catch (err: unknown) {
+        threwColon = true;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes("must be a valid UUID or alphanumeric identifier")) {
+          throw new Error(`Expected safe ID validation error, got: ${msg}`);
+        }
+      }
+      if (!threwColon) throw new Error("Delimiter injection attack with colons succeeded!");
+    });
+
     console.log("\n--- 4. RATE LIMITER CONCURRENCY & ADVISORY LOCK TESTS ---");
 
-    await recordTest("REAL_DB_CONCURRENCY", "Advisory lock serializes 20 concurrent requests (Exactly 5 pass, 15 fail)", async () => {
+    await recordTest("REAL_DB_CONCURRENCY", "Rate limiter rejects non-hex or malformed hash format", async () => {
+      const client = await pool.connect();
+      try {
+        let threw = false;
+        try {
+          await client.query(
+            "SELECT public.check_rate_limit('early_access', 'invalid_non_hex_digest!', 5, 60);"
+          );
+        } catch (err: unknown) {
+          threw = true;
+          const msg = err instanceof Error ? err.message : String(err);
+          if (!msg.includes("must be a valid hexadecimal cryptographic digest")) {
+            throw new Error(`Expected hex validation error, got: ${msg}`);
+          }
+        }
+        if (!threw) throw new Error("Malformed non-hex hash format was accepted by check_rate_limit");
+      } finally {
+        client.release();
+      }
+    });
+
+    await recordTest("REAL_DB_CONCURRENCY", "Advisory lock serializes 50 concurrent requests (Stress test: Exactly 10 pass, 40 fail)", async () => {
       const testBucket = "early_access";
-      const testHash = "concurrency_test_hash_" + crypto.randomBytes(8).toString("hex");
-      const maxLimit = 5;
+      const testHash = crypto.createHash("sha256").update("stress_50_" + crypto.randomBytes(8).toString("hex")).digest("hex");
+      const maxLimit = 10;
       const windowSeconds = 60;
 
-      // Fire 20 SIMULTANEOUS requests over 20 separate client connections using service_role authority
-      const concurrentRequests = Array.from({ length: 20 }, async () => {
+      // Fire 50 SIMULTANEOUS requests over pool connections using service_role authority
+      const concurrentRequests = Array.from({ length: 50 }, async () => {
         const client = await pool.connect();
         try {
           const res = await client.query(
@@ -441,15 +506,40 @@ async function main() {
       const passedCount = outcomes.filter((o) => o === true).length;
       const rejectedCount = outcomes.filter((o) => o === false).length;
 
-      console.log(`         [Concurrency Result] 20 concurrent calls -> Allowed: ${passedCount}, Rejected: ${rejectedCount}`);
+      console.log(`         [Stress Test Concurrency Result] 50 concurrent calls -> Allowed: ${passedCount}, Rejected: ${rejectedCount}`);
 
       if (passedCount !== maxLimit) {
         throw new Error(
           `Race condition detected: expected exactly ${maxLimit} allowed requests, but ${passedCount} passed!`
         );
       }
-      if (rejectedCount !== 15) {
-        throw new Error(`Expected 15 rejected requests, but got ${rejectedCount}`);
+      if (rejectedCount !== 40) {
+        throw new Error(`Expected 40 rejected requests, but got ${rejectedCount}`);
+      }
+    });
+
+    await recordTest("REAL_DB_CONCURRENCY", "Advisory lock boundary independence: distinct identifier hashes do not block each other", async () => {
+      const testBucket = "early_access";
+      const hashA = crypto.createHash("sha256").update("client_A_" + crypto.randomBytes(8).toString("hex")).digest("hex");
+      const hashB = crypto.createHash("sha256").update("client_B_" + crypto.randomBytes(8).toString("hex")).digest("hex");
+      const maxLimit = 1;
+      const windowSeconds = 60;
+
+      // Execute simultaneously for Hash A and Hash B
+      const clientA = await pool.connect();
+      const clientB = await pool.connect();
+      try {
+        const [resA, resB] = await Promise.all([
+          clientA.query("SELECT public.check_rate_limit($1, $2, $3, $4) as allowed;", [testBucket, hashA, maxLimit, windowSeconds]),
+          clientB.query("SELECT public.check_rate_limit($1, $2, $3, $4) as allowed;", [testBucket, hashB, maxLimit, windowSeconds]),
+        ]);
+
+        if (!resA.rows[0].allowed || !resB.rows[0].allowed) {
+          throw new Error("Independent identifiers blocked each other across advisory lock boundaries!");
+        }
+      } finally {
+        clientA.release();
+        clientB.release();
       }
     });
 
@@ -571,7 +661,43 @@ async function main() {
       }
     });
 
-    await recordTest("REAL_DB_SCRIPTURE", "Content scholar can view verses pending peer review", async () => {
+    await recordTest("REAL_DB_SCRIPTURE", "Devotee Full-Text Search (FTS) and aggregate COUNT(*) cannot leak unverified verses", async () => {
+      const client = await pool.connect();
+      try {
+        await setAuthSession(client, "authenticated", devoteeUserAId);
+
+        // FTS search attempt on verse content (Devanagari / IAST)
+        const ftsRes = await client.query(`
+          SELECT id FROM public.canonical_verses
+          WHERE fts @@ to_tsquery('simple', 'gacchadhvaṃ');
+        `);
+        if (ftsRes.rows.length !== 0) {
+          throw new Error(`FTS query leaked unverified verse to devotee! Rows: ${ftsRes.rows.length}`);
+        }
+
+        // Aggregate count attempt
+        const countRes = await client.query("SELECT COUNT(*) AS total FROM public.canonical_verses;");
+        if (parseInt(countRes.rows[0].total, 10) !== 0) {
+          throw new Error(`Aggregate COUNT query leaked unverified verse count to devotee! Total: ${countRes.rows[0].total}`);
+        }
+
+        // Join / subquery attempt
+        const joinRes = await client.query(`
+          SELECT profiles.id, verses.devanagari
+          FROM public.profiles
+          LEFT JOIN public.canonical_verses verses ON true
+          WHERE profiles.id = '${devoteeUserAId}';
+        `);
+        if (joinRes.rows.length !== 1 || joinRes.rows[0].devanagari !== null) {
+          throw new Error("Join leak allowed devotee to access unverified verse content!");
+        }
+      } finally {
+        await resetAuthSession(client);
+        client.release();
+      }
+    });
+
+    await recordTest("REAL_DB_SCRIPTURE", "Content scholar can view verses pending peer review and search via FTS", async () => {
       const client = await pool.connect();
       try {
         await setAuthSession(client, "authenticated", scholarUserId);
@@ -584,6 +710,15 @@ async function main() {
         }
         if (scholarRes.rows[0].rights_clearance_status !== "pending_clearance") {
           throw new Error(`Expected rights_clearance_status 'pending_clearance', got ${scholarRes.rows[0].rights_clearance_status}`);
+        }
+
+        // Scholar can also query via FTS
+        const scholarFtsRes = await client.query(`
+          SELECT id FROM public.canonical_verses
+          WHERE fts @@ to_tsquery('simple', 'gacchadhvaṃ');
+        `);
+        if (scholarFtsRes.rows.length !== 1) {
+          throw new Error("Scholar FTS query failed to locate pending verse!");
         }
       } finally {
         await resetAuthSession(client);

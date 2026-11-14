@@ -13,7 +13,8 @@
     "build:web": "npm run build --workspace @spiritual-os/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test:security": "npx tsx scripts/run-comprehensive-tests.js",
-    "test:real-db": "npx tsx scripts/run-real-postgres-tests.ts"
+    "test:real-db": "npx tsx scripts/run-real-postgres-tests.ts",
+    "test:fresh-migration": "npx tsx scripts/verify-fresh-supabase-migration.ts"
   },
   "engines": {
     "node": ">=22"

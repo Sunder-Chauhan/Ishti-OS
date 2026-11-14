@@ -73,8 +73,16 @@ export interface EncryptedKundliRecord {
 export const CURRENT_KEY_VERSION = 1;
 
 /**
+ * Strict regex for safe entity identifiers in Kundli AAD binding.
+ * Accepts standard UUIDs (RFC 4122) or safe alphanumeric slugs without delimiters.
+ * Strictly rejects colons, semicolons, slashes, null bytes, and whitespace to prevent AAD delimiter injection.
+ */
+export const SAFE_ID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$|^[a-zA-Z0-9_-]{8,64}$/;
+
+/**
  * Builds the canonical Additional Authenticated Data (AAD) for a specific Kundli field.
  * Cryptographically binds the ciphertext to the exact user, profile, field, table, and key version.
+ * Enforces strict identifier validation to completely neutralize AAD delimiter injection attacks.
  */
 export function buildKundliAad(
   userId: string,
@@ -82,16 +90,26 @@ export function buildKundliAad(
   fieldName: KundliEncryptedField,
   keyVersion: number
 ): Buffer {
-  if (!userId || typeof userId !== "string") {
-    throw new Error("userId is required for Kundli AAD binding.");
+  if (!userId || typeof userId !== "string" || !SAFE_ID_REGEX.test(userId.trim())) {
+    throw new Error(
+      "Invalid userId for Kundli AAD binding: must be a valid UUID or alphanumeric identifier without delimiters."
+    );
   }
-  if (!profileId || typeof profileId !== "string") {
-    throw new Error("profileId is required for Kundli AAD binding.");
+  if (!profileId || typeof profileId !== "string" || !SAFE_ID_REGEX.test(profileId.trim())) {
+    throw new Error(
+      "Invalid profileId for Kundli AAD binding: must be a valid UUID or alphanumeric identifier without delimiters."
+    );
   }
   if (!fieldName || !["dob", "tob", "coordinates"].includes(fieldName)) {
     throw new Error(`Invalid fieldName '${fieldName}' for Kundli AAD binding.`);
   }
-  return Buffer.from(`ishti:kundli_profiles:${userId}:${profileId}:${fieldName}:v${keyVersion}`, "utf8");
+  if (!Number.isInteger(keyVersion) || keyVersion < 1) {
+    throw new Error(`Invalid keyVersion '${keyVersion}' for Kundli AAD binding: must be a positive integer.`);
+  }
+  return Buffer.from(
+    `ishti:kundli_profiles:${userId.trim().toLowerCase()}:${profileId.trim().toLowerCase()}:${fieldName}:v${keyVersion}`,
+    "utf8"
+  );
 }
 
 /**
