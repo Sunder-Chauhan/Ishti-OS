@@ -22,11 +22,24 @@
 - [x] Transaction-Safe Booking Concurrency & Re-Booking Lifecycle Repair (Partial Unique Index)
 - [x] DPDP Act 2023 Consent Audit Logging Schema (`user_consents` §6 & §8(5) technical safeguards)
 - [x] Early Access Registration Server Action & Interactive Accessible Form (`EarlyAccessForm.tsx`)
-- [x] Comprehensive Test Suite (`npm run test:security` — 59 automated tests passed across static, unit, integration, real PostgreSQL 18 & concurrency)
-- [ ] Remote Database Migration Execution (Pending user approval & DB credentials / SQL Editor run)
-- [ ] Phone OTP / SMS Gateway Configuration (Twilio / Gupshup / MSG91)
+- [x] Comprehensive Test Suite (`npm run test:security` — 82 automated tests passed across static, unit, integration, real PostgreSQL 18 & concurrency)
+- [x] Milestone M02 Security Sign-off: STAGING READY (Authenticated proxy provenance, anti-spoofing, and 100% test pass rate)
+
+## M03 — Staging Deployment & Integration Validation
+- [x] Repository audit & HEAD baseline verification (`95ce7a0`)
+- [x] Environment variable taxonomy & template documented ([.env.example](file:///C:/Users/as/Documents/GitHub/spiritual-OS/.env.example))
+- [x] Hosting & proxy topology evaluation (Vercel, Cloudflare Edge, NGINX / ALB in private subnet)
+- [x] Reverse-proxy and Cloudflare origin protection verification ([docs/TRUSTED_PROXY_POLICY.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/TRUSTED_PROXY_POLICY.md))
+- [x] Staging Supabase prerequisites, verification matrix & rollback procedure ([docs/M03_STAGING_DEPLOYMENT_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_STAGING_DEPLOYMENT_REPORT.md))
+- [x] Fresh database simulation via Supabase CLI 3.1.0 (`npm run test:fresh-migration`)
+- [ ] Provision separate disposable Supabase staging project (strict constraint: NOT `zxwkfnvmmxoojewhvsdc`)
+- [ ] Obtain user authorization & execute remote migration on staging database
+- [ ] Verify 11 tables, RLS policies, triggers, and partial indexes on remote staging
+- [ ] Deploy web application to staging environment and verify end-to-end workflows (Auth, RLS, Kundli, Booking)
+- [ ] Configure and test sandbox integrations (Twilio SMS OTP sandbox, Razorpay test mode)
+- [ ] Achieve final staging validation status (`STAGING VALIDATED`)
 
 ## Next priorities
-1. Execute `20261114000000_initial_schema.sql` migration against live Supabase project upon approval.
-2. Configure Supabase Phone OTP provider (Twilio or Indian SMS aggregator) in Supabase dashboard.
-3. Ingest first verified canonical scripture corpus tranche (Rigveda 10.191 Samjnana Sukta & Isha Upanishad).
+1. Await user provisioning of separate Supabase staging project reference and explicit migration approval.
+2. Execute remote migration against staging database upon authorization.
+3. Validate staging deployment and authenticate real user flows against live GoTrue and database services.
