@@ -62,6 +62,7 @@ export interface ExtractClientIpOptions {
   strategy?: TrustedProxyStrategy;
   trustedHops?: number;
   edgeSecret?: string;
+  proxySecret?: string;
   originProtected?: boolean;
   trustRealIp?: boolean;
 }
@@ -179,6 +180,62 @@ export function extractClientIp(
   }
 
   if (strategy === "reverse_proxy") {
+    // CRITICAL SECURITY ENFORCEMENT:
+    // Hop counting and X-Real-IP parsing only select an IP address from incoming headers;
+    // they do NOT independently establish that the connecting peer is an authentic trusted proxy!
+    // Direct-origin attackers can easily supply arbitrary X-Forwarded-For chains (with any number of hops)
+    // or forged X-Real-IP headers directly to an exposed origin.
+    //
+    // Therefore, reverse proxy provenance MUST be authenticated via:
+    // 1. Authenticated Shared Proxy Secret (REVERSE_PROXY_SHARED_SECRET):
+    //    The reverse proxy (NGINX, AWS ALB, Ingress) injects a secret header (x-ishti-proxy-secret)
+    //    that only the proxy and origin know.
+    // 2. Infrastructure-Enforced Network Isolation (REVERSE_PROXY_ORIGIN_PROTECTED=true):
+    //    The origin server is physically isolated inside a private VPC/subnet or behind a firewall
+    //    where direct ingress from the public internet is completely blocked.
+    //
+    // In production, if neither proxy secret nor origin protection is established,
+    // the request provenance is UNTRUSTED and extractClientIp strictly returns null!
+
+    if (process.env.NODE_ENV === "production") {
+      const proxySecret = options?.proxySecret ?? process.env.REVERSE_PROXY_SHARED_SECRET;
+      const isOriginProtected =
+        options?.originProtected !== undefined
+          ? options.originProtected
+          : process.env.REVERSE_PROXY_ORIGIN_PROTECTED === "true";
+
+      if (proxySecret) {
+        const incomingSecret =
+          headers.get("x-ishti-proxy-secret") ||
+          headers.get("x-forwarded-secret");
+        if (!incomingSecret || incomingSecret !== proxySecret) {
+          // Missing or mismatched proxy secret -> untrusted connecting peer / direct origin injection
+          return null;
+        }
+      } else if (!isOriginProtected) {
+        // Neither proxy secret nor network isolation is established in production.
+        // Direct origin traffic cannot be distinguished from reverse proxy traffic.
+        // Fail closed immediately!
+        return null;
+      }
+    } else {
+      // In non-production environments:
+      // If a proxySecret is provided in options or environment, enforce it.
+      const proxySecret = options?.proxySecret ?? process.env.REVERSE_PROXY_SHARED_SECRET;
+      if (proxySecret) {
+        const incomingSecret =
+          headers.get("x-ishti-proxy-secret") ||
+          headers.get("x-forwarded-secret");
+        if (!incomingSecret || incomingSecret !== proxySecret) {
+          return null;
+        }
+      } else if (options?.originProtected === false) {
+        // Explicitly unauthenticated in test options
+        return null;
+      }
+    }
+
+    // Now that reverse proxy provenance has been authenticated:
     // 1. Check x-real-ip set by trusted reverse proxy if explicitly trusted
     const trustRealIp =
       options?.trustRealIp !== undefined
@@ -307,9 +364,17 @@ export async function checkRateLimit(
     throw new Error(`Unknown rate limit bucket: ${bucketKey}`);
   }
 
-  let rawIdentifier: string | null = identifierOverride || null;
+  let rawIdentifier: string | null = null;
 
-  if (!rawIdentifier) {
+  // Rate Limiting Identity Model:
+  // - If identifierOverride is supplied, it MUST be non-empty and derived server-side from verified data
+  //   (e.g., authenticated auth.uid() from verified session JWT or normalized phone number).
+  // - Clients cannot directly supply or forge identifierOverride.
+  // - If not supplied (standard anonymous / unauthenticated flow), rate limiter extracts client IP
+  //   using strict deployment-aware trusted proxy provenance.
+  if (identifierOverride && typeof identifierOverride === "string" && identifierOverride.trim().length > 0) {
+    rawIdentifier = identifierOverride.trim();
+  } else {
     const extracted = extractClientIp(headers);
     if (!extracted) {
       // In production, NEVER silently substitute 127.0.0.1 for an unknown/untrusted client.

@@ -326,10 +326,10 @@ async function main() {
   });
 
   // ----------------------------------------------------------------------------
-  // TRUSTED PROXY PROVENANCE & RATE LIMITER (10 SPECIFIC TESTS)
+  // CLOUDFLARE, DIRECT ORIGIN & IP SYNTAX (5 TESTS)
   // ----------------------------------------------------------------------------
 
-  runTest('unit', 'Trusted Proxy (1/10): Spoofed cf-connecting-ip without origin protection is rejected in production', () => {
+  runTest('unit', 'Cloudflare Provenance (1/5): Spoofed cf-connecting-ip without origin protection is rejected in production', () => {
     const originalEnv = process.env.NODE_ENV;
     const originalSecret = process.env.CLOUDFLARE_EDGE_SECRET;
     const originalProtected = process.env.CLOUDFLARE_ORIGIN_PROTECTED;
@@ -368,7 +368,7 @@ async function main() {
     }
   });
 
-  runTest('unit', 'Trusted Proxy (2/10): Spoofed cf-ray alone without origin protection is rejected in production', () => {
+  runTest('unit', 'Cloudflare Provenance (2/5): Spoofed cf-ray alone without origin protection is rejected in production', () => {
     const originalEnv = process.env.NODE_ENV;
     const originalSecret = process.env.CLOUDFLARE_EDGE_SECRET;
     const originalProtected = process.env.CLOUDFLARE_ORIGIN_PROTECTED;
@@ -420,7 +420,7 @@ async function main() {
     }
   });
 
-  runTest('unit', 'Trusted Proxy (3/10): Direct-origin requests ignore all forwarded headers', () => {
+  runTest('unit', 'Direct Origin (3/5): Direct-origin requests ignore all forwarded headers', () => {
     const originalEnv = process.env.NODE_ENV;
     try {
       const spoofedHeaders = {
@@ -453,7 +453,7 @@ async function main() {
     }
   });
 
-  runTest('unit', 'Trusted Proxy (4/10): Malformed IP addresses are strictly rejected', () => {
+  runTest('unit', 'IP Validation (4/5): Malformed IP addresses are strictly rejected', () => {
     const malformedIps = [
       '999.999.999.999',
       '256.1.1.1',
@@ -476,7 +476,7 @@ async function main() {
     }
   });
 
-  runTest('unit', 'Trusted Proxy (5/10): IPv4 and IPv6 syntax validation and extraction', () => {
+  runTest('unit', 'IP Validation (5/5): IPv4 and IPv6 syntax validation and extraction', () => {
     const validIpv4 = '203.0.113.195';
     const validIpv6Full = '2001:0db8:85a3:0000:0000:8a2e:0370:7334';
     const validIpv6Loopback = '::1';
@@ -513,50 +513,235 @@ async function main() {
     }
   });
 
-  runTest('unit', 'Trusted Proxy (6/10): Multiple x-forwarded-for hops right-to-left parsing', () => {
+  // ----------------------------------------------------------------------------
+  // REVERSE PROXY PROVENANCE & ANTI-SPOOFING (8 DEDICATED REGRESSION TESTS)
+  // ----------------------------------------------------------------------------
+
+  runTest('unit', 'Reverse Proxy (1/8): Direct-origin request with forged X-Forwarded-For chain is rejected in production', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.REVERSE_PROXY_SHARED_SECRET;
+    const originalProtected = process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.REVERSE_PROXY_SHARED_SECRET;
+      delete process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+
+      const forgedHeaders = {
+        get: (h) => (h === 'x-forwarded-for' ? '203.0.113.195, 198.51.100.2' : null),
+      };
+      if (extractClientIp(forgedHeaders, 'reverse_proxy') !== null) {
+        throw new Error('Accepted forged X-Forwarded-For chain without proxy provenance in production');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalSecret) process.env.REVERSE_PROXY_SHARED_SECRET = originalSecret;
+      else delete process.env.REVERSE_PROXY_SHARED_SECRET;
+      if (originalProtected) process.env.REVERSE_PROXY_ORIGIN_PROTECTED = originalProtected;
+      else delete process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+    }
+  });
+
+  runTest('unit', 'Reverse Proxy (2/8): Direct-origin attacker supplying 5 fake hops is rejected without proxy authentication', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.REVERSE_PROXY_SHARED_SECRET;
+    const originalProtected = process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.REVERSE_PROXY_SHARED_SECRET;
+      delete process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+
+      // Attacker sends 5 fake hops directly to origin
+      const attackerFakeHops = {
+        get: (h) => (h === 'x-forwarded-for' ? '10.1.1.1, 10.1.1.2, 10.1.1.3, 10.1.1.4, 10.1.1.5' : null),
+      };
+      // Even if trustedHops is set to 2, without proxy provenance it must fail
+      if (extractClientIp(attackerFakeHops, { strategy: 'reverse_proxy', trustedHops: 2 }) !== null) {
+        throw new Error('Accepted attacker fake hops because chain was sufficiently long');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalSecret) process.env.REVERSE_PROXY_SHARED_SECRET = originalSecret;
+      else delete process.env.REVERSE_PROXY_SHARED_SECRET;
+      if (originalProtected) process.env.REVERSE_PROXY_ORIGIN_PROTECTED = originalProtected;
+      else delete process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+    }
+  });
+
+  runTest('unit', 'Reverse Proxy (3/8): X-Real-IP spoofing is rejected when origin is not protected', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.REVERSE_PROXY_SHARED_SECRET;
+    const originalProtected = process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.REVERSE_PROXY_SHARED_SECRET;
+      delete process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+
+      const spoofedRealIpHeaders = {
+        get: (h) => (h === 'x-real-ip' ? '198.51.100.88' : null),
+      };
+      if (extractClientIp(spoofedRealIpHeaders, { strategy: 'reverse_proxy', trustRealIp: true }) !== null) {
+        throw new Error('Accepted spoofed X-Real-IP without origin protection in production');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalSecret) process.env.REVERSE_PROXY_SHARED_SECRET = originalSecret;
+      else delete process.env.REVERSE_PROXY_SHARED_SECRET;
+      if (originalProtected) process.env.REVERSE_PROXY_ORIGIN_PROTECTED = originalProtected;
+      else delete process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+    }
+  });
+
+  runTest('unit', 'Reverse Proxy (4/8): Reverse proxy with shared proxy secret authenticates provenance', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.REVERSE_PROXY_SHARED_SECRET;
+    try {
+      process.env.NODE_ENV = 'production';
+      process.env.REVERSE_PROXY_SHARED_SECRET = 'ishti-nginx-proxy-shared-secret-32b';
+
+      const validProxyHeaders = {
+        get: (h) =>
+          h === 'x-forwarded-for'
+            ? '203.0.113.195, 10.0.0.1'
+            : h === 'x-ishti-proxy-secret'
+            ? 'ishti-nginx-proxy-shared-secret-32b'
+            : null,
+      };
+      if (extractClientIp(validProxyHeaders, { strategy: 'reverse_proxy', trustedHops: 1 }) !== '10.0.0.1') {
+        throw new Error('Failed to extract client IP under valid proxy shared secret');
+      }
+
+      // Also verify X-Real-IP extraction under valid proxy secret
+      const validRealIpHeaders = {
+        get: (h) =>
+          h === 'x-real-ip'
+            ? '198.51.100.88'
+            : h === 'x-ishti-proxy-secret'
+            ? 'ishti-nginx-proxy-shared-secret-32b'
+            : null,
+      };
+      if (extractClientIp(validRealIpHeaders, { strategy: 'reverse_proxy', trustRealIp: true }) !== '198.51.100.88') {
+        throw new Error('Failed to extract X-Real-IP under valid proxy shared secret');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalSecret) process.env.REVERSE_PROXY_SHARED_SECRET = originalSecret;
+      else delete process.env.REVERSE_PROXY_SHARED_SECRET;
+    }
+  });
+
+  runTest('unit', 'Reverse Proxy (5/8): Missing or malformed proxy secret is rejected in production', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.REVERSE_PROXY_SHARED_SECRET;
+    try {
+      process.env.NODE_ENV = 'production';
+      process.env.REVERSE_PROXY_SHARED_SECRET = 'ishti-nginx-proxy-shared-secret-32b';
+
+      // Missing secret header
+      const missingSecretHeaders = {
+        get: (h) => (h === 'x-forwarded-for' ? '203.0.113.195, 10.0.0.1' : null),
+      };
+      if (extractClientIp(missingSecretHeaders, 'reverse_proxy') !== null) {
+        throw new Error('Accepted request with missing proxy secret');
+      }
+
+      // Mismatched secret header
+      const wrongSecretHeaders = {
+        get: (h) =>
+          h === 'x-forwarded-for'
+            ? '203.0.113.195, 10.0.0.1'
+            : h === 'x-ishti-proxy-secret'
+            ? 'attacker-guessing-secret'
+            : null,
+      };
+      if (extractClientIp(wrongSecretHeaders, 'reverse_proxy') !== null) {
+        throw new Error('Accepted request with mismatched proxy secret');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalSecret) process.env.REVERSE_PROXY_SHARED_SECRET = originalSecret;
+      else delete process.env.REVERSE_PROXY_SHARED_SECRET;
+    }
+  });
+
+  runTest('unit', 'Reverse Proxy (6/8): Reverse proxy with network origin isolation authenticates provenance', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalProtected = process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+    try {
+      process.env.NODE_ENV = 'production';
+      process.env.REVERSE_PROXY_ORIGIN_PROTECTED = 'true';
+
+      const validIsolatedHeaders = {
+        get: (h) => (h === 'x-forwarded-for' ? '203.0.113.50, 10.0.0.1' : null),
+      };
+      if (extractClientIp(validIsolatedHeaders, { strategy: 'reverse_proxy', trustedHops: 2 }) !== '203.0.113.50') {
+        throw new Error('Failed to extract client IP under verified network isolation');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalProtected) process.env.REVERSE_PROXY_ORIGIN_PROTECTED = originalProtected;
+      else delete process.env.REVERSE_PROXY_ORIGIN_PROTECTED;
+    }
+  });
+
+  runTest('unit', 'Reverse Proxy (7/8): Right-to-left hop parsing resolves correct client hop under verified provenance', () => {
     const xffChain = '203.0.113.50, 198.51.100.25, 10.0.0.1';
     const headers = { get: (h) => (h === 'x-forwarded-for' ? xffChain : null) };
 
-    if (extractClientIp(headers, { strategy: 'reverse_proxy', trustedHops: 1 }) !== '10.0.0.1') {
+    if (extractClientIp(headers, { strategy: 'reverse_proxy', trustedHops: 1, originProtected: true }) !== '10.0.0.1') {
       throw new Error('Failed to extract correct IP for trustedHops = 1');
     }
-
-    if (extractClientIp(headers, { strategy: 'reverse_proxy', trustedHops: 2 }) !== '198.51.100.25') {
+    if (extractClientIp(headers, { strategy: 'reverse_proxy', trustedHops: 2, originProtected: true }) !== '198.51.100.25') {
       throw new Error('Failed to extract correct IP for trustedHops = 2');
     }
-
-    if (extractClientIp(headers, { strategy: 'reverse_proxy', trustedHops: 3 }) !== '203.0.113.50') {
+    if (extractClientIp(headers, { strategy: 'reverse_proxy', trustedHops: 3, originProtected: true }) !== '203.0.113.50') {
       throw new Error('Failed to extract correct IP for trustedHops = 3');
     }
   });
 
-  runTest('unit', 'Trusted Proxy (7/10): Trusted and untrusted reverse proxies and chain truncation', () => {
+  runTest('unit', 'Reverse Proxy (8/8): Chain truncation and malformed hops are rejected under verified provenance', () => {
+    // Chain shorter than trustedHops count
     const truncatedHeaders = {
       get: (h) => (h === 'x-forwarded-for' ? '198.51.100.25, 10.0.0.1' : null),
     };
-    if (extractClientIp(truncatedHeaders, { strategy: 'reverse_proxy', trustedHops: 3 }) !== null) {
+    if (extractClientIp(truncatedHeaders, { strategy: 'reverse_proxy', trustedHops: 3, originProtected: true }) !== null) {
       throw new Error('Accepted truncated X-Forwarded-For chain with fewer hops than trusted count');
     }
 
+    // Malformed IP at target hop
     const malformedHopHeaders = {
       get: (h) => (h === 'x-forwarded-for' ? 'bad-ip-string, 10.0.0.1' : null),
     };
-    if (extractClientIp(malformedHopHeaders, { strategy: 'reverse_proxy', trustedHops: 2 }) !== null) {
+    if (extractClientIp(malformedHopHeaders, { strategy: 'reverse_proxy', trustedHops: 2, originProtected: true }) !== null) {
       throw new Error('Accepted malformed IP at target hop in X-Forwarded-For chain');
-    }
-
-    const realIpHeaders = {
-      get: (h) => (h === 'x-real-ip' ? '198.51.100.88' : null),
-    };
-    if (extractClientIp(realIpHeaders, { strategy: 'reverse_proxy', trustRealIp: true }) !== '198.51.100.88') {
-      throw new Error('Failed to extract X-Real-IP when trustRealIp is true');
-    }
-    if (extractClientIp(realIpHeaders, { strategy: 'reverse_proxy', trustRealIp: false }) !== null) {
-      throw new Error('X-Real-IP was extracted even when trustRealIp is false');
     }
   });
 
-  runTest('unit', 'Trusted Proxy (8/10): Missing client IP returns null in production', () => {
+  // ----------------------------------------------------------------------------
+  // FAIL-CLOSED RATE LIMITING ACROSS ALL SENSITIVE BUCKETS
+  // ----------------------------------------------------------------------------
+
+  const sensitiveBuckets = ['early_access', 'auth_otp', 'kundli_decrypt', 'booking_request'];
+  for (const bucketKey of sensitiveBuckets) {
+    await runAsyncTest('unit', `Fail-Closed Security: Bucket '${bucketKey}' rejects untrusted proxy provenance in production`, async () => {
+      const originalEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = 'production';
+        const emptyHeaders = { get: () => null };
+        const result = await checkRateLimit(emptyHeaders, bucketKey);
+        if (result.allowed !== false || result.reason !== 'UNTRUSTED_PROXY_PROVENANCE') {
+          throw new Error(`Bucket '${bucketKey}' failed to fail closed: ${JSON.stringify(result)}`);
+        }
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
+  }
+
+  // ----------------------------------------------------------------------------
+  // MISSING CLIENT IP, LOOPBACK & SECRETS ENFORCEMENT
+  // ----------------------------------------------------------------------------
+
+  runTest('unit', 'Missing Client IP: Returns null across all strategies in production', () => {
     const originalEnv = process.env.NODE_ENV;
     try {
       process.env.NODE_ENV = 'production';
@@ -579,21 +764,7 @@ async function main() {
     }
   });
 
-  await runAsyncTest('unit', 'Trusted Proxy (9/10): Production fail-closed behavior in checkRateLimit', async () => {
-    const originalEnv = process.env.NODE_ENV;
-    try {
-      process.env.NODE_ENV = 'production';
-      const emptyHeaders = { get: () => null };
-      const result = await checkRateLimit(emptyHeaders, 'early_access');
-      if (result.allowed !== false || result.reason !== 'UNTRUSTED_PROXY_PROVENANCE') {
-        throw new Error(`Expected fail-closed UNTRUSTED_PROXY_PROVENANCE, got: ${JSON.stringify(result)}`);
-      }
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-    }
-  });
-
-  runTest('unit', 'Trusted Proxy (10/10): Development behavior provides safe local loopback', () => {
+  runTest('unit', 'Development Loopback: Direct origin returns safe 127.0.0.1 for local offline workflow', () => {
     const originalEnv = process.env.NODE_ENV;
     try {
       process.env.NODE_ENV = 'development';
