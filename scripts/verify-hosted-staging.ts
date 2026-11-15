@@ -165,17 +165,44 @@ async function verifyHostedStaging(): Promise<boolean> {
       liveFuncs.set(row.proname, { secdef: row.prosecdef, config: row.proconfig || [] });
     }
 
+    // Canonical privileged functions requiring SECURITY DEFINER + explicit search_path
+    const EXPECTED_SECDEF_FUNCTIONS = new Set([
+      "assign_user_role",
+      "check_rate_limit",
+      "cleanup_rate_limit_events",
+      "enforce_booking_update_integrity",
+      "enforce_expert_integrity",
+      "enforce_profile_update_integrity",
+      "handle_new_user",
+      "is_admin",
+      "is_scholar",
+      "prevent_audit_log_tampering",
+      "validate_and_reserve_booking_slot",
+    ]);
+
     for (const f of EXPECTED_FUNCTIONS) {
       const funcInfo = liveFuncs.get(f);
       const exists = !!funcInfo;
+      const shouldBeSecDef = EXPECTED_SECDEF_FUNCTIONS.has(f);
       const secdef = funcInfo?.secdef === true;
       const hasSearchPath = (funcInfo?.config || []).some((c) => c.toLowerCase().includes("search_path"));
-      record(
-        "FUNCTIONS",
-        `public.${f}()`,
-        exists && secdef && hasSearchPath,
-        !exists ? "MISSING" : `SECURITY DEFINER: ${secdef}, search_path: ${hasSearchPath}`
-      );
+
+      let passed = false;
+      let detail = "";
+
+      if (!exists) {
+        passed = false;
+        detail = "MISSING FUNCTION";
+      } else if (shouldBeSecDef) {
+        passed = secdef && hasSearchPath;
+        detail = `SECURITY DEFINER: ${secdef}, search_path: ${hasSearchPath}`;
+      } else {
+        // Unprivileged validation triggers (e.g. validate_kundli_ciphertext_payload) must NOT elevate privileges
+        passed = !secdef;
+        detail = `SECURITY INVOKER (Unprivileged data-validation trigger): ${!secdef}`;
+      }
+
+      record("FUNCTIONS", `public.${f}()`, passed, detail);
     }
 
     // --------------------------------------------------------------------------
