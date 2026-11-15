@@ -134,7 +134,7 @@
 - [x] Deliverable authored ([docs/M03_2_5_GATE_A_DNS_FAILURE_INVESTIGATION.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_5_GATE_A_DNS_FAILURE_INVESTIGATION.md))
 - [x] Operator configured `STAGING_DATABASE_URL` to Mumbai Session Pooler (`aws-0-ap-south-1.pooler.supabase.com:5432`)
 
-## M03.3 — Gate A Backup Completion & Gate B Pre-Reconciliation Safety Audit
+## M03.3 — Gate A Backup Completion & Gate B Schema Reconciliation
 - [x] Gate A 3-pass logical backup executed against hosted staging (`zrjptpkhtklfgnovdrny`) via Mumbai session pooler
 - [x] Artifact integrity verified: schema DDL (61,444 B), table data (6,420 B), cluster roles (297 B), and metadata manifest (1,518 B)
 - [x] Cryptographic SHA-256 parity and non-zero sizes confirmed via `scripts/backup-staging.ts --verify` (exit code 0)
@@ -144,7 +144,10 @@
 - [x] Canonical migration file checksum verified (`supabase/migrations/20261114000000_initial_schema.sql` -> SHA-256 `3399a731...`)
 - [x] Reconciliation script code audit completed (`scripts/reconcile-staging-schema.ts`: atomic `BEGIN ... COMMIT`, postconditions in `pg_policies`, automatic `ROLLBACK`, zero table/column/seed drops)
 - [x] Gate B Pre-Reconciliation Safety Audit deliverable authored ([docs/M03_3_GATE_B_PRE_RECONCILIATION_AUDIT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_3_GATE_B_PRE_RECONCILIATION_AUDIT.md))
-- [x] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation received ("I explicitly authorize Gate B only.")
+- [x] Operator explicit approval for Gate B received ("I explicitly authorize Gate B only.")
+- [x] Gate B live schema reconciliation executed and verified: all 31 RLS policies synchronized, scholar policies strictly scoped `TO authenticated`, privileged functions (`is_scholar`, `is_admin`) hardened with `EXECUTE` revoked from `PUBLIC` and `anon`, and migration version `20261114000000` registered in `supabase_migrations.schema_migrations`
+- [x] Remote migration tracking parity verified via `supabase migration list --remote` (`20261114000000` registered locally and remotely)
+- [x] Gate B Completion Report deliverable authored ([docs/M03_3_GATE_B_COMPLETION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_3_GATE_B_COMPLETION_REPORT.md))
 - [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard (Gate C prerequisite)
 - [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
 
@@ -168,14 +171,14 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.3 — GATE B AUTHORIZED / RECONCILIATION IN PROGRESS`
+- **Status:** `M03.3 — GATE B COMPLETE / GATE C LOCKED (AWAITING INC-01 RESOLUTION)`
 - **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
 - **Active Recovery Point:** `staging_backup_2026-11-15T18-54-57-175Z.meta.json` (Verified 100% SHA-256 and size parity)
 - **Canonical Migration:** `20261114000000_initial_schema.sql` (SHA-256 `3399a731...` verified)
-- **Gate B Reconciliation Scope:**
-  1. Synchronize all 31 RLS policies via atomic transaction.
-  2. Scope scholar policies on `scripture_catalog` and `canonical_verses` strictly `TO authenticated`.
-  3. Verify execution privilege on `public.is_scholar()` is revoked from `PUBLIC` and `anon`.
-  4. Register migration version `20261114000000` in `supabase_migrations.schema_migrations`.
+- **Gate B Reconciliation Results:**
+  1. All 31 RLS policies synchronized and postcondition verified in `pg_policies`.
+  2. Scholar policies on `scripture_catalog` and `canonical_verses` strictly scoped `TO authenticated`.
+  3. Privileged functions `public.is_scholar()` and `public.is_admin()` have `EXECUTE` revoked from `PUBLIC` and `anon`.
+  4. Migration version `20261114000000` registered in `supabase_migrations.schema_migrations` with 100% remote parity.
 - **Restrictions:** Production strictly quarantined. Gate C strictly locked. Zero table/column/seed modifications.
-- **Action Required:** Execute Gate B transactional schema reconciliation against staging.
+- **Action Required:** Operator dashboard rotation of compromised Razorpay sandbox key (`INC-01`) prior to requesting Gate C authorization.

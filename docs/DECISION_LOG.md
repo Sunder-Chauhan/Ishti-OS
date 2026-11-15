@@ -229,3 +229,26 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Updated `docs/RISK_REGISTER.md` with incident tracking (`INC-01` and `INC-02`)
      - Updated `docs/PROJECT_TRACKER.md` and `docs/DECISION_LOG.md`
 - **Final Gate Status:** `M03.2.4 — CONDITIONALLY READY (PASSWORD ROTATION NOT CONFIRMED)`. Zero live backups or remote mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.
+
+
+## 2026-11-16: ADR-016 — Milestone M03.3: Execution & Verification of Gate A Backup and Gate B Staging Schema Reconciliation
+- **Context:** Following operator authorization of Gate A ("I explicitly authorize Gate A only") and Gate B ("I explicitly authorize Gate B only"), operational execution was carried out against hosted staging project `zrjptpkhtklfgnovdrny` using the Supabase Mumbai Session Pooler (`aws-0-ap-south-1.pooler.supabase.com:5432`).
+- **Decision:**
+  1. **Gate A Hosted Backup Execution:** Generated a complete 3-pass logical backup (`staging_schema_*.sql`, `staging_data_*.sql`, `staging_roles_*.sql`, `staging_backup_*.meta.json`) under `supabase/backups/`. Verified 100% SHA-256 and size parity via `scripts/backup-staging.ts --verify`. Verified Windows ACL restrictions (SYSTEM and operator `as` only). Enforced governance prohibition against restoring `staging_roles_*.sql` into hosted Supabase.
+  2. **Gate B Pre-Reconciliation Audit:** Audited reconciliation script `scripts/reconcile-staging-schema.ts`. Verified canonical migration hash (`3399a731...`). Verified the 32nd `DROP POLICY IF EXISTS` statement on `public.profiles` (`"Public can view verified expert profiles"`) as an intentional and safe security drop.
+  3. **Runtime Role Parser & Privilege Hardening Remediations:**
+     - Resolved `TypeError: (live.roles || []).map is not a function` by implementing `normalizeRoles()` for PostgreSQL `name[]` string deserialization.
+     - Resolved function privilege violation by explicitly executing `REVOKE ALL ON FUNCTION ... FROM PUBLIC, anon` and `GRANT EXECUTE ... TO authenticated, service_role` for `public.is_scholar()` and `public.is_admin()`.
+  4. **Gate B Hosted Reconciliation Execution & Remote Parity:**
+     - Synchronized all 31 RLS policies via single atomic transaction.
+     - Verified postconditions in `pg_policies`: all 31 policies match canonical definitions, commands, and roles (`TO authenticated` on scholar policies).
+     - Verified routine privileges in `information_schema.routine_privileges`: `is_scholar()` and `is_admin()` execution restricted strictly from `PUBLIC` and `anon`.
+     - Registered migration version `20261114000000` in `supabase_migrations.schema_migrations`.
+     - Confirmed Supabase CLI remote parity: `supabase migration list --remote` reports version `20261114000000` present both locally and remotely.
+  5. **Non-Destructive Invariant:** Zero tables dropped, zero columns altered, seed records in `scripture_catalog` and `canonical_verses` preserved with 0 rows lost.
+  6. **Deliverables:**
+     - `docs/M03_3_GATE_A_COMPLETION_REPORT.md`
+     - `docs/M03_3_GATE_B_PRE_RECONCILIATION_AUDIT.md`
+     - `docs/M03_3_GATE_B_COMPLETION_REPORT.md`
+     - Updated `scripts/reconcile-staging-schema.ts` and `scripts/run-comprehensive-tests.js` (110 automated tests passing 100%)
+- **Final Gate Status:** `M03.3 — GATE B COMPLETE / GATE C LOCKED`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined. Gate C (hosted application testing) is locked pending operator resolution of `INC-01` (Razorpay sandbox key rotation in merchant dashboard).

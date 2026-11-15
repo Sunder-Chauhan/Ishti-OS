@@ -9,6 +9,7 @@
 | **RSK-04** | Personal birth data (PII) exposure | Critical | AES-256-GCM context-bound envelope encryption, server-only boundary | Active / Enforced |
 | **RSK-05** | AI cost overruns | Medium | Quotas, rate-limiting advisory locks, tiered model routing | Active / Enforced |
 | **RSK-06** | Provider lock-in | Low | Clear service boundaries, portable PostgreSQL schemas | Active / In Progress |
+| **RSK-07** | Staging Schema Drift & Privilege Leak | High | Automated Gate A 3-pass backup + Gate B atomic transactional reconciliation, exact 31-policy verification, function privilege hardening | **Mitigated / Reconciled (Gate B)** |
 
 ---
 
