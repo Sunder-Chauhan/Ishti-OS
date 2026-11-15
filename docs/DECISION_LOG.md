@@ -153,3 +153,24 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - `scripts/verify-backup-restore.ts`
   - `scripts/backup-staging.ts`
 
+---
+
+## 2026-11-15: ADR-012 — Milestone M03.2: Controlled Staging Execution Preparation & Three-Gate Protocol
+- **Context:** Following the completion of the M03.1.3 independent evidence verification, an operational execution runbook, preflight checklist, and tiered rollback procedures were required to prepare for a controlled, approval-gated execution against hosted staging database `zrjptpkhtklfgnovdrny`.
+- **Decision:**
+  1. **Strictly Decoupled Three-Gate Governance Protocol:**
+     - **Gate A:** Hosted Pre-Reconciliation Staging Backup (requires Docker Desktop running, local untracked `STAGING_DATABASE_URL`, checksum validation, and local file permission lockdown).
+     - **Gate B:** Hosted Staging Schema Reconciliation (executes `scripts/reconcile-staging-schema.ts --execute` inside an atomic transaction, validating postconditions in `pg_policies` and `information_schema.routine_privileges`).
+     - **Gate C:** Hosted Application Integration Tests (Phase 2 credential loading, client-side RLS validation, and non-regression verification).
+     - **Explicit Governance Rule:** Each gate requires standalone, explicit operator authorization. Approval for Gate A does NOT authorize Gate B. Approval for Gate B does NOT authorize production changes.
+  2. **Zero Remote Operations in M03.2:** No remote commands, migrations, backups, or DDL/DML executed during preparation.
+  3. **Production Hard-Quarantine:** Re-verified that `zxwkfnvmmxoojewhvsdc` is strictly rejected by all scripts.
+  4. **Preflight Checklist & "No Auto-Repair" Rule:** Generated comprehensive preflight inspection covering all 11 tables, row counts, 31 policies, functions, triggers, partial unique indexes, and seed data. Enforced strict rule: unexpected objects will never be automatically dropped or repaired; any unrecorded drift immediately aborts execution.
+  5. **Three-Tier Rollback Architecture:** Documented automatic in-transaction rollback (Level 1), selective emergency rollback SQL (Level 2), and full disaster-recovery restoration via 3-pass backup (Level 3), with strict warnings prohibiting role dump restores into hosted Supabase.
+  6. **Deliverables:**
+     - `docs/M03_2_STAGING_EXECUTION_RUNBOOK.md`
+     - `docs/M03_2_PREFLIGHT_CHECKLIST.md`
+     - `docs/M03_2_ROLLBACK_PROCEDURE.md`
+- **Final Gate Status:** `M03.2 — EXECUTION PLAN READY / AWAITING EXPLICIT APPROVAL`. Zero remote database mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.
+
+

@@ -79,12 +79,20 @@
 - [x] Author Independent Evidence Report deliverable ([docs/M03_1_3_INDEPENDENT_EVIDENCE_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_3_INDEPENDENT_EVIDENCE_REPORT.md))
 - [x] Author Migration History Compatibility deliverable ([docs/M03_1_3_MIGRATION_HISTORY_COMPATIBILITY.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_3_MIGRATION_HISTORY_COMPATIBILITY.md))
 - [x] Author Backup & Restoration Validation deliverable ([docs/M03_1_3_BACKUP_RESTORE_TEST.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_1_3_BACKUP_RESTORE_TEST.md))
-- [ ] Obtain operator explicit authorization to execute reconciliation against staging database
-- [ ] Rotate Razorpay sandbox credentials in Razorpay Dashboard
-- [ ] Populate staging credentials (`STAGING_DATABASE_URL`)
-- [ ] Execute pre-reconciliation backup (`scripts/backup-staging.ts --execute` or `supabase db dump`)
-- [ ] Run `scripts/reconcile-staging-schema.ts --execute` against staging project `zrjptpkhtklfgnovdrny`
-- [ ] Execute Tier 3 hosted staging tests against live PostgREST and GoTrue endpoints
+
+## M03.2 — Controlled Staging Execution Preparation
+- [x] Repository State Verification: Current commit `13c7ca5`, working tree clean, zero credentials or backup dumps tracked, migration SHA-256 (`3399a731...`) verified
+- [x] Staging Target & Quarantine Verification: Enforced exact allowlist (`db.zrjptpkhtklfgnovdrny.supabase.co`, `aws-0-ap-south-1.pooler.supabase.com`), hard-blocked production (`zxwkfnvmmxoojewhvsdc`), zero connection strings logged
+- [x] Credential Incident Protocol: Explicit dashboard revocation requirement formalized for previously exposed Razorpay sandbox key
+- [x] Backup Execution Preparation: Documented 3-pass CLI commands, output paths, file permissions (`chmod 600`), SHA-256 checksums, and Git exclusions
+- [x] Preflight Checklist & No Auto-Repair Rule: Comprehensive audit covering all 11 tables, 2 seed rows, 31 policies, 13 functions, triggers, and partial unique indexes ([docs/M03_2_PREFLIGHT_CHECKLIST.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_PREFLIGHT_CHECKLIST.md))
+- [x] Decoupled Three-Gate Protocol: Formalized Gate A (Backup), Gate B (Reconciliation), and Gate C (Hosted Integration Tests) with independent authorization barriers
+- [x] Staging Execution Runbook Deliverable ([docs/M03_2_STAGING_EXECUTION_RUNBOOK.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_STAGING_EXECUTION_RUNBOOK.md))
+- [x] Staging Database Rollback & Recovery Runbook Deliverable ([docs/M03_2_ROLLBACK_PROCEDURE.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_ROLLBACK_PROCEDURE.md))
+- [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard
+- [ ] Operator explicit approval for Gate A: Hosted Pre-Reconciliation Backup
+- [ ] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation
+- [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
 
 ## Brand Identity System — Digital Logo Family Implementation
 - [x] Mathematical vectorization of approved master artwork (6 official SVG variants: Primary, Secondary, Icon, Horizontal, Monochrome, Reversed)
@@ -98,7 +106,7 @@
 - [x] Brand Guidelines updated to v1.1 ([docs/BRAND_GUIDELINES.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/BRAND_GUIDELINES.md))
 - [x] Full test suite (89/89 tests passed) and Next.js 15 production build verified (0 errors)
 
-## M04 — Application Foundation & User Experience Shell (Pending M03.1 Sign-Off)
+## M04 — Application Foundation & User Experience Shell (Pending M03 Sign-Off)
 - [ ] Implement Next.js 15 application shell layout and font loading
 - [ ] Implement responsive navigation header (desktop) and bottom navigation (mobile)
 - [ ] Implement India-first phone OTP authentication modal and session middleware
@@ -106,6 +114,6 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.1.3 — NOT READY — CREDENTIAL BLOCKERS`
-- **Restrictions:** Strictly read-only milestone completed. Zero remote database mutations executed. No remote backups or DDL/DML sent to remote projects. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
-- **Action Required:** Operator must confirm Razorpay key revocation in dashboard, supply `STAGING_DATABASE_URL` via local untracked environment, grant explicit staging backup authorization, verify backup integrity, and grant explicit reconciliation execution authorization before proceeding to M04.
+- **Status:** `M03.2 — EXECUTION PLAN READY / AWAITING EXPLICIT APPROVAL`
+- **Restrictions:** Preparation milestone complete. Zero remote database mutations executed. No remote backups or DDL/DML sent to remote projects. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
+- **Action Required:** Operator must confirm Razorpay key revocation in dashboard, supply `STAGING_DATABASE_URL` via local untracked environment, and grant explicit approval for Gate A (Staging Backup) to begin execution.
