@@ -126,7 +126,7 @@
 - [x] Gate A Dry-Run Success Deliverable ([docs/M03_2_4_GATE_A_DRY_RUN_SUCCESS.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_4_GATE_A_DRY_RUN_SUCCESS.md))
 - [x] Decision log updated (ADR-015)
 - [ ] Operator confirms staging database password rotation in Supabase dashboard
-- [ ] Operator explicit approval for Gate A: Hosted Pre-Reconciliation Backup ("I explicitly authorize Gate A only.")
+- [x] Operator explicit approval for Gate A: Hosted Pre-Reconciliation Backup received with formal 5-point scope charter
 - [ ] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation
 - [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard (Gate C prerequisite)
 - [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
@@ -151,6 +151,14 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.2.4 — CONDITIONALLY READY (PASSWORD ROTATION NOT CONFIRMED)`
-- **Restrictions:** Documentation and local audit only. Zero live backups executed. Zero remote database mutations executed. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
-- **Action Required:** Operator must confirm password rotation status for staging project `zrjptpkhtklfgnovdrny` in Supabase dashboard and grant explicit authorization: "I explicitly authorize Gate A only."
+- **Status:** `M03.3 — GATE A AUTHORIZED / EXECUTION IN PROGRESS`
+- **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
+- **Authorized Scope:**
+  1. Schema DDL backup (`public, supabase_migrations`) with comments.
+  2. Database data backup (`--data-only --use-copy`).
+  3. Cluster roles dump (`--role-only`, disaster-recovery reference only; hosted restoration strictly prohibited).
+  4. Cryptographic SHA-256 manifest generation (`staging_backup_[TS].meta.json`).
+  5. Backup integrity and Windows ACL verification (`scripts/backup-staging.ts --verify`).
+- **Strict Exclusions:** Gate B, Gate C, production database (`zxwkfnvmmxoojewhvsdc`), schema changes, and migration repairs.
+- **Restrictions:** Production strictly quarantined. Zero remote DDL/DML mutations. Host allowlist enforced.
+- **Action Required:** Execute Gate A 3-pass backup and integrity verification against staging.
