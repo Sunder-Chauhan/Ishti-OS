@@ -148,7 +148,8 @@
 - [x] Gate B live schema reconciliation executed and verified: all 31 RLS policies synchronized, scholar policies strictly scoped `TO authenticated`, privileged functions (`is_scholar`, `is_admin`) hardened with `EXECUTE` revoked from `PUBLIC` and `anon`, and migration version `20261114000000` registered in `supabase_migrations.schema_migrations`
 - [x] Remote migration tracking parity verified via `supabase migration list --remote` (`20261114000000` registered locally and remotely)
 - [x] Gate B Completion Report deliverable authored ([docs/M03_3_GATE_B_COMPLETION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_3_GATE_B_COMPLETION_REPORT.md))
-- [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard (Gate C prerequisite)
+- [x] Operator confirmation of Razorpay sandbox key rotation in merchant dashboard (`INC-01` resolved; new key pair `rzp_test_U0ZaQD3U8gxyqI` configured in git-ignored `.env`)
+- [ ] Read-only independent staging verification prior to Gate C (`scripts/verify-hosted-staging.ts`)
 - [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
 
 ## Brand Identity System — Digital Logo Family Implementation
@@ -171,7 +172,7 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.3 — GATE B COMPLETE / GATE C LOCKED (AWAITING INC-01 RESOLUTION)`
+- **Status:** `M03.3 — GATE B COMPLETE / INC-01 RESOLVED / PRE-GATE C INDEPENDENT VERIFICATION READY`
 - **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
 - **Active Recovery Point:** `staging_backup_2026-11-15T18-54-57-175Z.meta.json` (Verified 100% SHA-256 and size parity)
 - **Canonical Migration:** `20261114000000_initial_schema.sql` (SHA-256 `3399a731...` verified)
@@ -180,5 +181,6 @@
   2. Scholar policies on `scripture_catalog` and `canonical_verses` strictly scoped `TO authenticated`.
   3. Privileged functions `public.is_scholar()` and `public.is_admin()` have `EXECUTE` revoked from `PUBLIC` and `anon`.
   4. Migration version `20261114000000` registered in `supabase_migrations.schema_migrations` with 100% remote parity.
+- **Credential Status:** `INC-01` RESOLVED. Rotated Razorpay sandbox key pair (`rzp_test_U0ZaQD3U8gxyqI`) provisioned in git-ignored local environments.
 - **Restrictions:** Production strictly quarantined. Gate C strictly locked. Zero table/column/seed modifications.
-- **Action Required:** Operator dashboard rotation of compromised Razorpay sandbox key (`INC-01`) prior to requesting Gate C authorization.
+- **Action Required:** Execute independent read-only staging verification (`npm.cmd run verify:staging`) before requesting Gate C authorization.

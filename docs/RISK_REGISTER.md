@@ -16,7 +16,7 @@
 ## 2. Security Credential Exposure Incidents
 | Incident ID | Asset Affected | Exposure Vector | Classification | Mitigation & Gating Requirement | Current Status |
 |---|---|---|:---:|---|:---:|
-| **INC-01** | Razorpay Sandbox Test Key (`rzp_test_...`) | Historical Git commits (`52b834e`, `c4f6b4d`) | **COMPROMISED** | Purged from tracked source. Historical commits documented. Key rotation in Razorpay dashboard is a **mandatory prerequisite for Gate C** (Payment Sandbox Testing). Decoupled from Gate A/B. | **UNRESOLVED / PENDING DASHBOARD ROTATION** |
+| **INC-01** | Razorpay Sandbox Test Key (`rzp_test_...`) | Historical Git commits (`52b834e`, `c4f6b4d`) | **RESOLVED** | Rotated in Razorpay merchant dashboard by operator. New key pair (`rzp_test_U0ZaQD3U8gxyqI`) provisioned in git-ignored local environments (`.env`, `apps/web/.env.local`). Gate C prerequisite satisfied. | **RESOLVED / KEY ROTATED** |
 | **INC-02** | Staging Database Password (`zrjptpkhtklfgnovdrny`) | Uploaded development screenshot | **COMPROMISED** | Password marked compromised. Assumption of safety prohibited. Password rotation in Supabase dashboard required for complete assurance prior to Gate A. Credential scrubbing enforced across all scripts. | **COMPROMISED / ROTATION PENDING OPERATOR CONFIRMATION** |
 
 ---

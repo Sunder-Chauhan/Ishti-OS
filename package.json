@@ -16,7 +16,8 @@
     "test:real-db": "npx tsx scripts/run-real-postgres-tests.ts",
     "test:fresh-migration": "npx tsx scripts/verify-fresh-supabase-migration.ts",
     "test:migration-compat": "npx tsx scripts/verify-migration-compat.ts",
-    "test:backup-restore": "npx tsx scripts/verify-backup-restore.ts"
+    "test:backup-restore": "npx tsx scripts/verify-backup-restore.ts",
+    "verify:staging": "npx tsx scripts/verify-hosted-staging.ts"
   },
   "engines": {
     "node": ">=22"

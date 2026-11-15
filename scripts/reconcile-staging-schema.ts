@@ -23,7 +23,7 @@ import {
 const PRODUCTION_PROJECT_REF = QUARANTINED_PRODUCTION_PROJECT_REF;
 const STAGING_PROJECT_REF = APPROVED_STAGING_PROJECT_REF;
 
-const EXPECTED_TABLES = [
+export const EXPECTED_TABLES = [
   "profiles",
   "role_assignment_audit",
   "user_consents",
@@ -37,7 +37,7 @@ const EXPECTED_TABLES = [
   "rate_limit_events",
 ];
 
-const EXPECTED_FUNCTIONS = [
+export const EXPECTED_FUNCTIONS = [
   "assign_user_role",
   "check_rate_limit",
   "cleanup_rate_limit_events",
@@ -52,7 +52,7 @@ const EXPECTED_FUNCTIONS = [
   "validate_kundli_ciphertext_payload",
 ];
 
-interface ExpectedPolicy {
+export interface ExpectedPolicy {
   tableName: string;
   policyName: string;
   cmd: "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "ALL";
@@ -84,7 +84,7 @@ export function normalizeRoles(roles: unknown): string[] {
 }
 
 // Complete catalog of all 31 expected RLS policies from 20261114000000_initial_schema.sql
-const EXPECTED_POLICIES: ExpectedPolicy[] = [
+export const EXPECTED_POLICIES: ExpectedPolicy[] = [
   // 1. profiles
   { tableName: "profiles", policyName: "Users can view their own profile", cmd: "SELECT", expectedRoles: ["public"], hasUsing: true, hasWithCheck: false },
   { tableName: "profiles", policyName: "Admins can view all profiles", cmd: "SELECT", expectedRoles: ["public"], hasUsing: true, hasWithCheck: false },
