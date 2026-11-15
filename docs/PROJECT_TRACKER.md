@@ -136,4 +136,4 @@
 ## Current Gate Status
 - **Status:** `M03.2.2 — READY FOR EXPLICIT GATE A APPROVAL`
 - **Restrictions:** Inspection-only review complete. Zero remote database mutations executed. No remote backups or DDL/DML sent to remote projects. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
-- **Action Required:** Operator must supply `STAGING_DATABASE_URL` via local untracked environment and grant explicit approval for Gate A (Staging Backup) to begin execution. Razorpay key revocation is required prior to Gate C.
+- **Action Required:** Operator must start Docker Desktop, supply `STAGING_DATABASE_URL` via local untracked environment, and grant explicit authorization ("I explicitly authorize Gate A only.") for Gate A (Staging Backup) to begin execution. Razorpay key revocation is required prior to Gate C.
