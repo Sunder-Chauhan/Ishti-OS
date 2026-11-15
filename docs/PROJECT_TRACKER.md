@@ -125,8 +125,15 @@
 - [x] Risk Register updated with INC-01 and INC-02 ([docs/RISK_REGISTER.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/RISK_REGISTER.md))
 - [x] Gate A Dry-Run Success Deliverable ([docs/M03_2_4_GATE_A_DRY_RUN_SUCCESS.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_4_GATE_A_DRY_RUN_SUCCESS.md))
 - [x] Decision log updated (ADR-015)
-- [ ] Operator confirms staging database password rotation in Supabase dashboard
-- [x] Operator explicit approval for Gate A: Hosted Pre-Reconciliation Backup received with formal 5-point scope charter
+## M03.2.5 — Gate A DNS Failure Investigation & Recovery Planning
+- [x] Inspect failed backup artifacts in `supabase/backups/` (`.FAILED.json` manifest recorded, 0-byte orphan file identified, permissions verified)
+- [x] Windows DNS analysis: confirmed `db.zrjptpkhtklfgnovdrny.supabase.co` is IPv6-only (`AAAA`) with zero IPv4 (`A`) records
+- [x] Docker container DNS analysis: confirmed Docker bridge DNS (`192.168.65.7`) fails on IPv6-only direct host (`NXDOMAIN`), but resolves Mumbai pooler IPv4 (`3.111.105.85`) with 100% success
+- [x] Connection option analysis: validated Supabase Mumbai Session Pooler (`aws-0-ap-south-1.pooler.supabase.com:5432`) compatibility with `pg_dump` and existing URL validator
+- [x] Backup runner audit: verified credential masking and historical backup preservation; reported artifact quarantine loop timing defect
+- [x] Deliverable authored ([docs/M03_2_5_GATE_A_DNS_FAILURE_INVESTIGATION.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_5_GATE_A_DNS_FAILURE_INVESTIGATION.md))
+- [ ] Operator configures `STAGING_DATABASE_URL` to Mumbai Session Pooler (`aws-0-ap-south-1.pooler.supabase.com:5432`)
+- [ ] Operator grants fresh explicit authorization for Gate A retry via session pooler
 - [ ] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation
 - [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard (Gate C prerequisite)
 - [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
@@ -151,14 +158,9 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.3 — GATE A AUTHORIZED / EXECUTION IN PROGRESS`
+- **Status:** `M03.2.5 — DNS ISSUE IDENTIFIED / SAFE RECOVERY PLAN READY`
 - **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
-- **Authorized Scope:**
-  1. Schema DDL backup (`public, supabase_migrations`) with comments.
-  2. Database data backup (`--data-only --use-copy`).
-  3. Cluster roles dump (`--role-only`, disaster-recovery reference only; hosted restoration strictly prohibited).
-  4. Cryptographic SHA-256 manifest generation (`staging_backup_[TS].meta.json`).
-  5. Backup integrity and Windows ACL verification (`scripts/backup-staging.ts --verify`).
-- **Strict Exclusions:** Gate B, Gate C, production database (`zxwkfnvmmxoojewhvsdc`), schema changes, and migration repairs.
-- **Restrictions:** Production strictly quarantined. Zero remote DDL/DML mutations. Host allowlist enforced.
-- **Action Required:** Execute Gate A 3-pass backup and integrity verification against staging.
+- **Root Cause Identified:** Direct staging endpoint (`db.zrjptpkhtklfgnovdrny.supabase.co`) is IPv6-only (`AAAA`); Docker Desktop WSL2 virtual bridge DNS returns `NXDOMAIN`.
+- **Recovery Strategy:** Update `STAGING_DATABASE_URL` to Supabase Mumbai Session Pooler (`aws-0-ap-south-1.pooler.supabase.com:5432`) with user `postgres.zrjptpkhtklfgnovdrny` (IPv4 compatible).
+- **Restrictions:** Zero live backups or remote mutations executed in diagnostic phase. Production strictly quarantined.
+- **Action Required:** Operator must configure session pooler URL locally and grant fresh explicit authorization for Gate A retry.
