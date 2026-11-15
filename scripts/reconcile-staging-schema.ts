@@ -237,6 +237,24 @@ async function runReconciliation() {
     }
     console.log(`      ✓ All ${EXPECTED_FUNCTIONS.length} required functions present.`);
 
+    const privRes = await client.query(`
+      SELECT routine_name, grantee
+      FROM information_schema.routine_privileges
+      WHERE routine_schema = 'public' AND routine_name IN ('is_scholar', 'is_admin');
+    `);
+    const excessiveGrants: string[] = [];
+    for (const r of privRes.rows) {
+      const grantee = r.grantee.toLowerCase();
+      if (grantee === "public" || grantee === "anon") {
+        excessiveGrants.push(`${r.routine_name} (${r.grantee})`);
+      }
+    }
+    if (excessiveGrants.length > 0) {
+      console.warn(`      [WARN] Function execution privilege drift detected: ${excessiveGrants.join(", ")}`);
+    } else {
+      console.log("      ✓ All privileged helper functions restricted from public/anon.");
+    }
+
     // Step 5: Inspect Migration History
     console.log("\n[Precondition 4/5] Inspecting migration history table...");
     let migrationRecorded = false;
@@ -298,7 +316,8 @@ async function runReconciliation() {
     console.log("==============================================================================");
     console.log(`1. Schema Compatibility:   PASSED (11 tables, types, triggers, and functions present)`);
     console.log(`2. Policies to Reconcile:  ${missingPoliciesCount} missing + ${misconfiguredPoliciesCount} misconfigured`);
-    console.log(`3. Migration Registration: ${migrationRecorded ? "ALREADY RECORDED" : "PENDING (Version 20261114000000)"}`);
+    console.log(`3. Function Privileges:    REVOKE ALL FROM PUBLIC, anon ON is_scholar() & is_admin()`);
+    console.log(`4. Migration Registration: ${migrationRecorded ? "ALREADY RECORDED" : "PENDING (Version 20261114000000)"}`);
     console.log("==============================================================================\n");
 
     if (!isExecute) {
@@ -312,8 +331,8 @@ async function runReconciliation() {
     await client.query("BEGIN;");
 
     try {
-      // 1. Re-apply policies (lines 851–1037 of initial migration)
-      console.log("  [1/4] Synchronizing all 31 RLS policies with exact role scopes...");
+      // 1. Re-apply policies (lines 851–1037 of initial migration) and harden helper function privileges
+      console.log("  [1/4] Synchronizing all 31 RLS policies and hardening helper function permissions...");
       const migrationFilePath = path.resolve(__dirname, "../supabase/migrations/20261114000000_initial_schema.sql");
       const migrationSql = fs.readFileSync(migrationFilePath, "utf8");
 
@@ -325,7 +344,16 @@ async function runReconciliation() {
       }
       const policiesSql = migrationSql.slice(policyStartIndex);
       await client.query(policiesSql);
-      console.log("        ✓ All 31 RLS policies successfully applied and synchronized.");
+
+      // Hardening privileged helper functions: revoke execute from PUBLIC and anon, granting strictly to authenticated and service_role
+      await client.query(`
+        REVOKE ALL ON FUNCTION public.is_scholar() FROM PUBLIC, anon;
+        GRANT EXECUTE ON FUNCTION public.is_scholar() TO authenticated, service_role;
+
+        REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
+        GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated, service_role;
+      `);
+      console.log("        ✓ All 31 RLS policies successfully applied and helper functions hardened.");
 
       // 2. Exact Postcondition Verification — Validate all 31 policies in pg_policies
       console.log("  [2/4] Verifying postcondition policy state in pg_policies (Exact comparison)...");
@@ -370,6 +398,17 @@ async function runReconciliation() {
         throw new Error("Security Violation: public.is_scholar() still has EXECUTE grant to PUBLIC or anon!");
       }
       console.log("        ✓ Verified public.is_scholar() execution privileges are revoked from PUBLIC and anon.");
+
+      const adminPrivRes = await client.query(`
+        SELECT grantee, privilege_type
+        FROM information_schema.routine_privileges
+        WHERE routine_schema = 'public' AND routine_name = 'is_admin';
+      `);
+      const adminGrantees = adminPrivRes.rows.map(r => r.grantee.toLowerCase());
+      if (adminGrantees.includes("public") || adminGrantees.includes("anon")) {
+        throw new Error("Security Violation: public.is_admin() still has EXECUTE grant to PUBLIC or anon!");
+      }
+      console.log("        ✓ Verified public.is_admin() execution privileges are revoked from PUBLIC and anon.");
 
       // 4. Record migration history safely in supabase_migrations.schema_migrations
       console.log("  [4/4] Recording migration version in supabase_migrations.schema_migrations...");
