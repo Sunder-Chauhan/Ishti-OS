@@ -132,9 +132,19 @@
 - [x] Connection option analysis: validated Supabase Mumbai Session Pooler (`aws-0-ap-south-1.pooler.supabase.com:5432`) compatibility with `pg_dump` and existing URL validator
 - [x] Backup runner audit: verified credential masking and historical backup preservation; reported artifact quarantine loop timing defect
 - [x] Deliverable authored ([docs/M03_2_5_GATE_A_DNS_FAILURE_INVESTIGATION.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_5_GATE_A_DNS_FAILURE_INVESTIGATION.md))
-- [ ] Operator configures `STAGING_DATABASE_URL` to Mumbai Session Pooler (`aws-0-ap-south-1.pooler.supabase.com:5432`)
-- [ ] Operator grants fresh explicit authorization for Gate A retry via session pooler
-- [ ] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation
+- [x] Operator configured `STAGING_DATABASE_URL` to Mumbai Session Pooler (`aws-0-ap-south-1.pooler.supabase.com:5432`)
+
+## M03.3 — Gate A Backup Completion & Gate B Pre-Reconciliation Safety Audit
+- [x] Gate A 3-pass logical backup executed against hosted staging (`zrjptpkhtklfgnovdrny`) via Mumbai session pooler
+- [x] Artifact integrity verified: schema DDL (61,444 B), table data (6,420 B), cluster roles (297 B), and metadata manifest (1,518 B)
+- [x] Cryptographic SHA-256 parity and non-zero sizes confirmed via `scripts/backup-staging.ts --verify` (exit code 0)
+- [x] Windows ACL permissions locked down exclusively to operator `as` and `SYSTEM`
+- [x] Gate A Completion Report deliverable authored ([docs/M03_3_GATE_A_COMPLETION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_3_GATE_A_COMPLETION_REPORT.md))
+- [x] Active recovery point established; strict prohibition on hosted cluster role restoration enforced
+- [x] Canonical migration file checksum verified (`supabase/migrations/20261114000000_initial_schema.sql` -> SHA-256 `3399a731...`)
+- [x] Reconciliation script code audit completed (`scripts/reconcile-staging-schema.ts`: atomic `BEGIN ... COMMIT`, postconditions in `pg_policies`, automatic `ROLLBACK`, zero table/column/seed drops)
+- [x] Gate B Pre-Reconciliation Safety Audit deliverable authored ([docs/M03_3_GATE_B_PRE_RECONCILIATION_AUDIT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_3_GATE_B_PRE_RECONCILIATION_AUDIT.md))
+- [ ] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation ("I explicitly authorize Gate B only.")
 - [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard (Gate C prerequisite)
 - [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
 
@@ -158,9 +168,14 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.2.5 — DNS ISSUE IDENTIFIED / SAFE RECOVERY PLAN READY`
+- **Status:** `M03.3 — GATE A COMPLETE / GATE B PRE-AUDIT PASSED / AWAITING OPERATOR AUTHORIZATION`
 - **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
-- **Root Cause Identified:** Direct staging endpoint (`db.zrjptpkhtklfgnovdrny.supabase.co`) is IPv6-only (`AAAA`); Docker Desktop WSL2 virtual bridge DNS returns `NXDOMAIN`.
-- **Recovery Strategy:** Update `STAGING_DATABASE_URL` to Supabase Mumbai Session Pooler (`aws-0-ap-south-1.pooler.supabase.com:5432`) with user `postgres.zrjptpkhtklfgnovdrny` (IPv4 compatible).
-- **Restrictions:** Zero live backups or remote mutations executed in diagnostic phase. Production strictly quarantined.
-- **Action Required:** Operator must configure session pooler URL locally and grant fresh explicit authorization for Gate A retry.
+- **Active Recovery Point:** `staging_backup_2026-11-15T18-54-57-175Z.meta.json` (Verified 100% SHA-256 and size parity)
+- **Canonical Migration:** `20261114000000_initial_schema.sql` (SHA-256 `3399a731...` verified)
+- **Gate B Reconciliation Scope:**
+  1. Synchronize all 31 RLS policies via atomic transaction.
+  2. Scope scholar policies on `scripture_catalog` and `canonical_verses` strictly `TO authenticated`.
+  3. Verify execution privilege on `public.is_scholar()` is revoked from `PUBLIC` and `anon`.
+  4. Register migration version `20261114000000` in `supabase_migrations.schema_migrations`.
+- **Restrictions:** Production strictly quarantined. Zero table/column/seed modifications.
+- **Action Required:** Operator review of pre-reconciliation audit report and explicit authorization: "I explicitly authorize Gate B only."
