@@ -61,6 +61,28 @@ interface ExpectedPolicy {
   hasWithCheck: boolean;
 }
 
+/**
+ * Normalizes PostgreSQL pg_policies.roles column.
+ * In PostgreSQL, pg_policies.roles is of type name[] (OID 1003).
+ * By default, node-postgres does not register an array parser for name[]
+ * and returns it as a string formatted like '{public}' or '{authenticated}'.
+ */
+export function normalizeRoles(roles: unknown): string[] {
+  if (!roles) return [];
+  if (Array.isArray(roles)) {
+    return roles.map((r) => String(r).toLowerCase().trim()).filter(Boolean);
+  }
+  if (typeof roles === "string") {
+    const cleaned = roles.replace(/^\{|\}$/g, "").trim();
+    if (!cleaned) return [];
+    return cleaned
+      .split(",")
+      .map((r) => r.replace(/^"|"$/g, "").toLowerCase().trim())
+      .filter(Boolean);
+  }
+  return [String(roles).toLowerCase().trim()].filter(Boolean);
+}
+
 // Complete catalog of all 31 expected RLS policies from 20261114000000_initial_schema.sql
 const EXPECTED_POLICIES: ExpectedPolicy[] = [
   // 1. profiles
@@ -254,7 +276,7 @@ async function runReconciliation() {
         console.warn(`      [MISSING POLICY] ${key}`);
       } else {
         const live = livePolicyMap.get(key);
-        const liveRoles = (live.roles || []).map((r: string) => r.toLowerCase());
+        const liveRoles = normalizeRoles(live.roles);
         const expectedRoles = expected.expectedRoles.map(r => r.toLowerCase());
         const rolesMatch = expectedRoles.every(r => liveRoles.includes(r)) && (!expectedRoles.includes("public") ? !liveRoles.includes("public") : true);
         const cmdMatch = live.cmd.toUpperCase() === expected.cmd.toUpperCase();
@@ -325,7 +347,7 @@ async function runReconciliation() {
           throw new Error(`Postcondition Failure: Policy '${key}' is missing after reconciliation!`);
         }
         const live = postPolicyMap.get(key);
-        const liveRoles = (live.roles || []).map((r: string) => r.toLowerCase());
+        const liveRoles = normalizeRoles(live.roles);
         const expectedRoles = expected.expectedRoles.map(r => r.toLowerCase());
         const rolesMatch = expectedRoles.every(r => liveRoles.includes(r)) && (!expectedRoles.includes("public") ? !liveRoles.includes("public") : true);
         const cmdMatch = live.cmd.toUpperCase() === expected.cmd.toUpperCase();

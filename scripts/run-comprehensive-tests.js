@@ -1269,6 +1269,41 @@ async function main() {
     }
   });
 
+  // Schema Reconciler Unit Tests
+  const { normalizeRoles } = require('./reconcile-staging-schema');
+
+  runTest('unit', 'Schema Reconciler (1/2): normalizeRoles parses PostgreSQL name[] string formats correctly', () => {
+    // String formats from pg_policies.roles
+    const test1 = normalizeRoles('{public}');
+    if (test1.length !== 1 || test1[0] !== 'public') throw new Error(`Failed to parse {public}: ${JSON.stringify(test1)}`);
+
+    const test2 = normalizeRoles('{authenticated}');
+    if (test2.length !== 1 || test2[0] !== 'authenticated') throw new Error(`Failed to parse {authenticated}: ${JSON.stringify(test2)}`);
+
+    const test3 = normalizeRoles('{anon,authenticated}');
+    if (test3.length !== 2 || test3[0] !== 'anon' || test3[1] !== 'authenticated') throw new Error(`Failed to parse {anon,authenticated}: ${JSON.stringify(test3)}`);
+
+    const test4 = normalizeRoles('{"public"}');
+    if (test4.length !== 1 || test4[0] !== 'public') throw new Error(`Failed to parse quoted string: ${JSON.stringify(test4)}`);
+
+    const test5 = normalizeRoles('{}');
+    if (test5.length !== 0) throw new Error(`Failed to parse empty string set: ${JSON.stringify(test5)}`);
+  });
+
+  runTest('unit', 'Schema Reconciler (2/2): normalizeRoles handles arrays, empty, null and undefined safely', () => {
+    const test1 = normalizeRoles(['PUBLIC', 'AUTHENTICATED']);
+    if (test1.length !== 2 || test1[0] !== 'public' || test1[1] !== 'authenticated') throw new Error(`Failed to normalize array: ${JSON.stringify(test1)}`);
+
+    const test2 = normalizeRoles(null);
+    if (!Array.isArray(test2) || test2.length !== 0) throw new Error(`Failed to handle null: ${JSON.stringify(test2)}`);
+
+    const test3 = normalizeRoles(undefined);
+    if (!Array.isArray(test3) || test3.length !== 0) throw new Error(`Failed to handle undefined: ${JSON.stringify(test3)}`);
+
+    const test4 = normalizeRoles('');
+    if (!Array.isArray(test4) || test4.length !== 0) throw new Error(`Failed to handle empty string: ${JSON.stringify(test4)}`);
+  });
+
   // ==============================================================================
   // 3. REAL APPLICATION INTEGRATION TESTS
   // ==============================================================================
@@ -1402,6 +1437,7 @@ async function main() {
   if (counts.static.failed > 0 || counts.unit.failed > 0 || counts.integration.failed > 0 || counts.real_db.failed > 0) {
     process.exit(1);
   }
+  process.exit(0);
 }
 
 main().catch((err) => {
