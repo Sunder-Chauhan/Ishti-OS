@@ -166,10 +166,21 @@ In response to the operational check request, a line-by-line verification was co
   - `canonical_verses`: `CREATE POLICY "Scholars and admins can manage verses" ON "public"."canonical_verses" USING ("public"."is_scholar"());`
 - **Reconciliation Impact:** Applying Section 11 re-creates these two policies with explicit `TO authenticated`, eliminating anonymous scholar privilege evaluation.
 
-### 6.2 Policy Duplicate Prevention
+### 6.2 Policy Duplicate Prevention & Reconciliation of the 32nd DROP Statement
 - **Database Engine Guarantee:** PostgreSQL enforces policy uniqueness per table. Creating a duplicate policy name on the same table raises `ERROR: 42710 (duplicate_object)`.
-- **Idempotent Re-Creation:** Section 11 of the migration script explicitly runs `DROP POLICY IF EXISTS "<name>" ON <table_name>;` immediately before every `CREATE POLICY ...` (verified across 32 `DROP POLICY IF EXISTS` statements).
-- **Result:** Accidental policy duplication is structurally and syntactically impossible.
+- **Idempotent Re-Creation:** Section 11 of the migration script explicitly executes `DROP POLICY IF EXISTS "<name>" ON <table_name>;` immediately before every `CREATE POLICY ...`.
+- **Identification & Explanation of the 32nd DROP Statement:**
+  - While there are **31 active `CREATE POLICY` statements**, there are **32 `DROP POLICY IF EXISTS` statements**.
+  - The 32nd statement is at line 864 of `supabase/migrations/20261114000000_initial_schema.sql`:
+    ```sql
+    DROP POLICY IF EXISTS "Public can view verified expert profiles" ON public.profiles;
+    ```
+  - **Historical Provenance & Architectural Purpose:**
+    1. In the initial schema prototype (`db4107e`, line 244), expert directory entries were queried directly from `public.profiles` via `"Public can view verified expert profiles"`.
+    2. In security remediation commit `46aa14e`, expert directory functionality was decoupled from user accounts and moved to a dedicated table (`public.expert_profiles`) with its own policy (`"Public read active experts"`) to prevent exposing user PII (phones, emails, internal roles) from `public.profiles`.
+    3. To ensure that any database instance containing the prototype policy is cleanly sanitized and that public anonymous users cannot query `public.profiles`, line 864 explicitly drops this legacy policy without creating a replacement on `public.profiles`.
+  - **Object Safety Confirmation:** Line 864 targets an expected historical policy on `public.profiles`. It does not target an unintended table or foreign object. In the staging backup dump (`staging_schema_...sql`), this policy is already absent, meaning the statement executes as a harmless, idempotent no-op under `IF EXISTS`.
+- **Result:** Accidental policy duplication is structurally impossible, and legacy prototype policies are securely purged.
 
 ### 6.3 Migration History Idempotency & Constraint Integrity
 - **Table Definition:** `supabase_migrations.schema_migrations` defines `version TEXT PRIMARY KEY`.
