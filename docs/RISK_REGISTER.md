@@ -1,9 +1,26 @@
 # Risk Register
-| Risk | Mitigation |
-|---|---|
-| Unverified religious content | Provenance, rights checks, expert approval, versioning |
-| Copyright gaps | Per-item rights ledger and backend access enforcement |
-| Incorrect calculations | Deterministic engines and regional test vectors |
-| Personal data exposure | Data minimisation, consent, access and retention controls |
-| AI cost overruns | Budgets, quotas, observability and model routing |
-| Provider lock-in | Clear service boundaries and portable domain data |
+
+## 1. Architectural & Domain Risks
+| Risk ID | Risk Description | Severity | Mitigation Strategy | Status |
+|---|---|:---:|---|:---:|
+| **RSK-01** | Unverified religious content | High | Provenance, rights checks, scholar peer review gate, immutable audit logs | Active / Enforced |
+| **RSK-02** | Copyright gaps | High | Per-item rights ledger, Griffith 1896 citations, backend RLS gating | Active / Enforced |
+| **RSK-03** | Incorrect astrological calculations | Medium | Deterministic ephemeris engines and regional test vectors | Active / In Progress |
+| **RSK-04** | Personal birth data (PII) exposure | Critical | AES-256-GCM context-bound envelope encryption, server-only boundary | Active / Enforced |
+| **RSK-05** | AI cost overruns | Medium | Quotas, rate-limiting advisory locks, tiered model routing | Active / Enforced |
+| **RSK-06** | Provider lock-in | Low | Clear service boundaries, portable PostgreSQL schemas | Active / In Progress |
+
+---
+
+## 2. Security Credential Exposure Incidents
+| Incident ID | Asset Affected | Exposure Vector | Classification | Mitigation & Gating Requirement | Current Status |
+|---|---|---|:---:|---|:---:|
+| **INC-01** | Razorpay Sandbox Test Key (`rzp_test_...`) | Historical Git commits (`52b834e`, `c4f6b4d`) | **COMPROMISED** | Purged from tracked source. Historical commits documented. Key rotation in Razorpay dashboard is a **mandatory prerequisite for Gate C** (Payment Sandbox Testing). Decoupled from Gate A/B. | **UNRESOLVED / PENDING DASHBOARD ROTATION** |
+| **INC-02** | Staging Database Password (`zrjptpkhtklfgnovdrny`) | Uploaded development screenshot | **COMPROMISED** | Password marked compromised. Assumption of safety prohibited. Password rotation in Supabase dashboard required for complete assurance prior to Gate A. Credential scrubbing enforced across all scripts. | **COMPROMISED / ROTATION PENDING OPERATOR CONFIRMATION** |
+
+---
+
+## 3. Governance Policies for Credential Handling
+1. **No Inferred Rotation:** Rotation of any compromised credential cannot be inferred from repository updates. Provider dashboard confirmation is mandatory.
+2. **Zero Credential Exposure:** Secrets, tokens, and database passwords must never be printed, logged, committed, or requested via chat.
+3. **Quarantine Enforcement:** Production project `zxwkfnvmmxoojewhvsdc` is permanently quarantined across all codebase validators.

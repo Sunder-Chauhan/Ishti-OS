@@ -215,3 +215,17 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Hardened `scripts/backup-staging.ts` and `scripts/run-comprehensive-tests.js` (108 automated tests passing 100%)
      - Updated project tracker and decision log
 - **Final Gate Status:** `M03.2.2 — READY FOR EXPLICIT GATE A APPROVAL`. Zero remote database mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.
+
+
+## 2026-11-15: ADR-015 — Milestone M03.2.4: Operator Dry-Run Acceptance & Database Credential Compromise Governance
+- **Context:** Following the M03.2.3 preflight status, the human operator supplied terminal evidence demonstrating successful local execution of `npx.cmd tsx scripts/backup-staging.ts` with exit code 0. Additionally, a prior development screenshot exposing a staging database password was reviewed.
+- **Decision:**
+  1. **Evidentiary Acceptance of Local Dry-Run:** Formally accepted the operator-supplied dry-run execution transcript as proof of local endpoint syntax validation, production quarantine filtering, destination path generation, and Windows ACL lockdown. Established the governance distinction: local dry-run does not prove remote PostgreSQL socket reachability or hosted authentication.
+  2. **Formal Staging Password Compromise Classification (INC-02):** Classified the staging database password as COMPROMISED. Mandated that the Gate A backup must not proceed on the assumption that the old password remains secure. Recorded password rotation status as PENDING OPERATOR CONFIRMATION. Prohibited assuming rotation occurred without explicit operator evidence in the Supabase dashboard.
+  3. **Zero Credential Exposure Invariant:** Reaffirmed that no agent, script, or documentation will inspect, print, copy, or solicit the new database password.
+  4. **Conditional Gate A Status:** Designated the milestone status as `CONDITIONALLY READY — PASSWORD ROTATION NOT CONFIRMED`. Full Gate A approval is conditioned upon the operator resetting the database password in the dashboard and issuing the explicit statement: `"I explicitly authorize Gate A only."`
+  5. **Deliverables:**
+     - `docs/M03_2_4_GATE_A_DRY_RUN_SUCCESS.md`
+     - Updated `docs/RISK_REGISTER.md` with incident tracking (`INC-01` and `INC-02`)
+     - Updated `docs/PROJECT_TRACKER.md` and `docs/DECISION_LOG.md`
+- **Final Gate Status:** `M03.2.4 — CONDITIONALLY READY (PASSWORD ROTATION NOT CONFIRMED)`. Zero live backups or remote mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.

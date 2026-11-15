@@ -117,9 +117,15 @@
 - [x] Dry-run skipped per gating rules (prerequisites not met)
 - [x] Windows ACL permissions on `supabase/backups/` verified (`SYSTEM:(OI)(CI)(F)` and `as:(OI)(CI)(F)`)
 - [x] Operational preflight report deliverable ([docs/M03_2_3_GATE_A_PREFLIGHT_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_3_GATE_A_PREFLIGHT_REPORT.md))
-- [ ] Operator starts Docker Desktop (engine running)
-- [ ] Operator configures `STAGING_DATABASE_URL` in local untracked shell
-- [ ] Operator executes local dry-run (`npx.cmd tsx scripts/backup-staging.ts`)
+
+## M03.2.4 — Successful Gate A Dry-Run Evidence & Final Readiness Review
+- [x] Record operator-supplied dry-run execution evidence (`npx.cmd tsx scripts/backup-staging.ts` completed with exit code 0)
+- [x] Endpoint format and Windows ACL readiness verified locally
+- [x] Review staging database password exposure incident (marked COMPROMISED, rotation status PENDING OPERATOR CONFIRMATION)
+- [x] Risk Register updated with INC-01 and INC-02 ([docs/RISK_REGISTER.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/RISK_REGISTER.md))
+- [x] Gate A Dry-Run Success Deliverable ([docs/M03_2_4_GATE_A_DRY_RUN_SUCCESS.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_4_GATE_A_DRY_RUN_SUCCESS.md))
+- [x] Decision log updated (ADR-015)
+- [ ] Operator confirms staging database password rotation in Supabase dashboard
 - [ ] Operator explicit approval for Gate A: Hosted Pre-Reconciliation Backup ("I explicitly authorize Gate A only.")
 - [ ] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation
 - [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard (Gate C prerequisite)
@@ -145,6 +151,6 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.2.3 — BLOCKED ON LOCAL OPERATIONAL PREREQUISITES`
-- **Restrictions:** Preflight only. Zero live backups executed. Zero remote database mutations executed. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
-- **Action Required:** Operator must start Docker Desktop (engine running), configure `STAGING_DATABASE_URL` in local untracked shell, verify dry-run, and grant explicit authorization: "I explicitly authorize Gate A only."
+- **Status:** `M03.2.4 — CONDITIONALLY READY (PASSWORD ROTATION NOT CONFIRMED)`
+- **Restrictions:** Documentation and local audit only. Zero live backups executed. Zero remote database mutations executed. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
+- **Action Required:** Operator must confirm password rotation status for staging project `zrjptpkhtklfgnovdrny` in Supabase dashboard and grant explicit authorization: "I explicitly authorize Gate A only."
