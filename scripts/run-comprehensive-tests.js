@@ -1041,9 +1041,18 @@ async function main() {
   });
 
   // Backup Runner & Integrity Verifier Unit Tests
-  const { sanitizeErrorMessage, calculateFileSha256, verifyBackupIntegrity } = require('./backup-staging');
+  const {
+    sanitizeErrorMessage,
+    calculateFileSha256,
+    verifyBackupIntegrity,
+    secureDirectoryPermissions,
+    secureFilePermissions,
+    verifyPathPermissions,
+    hasBroadPermissionsWindows,
+    hasRequiredPrincipalsWindows,
+  } = require('./backup-staging');
 
-  runTest('unit', 'Backup Runner (1/4): Sanitizer scrubs plaintext credentials from error messages and command strings', () => {
+  runTest('unit', 'Backup Runner (1/6): Sanitizer scrubs plaintext credentials from error messages and command strings', () => {
     const rawSecret = 'SuperSecretDbPass999!!';
     const errString = `Command failed: npx supabase db dump --remote="postgres://postgres:${rawSecret}@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres"`;
     const cleaned = sanitizeErrorMessage(errString);
@@ -1055,9 +1064,9 @@ async function main() {
     if (cleanedPooler.includes(rawSecret)) throw new Error('Pooler password leaked in sanitized error message');
   });
 
-  runTest('unit', 'Backup Runner (2/4): SHA-256 calculation & manifest verification against valid backup set', () => {
+  runTest('unit', 'Backup Runner (2/6): SHA-256 calculation & manifest verification against valid backup set', () => {
     const backupDir = path.resolve(ROOT_DIR, 'supabase', 'backups');
-    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    secureDirectoryPermissions(backupDir);
 
     const testTs = 'unit-test-' + Date.now();
     const schemaFile = path.join(backupDir, `staging_schema_${testTs}.sql`);
@@ -1069,6 +1078,10 @@ async function main() {
       fs.writeFileSync(schemaFile, '-- schema unit test\nCREATE TABLE test_tab ();\n', 'utf8');
       fs.writeFileSync(dataFile, '-- data unit test\nCOPY test_tab FROM stdin;\n\\.\n', 'utf8');
       fs.writeFileSync(rolesFile, '-- roles unit test\nCREATE ROLE test_r;\n', 'utf8');
+
+      secureFilePermissions(schemaFile);
+      secureFilePermissions(dataFile);
+      secureFilePermissions(rolesFile);
 
       const sSha = calculateFileSha256(schemaFile);
       const dSha = calculateFileSha256(dataFile);
@@ -1093,6 +1106,7 @@ async function main() {
       };
 
       fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2), 'utf8');
+      secureFilePermissions(metaFile);
 
       const res = verifyBackupIntegrity(testTs);
       if (!res.success) throw new Error(`Valid backup verification failed: ${res.message}`);
@@ -1104,9 +1118,9 @@ async function main() {
     }
   });
 
-  runTest('unit', 'Backup Runner (3/4): Manifest verification strictly rejects tampered checksums and modified file sizes', () => {
+  runTest('unit', 'Backup Runner (3/6): Manifest verification strictly rejects tampered checksums and modified file sizes', () => {
     const backupDir = path.resolve(ROOT_DIR, 'supabase', 'backups');
-    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    secureDirectoryPermissions(backupDir);
 
     const testTs = 'unit-tamper-' + Date.now();
     const schemaFile = path.join(backupDir, `staging_schema_${testTs}.sql`);
@@ -1118,6 +1132,10 @@ async function main() {
       fs.writeFileSync(schemaFile, '-- schema tamper test\n', 'utf8');
       fs.writeFileSync(dataFile, '-- data tamper test\n', 'utf8');
       fs.writeFileSync(rolesFile, '-- roles tamper test\n', 'utf8');
+
+      secureFilePermissions(schemaFile);
+      secureFilePermissions(dataFile);
+      secureFilePermissions(rolesFile);
 
       const manifest = {
         timestamp: new Date().toISOString(),
@@ -1138,14 +1156,17 @@ async function main() {
       };
 
       fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2), 'utf8');
+      secureFilePermissions(metaFile);
 
       // Tamper content without changing length
       fs.writeFileSync(schemaFile, '-- achema tamper test\n', 'utf8');
+      secureFilePermissions(schemaFile);
       const resShaMismatch = verifyBackupIntegrity(testTs);
       if (resShaMismatch.success) throw new Error('Expected failure on SHA-256 mismatch, but passed');
 
       // Tamper length
       fs.appendFileSync(dataFile, 'extra content\n');
+      secureFilePermissions(dataFile);
       const resSizeMismatch = verifyBackupIntegrity(testTs);
       if (resSizeMismatch.success) throw new Error('Expected failure on size mismatch, but passed');
     } finally {
@@ -1156,9 +1177,9 @@ async function main() {
     }
   });
 
-  runTest('unit', 'Backup Runner (4/4): Manifest verification strictly rejects missing passes, empty files, and project ref mismatches', () => {
+  runTest('unit', 'Backup Runner (4/6): Manifest verification strictly rejects missing passes, empty files, and project ref mismatches', () => {
     const backupDir = path.resolve(ROOT_DIR, 'supabase', 'backups');
-    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    secureDirectoryPermissions(backupDir);
 
     const testTs = 'unit-missing-' + Date.now();
     const schemaFile = path.join(backupDir, `staging_schema_${testTs}.sql`);
@@ -1168,6 +1189,9 @@ async function main() {
     try {
       fs.writeFileSync(schemaFile, '-- schema only\n', 'utf8');
       fs.writeFileSync(dataFile, '-- data only\n', 'utf8');
+
+      secureFilePermissions(schemaFile);
+      secureFilePermissions(dataFile);
 
       const manifest = {
         timestamp: new Date().toISOString(),
@@ -1188,6 +1212,7 @@ async function main() {
       };
 
       fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2), 'utf8');
+      secureFilePermissions(metaFile);
 
       // Missing roles file on disk
       const resMissing = verifyBackupIntegrity(testTs);
@@ -1196,12 +1221,51 @@ async function main() {
       // Project ref mismatch
       manifest.projectRef = 'zxwkfnvmmxoojewhvsdc';
       fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2), 'utf8');
+      secureFilePermissions(metaFile);
       const resProjMismatch = verifyBackupIntegrity(testTs);
       if (resProjMismatch.success) throw new Error('Expected failure on project ref mismatch, but passed');
     } finally {
       if (fs.existsSync(schemaFile)) fs.unlinkSync(schemaFile);
       if (fs.existsSync(dataFile)) fs.unlinkSync(dataFile);
       if (fs.existsSync(metaFile)) fs.unlinkSync(metaFile);
+    }
+  });
+
+  runTest('unit', 'Backup Runner (5/6): Restrictive permission enforcement restricts directory and file access to operator and SYSTEM', () => {
+    const backupDir = path.resolve(ROOT_DIR, 'supabase', 'backups');
+    const dirResult = secureDirectoryPermissions(backupDir);
+    if (!dirResult.success) throw new Error(`Failed to secure backup directory: ${dirResult.message}`);
+
+    const verifyDir = verifyPathPermissions(backupDir, true);
+    if (!verifyDir.success) throw new Error(`Directory permission verification failed: ${verifyDir.message}`);
+
+    const testFile = path.join(backupDir, 'test_perm_' + Date.now() + '.txt');
+    try {
+      fs.writeFileSync(testFile, 'test permissions content\n', 'utf8');
+      const fileResult = secureFilePermissions(testFile);
+      if (!fileResult.success) throw new Error(`Failed to secure file: ${fileResult.message}`);
+
+      const verifyFile = verifyPathPermissions(testFile, false);
+      if (!verifyFile.success) throw new Error(`File permission verification failed: ${verifyFile.message}`);
+    } finally {
+      if (fs.existsSync(testFile)) fs.unlinkSync(testFile);
+    }
+  });
+
+  runTest('unit', 'Backup Runner (6/6): Broad permissions (Users/Everyone) and missing operator access are strictly detected and rejected', () => {
+    if (process.platform === 'win32') {
+      const mockBroadAcl1 = 'C:\\test NT AUTHORITY\\SYSTEM:(F)\nBUILTIN\\Users:(RX)\nDESKTOP-5BUIUJM\\as:(F)';
+      if (!hasBroadPermissionsWindows(mockBroadAcl1)) throw new Error('Failed to detect BUILTIN\\Users in ACL');
+
+      const mockBroadAcl2 = 'C:\\test Everyone:(F)\nNT AUTHORITY\\SYSTEM:(F)';
+      if (!hasBroadPermissionsWindows(mockBroadAcl2)) throw new Error('Failed to detect Everyone in ACL');
+
+      const mockMissingOperator = 'C:\\test NT AUTHORITY\\SYSTEM:(F)\nBUILTIN\\Administrators:(F)';
+      if (hasRequiredPrincipalsWindows(mockMissingOperator, 'as')) throw new Error('Failed to reject missing operator in ACL');
+
+      const mockValidAcl = 'C:\\test NT AUTHORITY\\SYSTEM:(OI)(CI)(F)\nDESKTOP-5BUIUJM\\as:(OI)(CI)(F)';
+      if (hasBroadPermissionsWindows(mockValidAcl)) throw new Error('Falsely flagged valid ACL as broad');
+      if (!hasRequiredPrincipalsWindows(mockValidAcl, 'as')) throw new Error('Valid ACL failed required principals check');
     }
   });
 

@@ -10,7 +10,7 @@ import {
 } from "./validate-staging-url";
 
 /**
- * ISHTI Milestone M03.2.1: Validated Staging Database Backup Runner & Integrity Verifier
+ * ISHTI Milestone M03.2.2: Validated Staging Database Backup Runner & Integrity Verifier
  *
  * SAFETY & GOVERNANCE RESTRICTIONS:
  * - Strictly validates STAGING_DATABASE_URL using validateStagingDatabaseUrl().
@@ -27,6 +27,10 @@ import {
  *   never deletes pre-existing historical backups, marks run as FAILED.
  * - Computes cryptographic SHA-256 checksums and emits companion metadata manifest.
  * - Provides --verify mode to independently validate backup integrity.
+ * - Enforces secure Windows ACL permissions (restricted to current operator and SYSTEM;
+ *   disables inheritance; eliminates broad Users/Everyone access; verifies effective ACL;
+ *   fails readiness check if permissions cannot be secured; preserves existing backups).
+ * - Retains equivalent restrictive permissions on POSIX systems (0700 dir / 0600 files).
  * - Zero automatic uploads to external/third-party services.
  */
 
@@ -44,6 +48,10 @@ export interface BackupManifest {
   cliVersion: string;
   targetAllowlist: string;
   quarantinedProduction: string;
+  permissions?: {
+    secured: boolean;
+    policy: string;
+  };
   files?: {
     schema: BackupFileMetadata;
     data: BackupFileMetadata;
@@ -58,6 +66,12 @@ export interface BackupManifest {
     roleDumpRestoration: string;
     gitInclusion: string;
   };
+}
+
+export interface PermissionResult {
+  success: boolean;
+  message: string;
+  aclDetails?: string;
 }
 
 /**
@@ -80,6 +94,238 @@ export function calculateFileSha256(filePath: string): string {
 }
 
 /**
+ * Checks if broad or unauthorized groups have access in an icacls output string.
+ */
+export function hasBroadPermissionsWindows(icaclsOutput: string): boolean {
+  const normalized = icaclsOutput.toLowerCase();
+  const broadPatterns = [
+    "everyone:",
+    "builtin\\users:",
+    "authenticated users:",
+    "users:",
+    "codexsandboxusers:",
+    "all application packages:",
+  ];
+  return broadPatterns.some(pattern => normalized.includes(pattern));
+}
+
+/**
+ * Checks if the required operator and SYSTEM have full control in an icacls output string.
+ */
+export function hasRequiredPrincipalsWindows(icaclsOutput: string, username: string): boolean {
+  const normalized = icaclsOutput.toLowerCase();
+  const hasSystem = normalized.includes("nt authority\\system") || normalized.includes("system:");
+  const hasOperator = normalized.includes(username.toLowerCase());
+  return hasSystem && hasOperator;
+}
+
+/**
+ * Secures directory permissions:
+ * - On Windows: icacls /inheritance:r /grant:r "<username>:(OI)(CI)F" /grant:r "SYSTEM:(OI)(CI)F"
+ * - On POSIX: fs.chmodSync(dirPath, 0o700)
+ */
+export function secureDirectoryPermissions(dirPath: string): PermissionResult {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+
+  if (process.platform === "win32") {
+    const username = process.env.USERNAME || process.env.USER || "as";
+    try {
+      // 1. Remove inheritance and grant operator + SYSTEM Full Control
+      const applyCmd = `icacls "${dirPath}" /inheritance:r /grant:r "${username}:(OI)(CI)F" /grant:r "SYSTEM:(OI)(CI)F"`;
+      execSync(applyCmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+
+      // 2. Query and verify effective ACL
+      const queryCmd = `icacls "${dirPath}"`;
+      const aclOutput = execSync(queryCmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+
+      if (hasBroadPermissionsWindows(aclOutput)) {
+        return {
+          success: false,
+          message: `Insecure ACL detected on directory '${dirPath}': Broad groups (Users/Everyone) detected.`,
+          aclDetails: aclOutput.trim(),
+        };
+      }
+
+      if (!hasRequiredPrincipalsWindows(aclOutput, username)) {
+        return {
+          success: false,
+          message: `Insecure ACL on directory '${dirPath}': Current operator ('${username}') or SYSTEM is missing Full Control.`,
+          aclDetails: aclOutput.trim(),
+        };
+      }
+
+      return {
+        success: true,
+        message: `Directory permissions successfully secured for operator '${username}' and SYSTEM.`,
+        aclDetails: aclOutput.trim(),
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Failed to secure Windows ACL on directory '${dirPath}': ${err.message}`,
+      };
+    }
+  } else {
+    // POSIX: chmod 700
+    try {
+      fs.chmodSync(dirPath, 0o700);
+      const mode = fs.statSync(dirPath).mode & 0o777;
+      if ((mode & 0o077) !== 0) {
+        return {
+          success: false,
+          message: `POSIX permissions insecure on directory '${dirPath}': Mode is ${mode.toString(8)}, expected 700.`,
+        };
+      }
+      return {
+        success: true,
+        message: `Directory permissions secured (mode 700).`,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Failed to set POSIX permissions on '${dirPath}': ${err.message}`,
+      };
+    }
+  }
+}
+
+/**
+ * Secures individual file permissions:
+ * - On Windows: icacls /inheritance:r /grant:r "<username>:F" /grant:r "SYSTEM:F"
+ * - On POSIX: fs.chmodSync(filePath, 0o600)
+ */
+export function secureFilePermissions(filePath: string): PermissionResult {
+  if (!fs.existsSync(filePath)) {
+    return { success: false, message: `File does not exist: ${filePath}` };
+  }
+
+  if (process.platform === "win32") {
+    const username = process.env.USERNAME || process.env.USER || "as";
+    try {
+      const applyCmd = `icacls "${filePath}" /inheritance:r /grant:r "${username}:F" /grant:r "SYSTEM:F"`;
+      execSync(applyCmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+
+      const queryCmd = `icacls "${filePath}"`;
+      const aclOutput = execSync(queryCmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+
+      if (hasBroadPermissionsWindows(aclOutput)) {
+        return {
+          success: false,
+          message: `Insecure ACL detected on file '${filePath}': Broad groups (Users/Everyone) detected.`,
+          aclDetails: aclOutput.trim(),
+        };
+      }
+
+      if (!hasRequiredPrincipalsWindows(aclOutput, username)) {
+        return {
+          success: false,
+          message: `Insecure ACL on file '${filePath}': Operator ('${username}') or SYSTEM missing Full Control.`,
+          aclDetails: aclOutput.trim(),
+        };
+      }
+
+      return {
+        success: true,
+        message: `File permissions secured for operator '${username}' and SYSTEM.`,
+        aclDetails: aclOutput.trim(),
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Failed to secure Windows ACL on file '${filePath}': ${err.message}`,
+      };
+    }
+  } else {
+    // POSIX: chmod 600
+    try {
+      fs.chmodSync(filePath, 0o600);
+      const mode = fs.statSync(filePath).mode & 0o777;
+      if ((mode & 0o077) !== 0) {
+        return {
+          success: false,
+          message: `POSIX permissions insecure on file '${filePath}': Mode is ${mode.toString(8)}, expected 600.`,
+        };
+      }
+      return {
+        success: true,
+        message: `File permissions secured (mode 600).`,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Failed to set POSIX permissions on '${filePath}': ${err.message}`,
+      };
+    }
+  }
+}
+
+/**
+ * Verifies effective permissions on a file or directory without mutating them.
+ */
+export function verifyPathPermissions(targetPath: string, isDirectory: boolean): PermissionResult {
+  if (!fs.existsSync(targetPath)) {
+    return { success: false, message: `Path does not exist: ${targetPath}` };
+  }
+
+  if (process.platform === "win32") {
+    const username = process.env.USERNAME || process.env.USER || "as";
+    try {
+      const queryCmd = `icacls "${targetPath}"`;
+      const aclOutput = execSync(queryCmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+
+      if (hasBroadPermissionsWindows(aclOutput)) {
+        return {
+          success: false,
+          message: `Broad permissions detected on '${targetPath}': Accessible by Users/Everyone.`,
+          aclDetails: aclOutput.trim(),
+        };
+      }
+
+      if (!hasRequiredPrincipalsWindows(aclOutput, username)) {
+        return {
+          success: false,
+          message: `Operator '${username}' or SYSTEM missing expected permissions on '${targetPath}'.`,
+          aclDetails: aclOutput.trim(),
+        };
+      }
+
+      return {
+        success: true,
+        message: `Permissions verified: restricted strictly to '${username}' and SYSTEM.`,
+        aclDetails: aclOutput.trim(),
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Failed to query ACL on '${targetPath}': ${err.message}`,
+      };
+    }
+  } else {
+    try {
+      const mode = fs.statSync(targetPath).mode & 0o777;
+      const expectedMode = isDirectory ? 0o700 : 0o600;
+      if ((mode & 0o077) !== 0) {
+        return {
+          success: false,
+          message: `Insecure POSIX mode ${mode.toString(8)} on '${targetPath}'. Expected ${expectedMode.toString(8)} (group/others must have 0 permissions).`,
+        };
+      }
+      return {
+        success: true,
+        message: `POSIX permissions verified (mode ${mode.toString(8)}).`,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Failed to check POSIX mode on '${targetPath}': ${err.message}`,
+      };
+    }
+  }
+}
+
+/**
  * Verifies backup integrity against its metadata manifest.
  */
 export function verifyBackupIntegrity(targetPathOrTimestamp?: string): { success: boolean; message: string; manifest?: BackupManifest } {
@@ -87,6 +333,12 @@ export function verifyBackupIntegrity(targetPathOrTimestamp?: string): { success
 
   if (!fs.existsSync(backupDir)) {
     return { success: false, message: `Backup directory does not exist: ${backupDir}` };
+  }
+
+  // 1. Verify directory permissions
+  const dirPermCheck = verifyPathPermissions(backupDir, true);
+  if (!dirPermCheck.success) {
+    return { success: false, message: `Directory security check failed: ${dirPermCheck.message}` };
   }
 
   let manifestPath: string;
@@ -172,11 +424,21 @@ export function verifyBackupIntegrity(targetPathOrTimestamp?: string): { success
         manifest,
       };
     }
+
+    // Verify file permissions
+    const filePermCheck = verifyPathPermissions(absPath, false);
+    if (!filePermCheck.success) {
+      return {
+        success: false,
+        message: `File security check failed for '${fileMeta.filename}': ${filePermCheck.message}`,
+        manifest,
+      };
+    }
   }
 
   return {
     success: true,
-    message: `All 3 backup files verified (schema, data, roles). Checksums and sizes match manifest '${path.basename(manifestPath)}'.`,
+    message: `All 3 backup files and directory verified (schema, data, roles). Checksums, sizes, and restrictive permissions match manifest '${path.basename(manifestPath)}'.`,
     manifest,
   };
 }
@@ -192,7 +454,7 @@ async function runStagingBackup() {
     const verifyTarget = args[verifyTargetIndex] && !args[verifyTargetIndex].startsWith("--") ? args[verifyTargetIndex] : undefined;
 
     console.log("==============================================================================");
-    console.log("ISHTI M03.2.1: BACKUP INTEGRITY VERIFICATION");
+    console.log("ISHTI M03.2.2: BACKUP INTEGRITY & PERMISSION VERIFICATION");
     console.log("==============================================================================");
     console.log(`Target: ${verifyTarget || "Latest manifest in supabase/backups/"}\n`);
 
@@ -204,6 +466,9 @@ async function runStagingBackup() {
         console.log(`  Timestamp:    ${result.manifest.timestamp}`);
         console.log(`  Project Ref:  ${result.manifest.projectRef}`);
         console.log(`  CLI Version:  ${result.manifest.cliVersion}`);
+        if (result.manifest.permissions) {
+          console.log(`  Permissions:  ${result.manifest.permissions.policy}`);
+        }
         console.log("  Files Verified:");
         if (result.manifest.files) {
           console.log(`    - Schema: ${result.manifest.files.schema.filename} (${result.manifest.files.schema.sizeBytes} bytes)`);
@@ -215,13 +480,13 @@ async function runStagingBackup() {
         }
       }
       console.log("\n==============================================================================");
-      console.log("RESULT: VERIFICATION PASSED — BACKUP INTEGRITY CONFIRMED");
+      console.log("RESULT: VERIFICATION PASSED — BACKUP INTEGRITY & SECURITY CONFIRMED");
       console.log("==============================================================================\n");
       process.exit(0);
     } else {
       console.error(`[FAIL] ${result.message}`);
       console.error("\n==============================================================================");
-      console.error("RESULT: VERIFICATION FAILED — INTEGRITY COMPROMISED OR MISSING");
+      console.error("RESULT: VERIFICATION FAILED — INTEGRITY COMPROMISED OR INSECURE");
       console.error("==============================================================================\n");
       process.exit(1);
     }
@@ -230,7 +495,7 @@ async function runStagingBackup() {
   const dbUrl = process.env.STAGING_DATABASE_URL || "";
 
   console.log("==============================================================================");
-  console.log("ISHTI M03.2.1: CONTROLLED STAGING DATABASE BACKUP RUNNER");
+  console.log("ISHTI M03.2.2: CONTROLLED STAGING DATABASE BACKUP RUNNER");
   console.log("==============================================================================");
   console.log(`Execution Mode:     ${isExecute ? "LIVE BACKUP (--execute)" : "DRY-RUN INSPECTION (Read-Only)"}`);
   console.log(`Target Staging Ref: ${APPROVED_STAGING_PROJECT_REF} (STRICT ALLOWLIST ENFORCED)`);
@@ -251,11 +516,25 @@ async function runStagingBackup() {
   console.log(`Host & Port:        ${endpoint.hostname}:${endpoint.port}`);
   console.log(`Database Name:      ${endpoint.database}\n`);
 
+  // Step 2: Enforce and Verify Restrictive Filesystem Permissions
+  const backupDir = path.resolve(process.cwd(), "supabase/backups");
+  const dirPermResult = secureDirectoryPermissions(backupDir);
+  if (!dirPermResult.success) {
+    console.error(`\nCRITICAL SECURITY VIOLATION: ${dirPermResult.message}`);
+    if (dirPermResult.aclDetails) {
+      console.error(`Effective ACL:\n${dirPermResult.aclDetails}`);
+    }
+    process.exit(1);
+  }
+  console.log(`Filesystem Security: ${dirPermResult.message}`);
+  if (dirPermResult.aclDetails) {
+    console.log(`Effective ACL:\n  ${dirPermResult.aclDetails.split("\n").join("\n  ")}\n`);
+  }
+
   // Supabase CLI --remote strictly requires 'postgres://' protocol prefix
   const cliNormalizedUrl = dbUrl.trim().replace(/^postgresql:\/\//i, "postgres://");
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const backupDir = path.resolve(process.cwd(), "supabase/backups");
   const schemaFile = path.join(backupDir, `staging_schema_${timestamp}.sql`);
   const dataFile = path.join(backupDir, `staging_data_${timestamp}.sql`);
   const rolesFile = path.join(backupDir, `staging_roles_${timestamp}.sql`);
@@ -269,15 +548,10 @@ async function runStagingBackup() {
 
   if (!isExecute) {
     console.log("==============================================================================");
-    console.log("DRY-RUN COMPLETE: The endpoint is validated and ready for backup.");
+    console.log("DRY-RUN COMPLETE: Endpoint and filesystem permissions are verified.");
     console.log("To execute the backup against hosted staging, invoke with --execute.");
     console.log("==============================================================================");
     return;
-  }
-
-  // Ensure backups directory exists
-  if (!fs.existsSync(backupDir)) {
-    fs.mkdirSync(backupDir, { recursive: true });
   }
 
   const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
@@ -303,7 +577,11 @@ async function runStagingBackup() {
       throw new Error(`Schema dump file is empty (0 bytes): ${schemaFile}`);
     }
     createdFilesInCurrentRun.push(schemaFile);
-    console.log(`      ✓ Schema dump generated successfully (${schemaSize} bytes).`);
+    const schemaPerm = secureFilePermissions(schemaFile);
+    if (!schemaPerm.success) {
+      throw new Error(`Failed to secure permissions on schema dump: ${schemaPerm.message}`);
+    }
+    console.log(`      ✓ Schema dump generated and permissions secured (${schemaSize} bytes).`);
 
     // Pass 2: Data dump
     currentPass = "Pass 2/3: Data Records (--data-only --use-copy)";
@@ -321,7 +599,11 @@ async function runStagingBackup() {
       throw new Error(`Data dump file is empty (0 bytes): ${dataFile}`);
     }
     createdFilesInCurrentRun.push(dataFile);
-    console.log(`      ✓ Data dump generated successfully (${dataSize} bytes).`);
+    const dataPerm = secureFilePermissions(dataFile);
+    if (!dataPerm.success) {
+      throw new Error(`Failed to secure permissions on data dump: ${dataPerm.message}`);
+    }
+    console.log(`      ✓ Data dump generated and permissions secured (${dataSize} bytes).`);
 
     // Pass 3: Role dump
     currentPass = "Pass 3/3: Cluster Roles (--role-only)";
@@ -339,7 +621,11 @@ async function runStagingBackup() {
       throw new Error(`Role dump file is empty (0 bytes): ${rolesFile}`);
     }
     createdFilesInCurrentRun.push(rolesFile);
-    console.log(`      ✓ Role dump generated successfully (${rolesSize} bytes).`);
+    const rolesPerm = secureFilePermissions(rolesFile);
+    if (!rolesPerm.success) {
+      throw new Error(`Failed to secure permissions on role dump: ${rolesPerm.message}`);
+    }
+    console.log(`      ✓ Role dump generated and permissions secured (${rolesSize} bytes).`);
 
     // Step 4: Cryptographic Checksums & Metadata Manifest
     console.log("\n[Verification] Calculating cryptographic SHA-256 checksums...");
@@ -358,6 +644,12 @@ async function runStagingBackup() {
       cliVersion: "3.1.0",
       targetAllowlist: APPROVED_STAGING_PROJECT_REF,
       quarantinedProduction: QUARANTINED_PRODUCTION_PROJECT_REF,
+      permissions: {
+        secured: true,
+        policy: process.platform === "win32"
+          ? "Windows ACL: Restricted to operator and SYSTEM (Inheritance disabled, Users/Everyone removed)"
+          : "POSIX permissions: 0700 directory, 0600 files",
+      },
       files: {
         schema: {
           filename: path.basename(schemaFile),
@@ -385,6 +677,8 @@ async function runStagingBackup() {
     };
 
     fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2), "utf8");
+    createdFilesInCurrentRun.push(manifestFile);
+    secureFilePermissions(manifestFile);
     console.log(`      ✓ Backup manifest written to ${manifestFile}`);
 
     console.log("\n==============================================================================");
@@ -393,7 +687,7 @@ async function runStagingBackup() {
     console.log("CRITICAL SECURITY NOTICE:");
     console.log("1. Backup files contain schema, seed data, and role definitions. NEVER commit to Git.");
     console.log("2. The role dump contains cluster-level roles. NEVER restore into a hosted Supabase project.");
-    console.log("3. Protect these files using restricted local filesystem permissions (chmod 600).");
+    console.log("3. Restrictive filesystem permissions verified (restricted strictly to operator and SYSTEM).");
     console.log("4. Historical backups are preserved. No cloud uploads were performed.");
     console.log("==============================================================================\n");
   } catch (err: any) {
@@ -415,7 +709,6 @@ async function runStagingBackup() {
           quarantinedFiles.push(quarantinedPath);
           console.warn(`[QUARANTINE] Renamed incomplete artifact: ${path.basename(quarantinedPath)}`);
         } catch {
-          // If rename fails, try unlinking
           try {
             fs.unlinkSync(partialFile);
             console.warn(`[CLEANUP] Removed incomplete artifact: ${path.basename(partialFile)}`);
@@ -448,6 +741,7 @@ async function runStagingBackup() {
     try {
       const failureFile = path.join(backupDir, `staging_backup_${timestamp}.FAILED.json`);
       fs.writeFileSync(failureFile, JSON.stringify(failureManifest, null, 2), "utf8");
+      secureFilePermissions(failureFile);
       console.warn(`[AUDIT] Recorded failure manifest: ${path.basename(failureFile)}`);
     } catch {
       // ignore failure writing manifest

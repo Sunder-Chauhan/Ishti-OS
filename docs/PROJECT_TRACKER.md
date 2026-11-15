@@ -100,6 +100,15 @@
 - [x] Backup Failure Modes & Recovery Runbook Deliverable ([docs/M03_2_1_BACKUP_FAILURE_HANDLING.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_1_BACKUP_FAILURE_HANDLING.md))
 - [x] Decision log updated (ADR-013)
 - [x] Full test suite (106/106 tests passed) and TypeScript typecheck (0 errors)
+
+## M03.2.2 — Final Gate A Operational Checks & Windows ACL Hardening
+- [x] Reconcile test accounting: separate automated tests (108 passed, 0 failed) from TypeScript compiler typechecks (0 errors)
+- [x] Implement programmatic Windows ACL security in `scripts/backup-staging.ts` (disable inheritance, grant operator & SYSTEM, eliminate broad groups, verify effective ACL)
+- [x] Enforce equivalent POSIX permissions (0700 dir / 0600 files)
+- [x] Verify non-destructive permission handling preserving existing completed backups
+- [x] Final Gate A dry-run execution (staging allowlist verified, production hard-block verified, exit codes confirmed)
+- [x] Deliverable ([docs/M03_2_2_GATE_A_FINAL_CHECK.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_2_GATE_A_FINAL_CHECK.md))
+- [x] Decision log updated (ADR-014)
 - [ ] Operator explicit approval for Gate A: Hosted Pre-Reconciliation Backup
 - [ ] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation
 - [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard (Gate C prerequisite)
@@ -115,7 +124,7 @@
 - [x] Centralized CSS and TypeScript design tokens (`ISHTI_COLORS`, `ISHTI_TYPOGRAPHY`, `ISHTI_CLEARSPACE`)
 - [x] Interactive Brand Showcase page at `/brand` with download links, color swatches, clear-space rules, and scale test
 - [x] Brand Guidelines updated to v1.1 ([docs/BRAND_GUIDELINES.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/BRAND_GUIDELINES.md))
-- [x] Full test suite (106/106 tests passed) and Next.js 15 production build verified (0 errors)
+- [x] Full test suite (108/108 tests passed) and Next.js 15 production build verified (0 errors)
 
 ## M04 — Application Foundation & User Experience Shell (Pending M03 Sign-Off)
 - [ ] Implement Next.js 15 application shell layout and font loading
@@ -125,6 +134,6 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.2.1 — READY FOR EXPLICIT GATE A APPROVAL`
+- **Status:** `M03.2.2 — READY FOR EXPLICIT GATE A APPROVAL`
 - **Restrictions:** Inspection-only review complete. Zero remote database mutations executed. No remote backups or DDL/DML sent to remote projects. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
 - **Action Required:** Operator must supply `STAGING_DATABASE_URL` via local untracked environment and grant explicit approval for Gate A (Staging Backup) to begin execution. Razorpay key revocation is required prior to Gate C.

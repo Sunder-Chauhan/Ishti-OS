@@ -192,3 +192,26 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Updated `docs/M03_2_STAGING_EXECUTION_RUNBOOK.md`, `docs/M03_2_PREFLIGHT_CHECKLIST.md`, and `docs/M03_2_ROLLBACK_PROCEDURE.md`
      - Unit test suite expanded (106 automated tests passing 100%)
 - **Final Gate Status:** `M03.2.1 — READY FOR EXPLICIT GATE A APPROVAL`. Zero remote database mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.
+
+
+## 2026-11-15: ADR-014 — Milestone M03.2.2: Final Gate A Operational Checks & Windows ACL Hardening
+- **Context:** Following Milestone M03.2.1, final operational checks were performed to reconcile test accounting, enforce restrictive Windows ACLs on backup directories and files, and conduct dry-run verification before requesting explicit operator approval for Gate A.
+- **Decision:**
+  1. **Strictly Decoupled Test & Typecheck Accounting:** Separated automated behavioral test accounting from TypeScript compiler typecheck verification. Recorded exact commands, process exit codes, and suite breakdowns:
+     - Automated Tests (`npm.cmd run test:security`): 108 passed, 0 failed across 5 categories (29 static, 50 unit, 3 integration, 22 real DB RLS, 4 concurrency). Exit code 0.
+     - TypeScript Typecheck (`npm.cmd run typecheck`): 0 errors across `@spiritual-os/mobile` and `@spiritual-os/web`. Exit code 0. Explicitly categorized as compiler type analysis, not automated tests.
+  2. **Programmatic Windows ACL Security:** Hardened `scripts/backup-staging.ts` with programmatic Windows Access Control List management:
+     - Disables inherited permissions (`icacls /inheritance:r`).
+     - Grants Full Control exclusively to current operator (`%USERNAME%`) and `SYSTEM`.
+     - Explicitly checks for and rejects broad access groups (`Everyone`, `BUILTIN\Users`, `Authenticated Users`, `Users:`, sandbox users).
+     - Directly queries effective ACL using `icacls` immediately following application to verify compliance.
+     - Fails backup readiness check if permissions cannot be secured.
+     - Preserves existing completed backups without modification or deletion.
+     - Retains equivalent POSIX `0700` (directory) and `0600` (files) permissions.
+  3. **Permission Verification in `--verify` Mode:** Updated `verifyBackupIntegrity()` to assert that the backup directory and all generated dump files satisfy the restrictive ACL/POSIX policy.
+  4. **Final Gate A Dry-Run Confirmed:** Executed dry-run against staging (`zrjptpkhtklfgnovdrny`) confirming endpoint validation and ACL security (Exit code 0). Executed dry-run against quarantined production (`zxwkfnvmmxoojewhvsdc`) confirming immediate hard-block (Exit code 1).
+  5. **Deliverables:**
+     - `docs/M03_2_2_GATE_A_FINAL_CHECK.md`
+     - Hardened `scripts/backup-staging.ts` and `scripts/run-comprehensive-tests.js` (108 automated tests passing 100%)
+     - Updated project tracker and decision log
+- **Final Gate Status:** `M03.2.2 — READY FOR EXPLICIT GATE A APPROVAL`. Zero remote database mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.
