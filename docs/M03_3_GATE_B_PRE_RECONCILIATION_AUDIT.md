@@ -155,7 +155,46 @@ BEGIN;
 
 ---
 
-## 6. Prohibited Operations Audit
+## 6. Detailed Verification Against Live Staging Catalog & Runner Mechanics
+
+In response to the operational check request, a line-by-line verification was conducted against the live staging DDL dump ([`supabase/backups/staging_schema_2026-11-15T18-54-57-175Z.sql`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/supabase/backups/staging_schema_2026-11-15T18-54-57-175Z.sql)) and the runner implementation:
+
+### 6.1 Policy Baseline Matching & Drift Characterization
+- **Catalog Inspection:** The live staging schema DDL dump contains all 31 policy names in `public`.
+- **Exact Drift Identified:** 29 of the 31 policies match their canonical baseline expressions. Exactly two scholar management policies are misconfigured with default `{public}` roles instead of `authenticated`:
+  - `scripture_catalog`: `CREATE POLICY "Scholars and admins can manage scripture catalog" ON "public"."scripture_catalog" USING ("public"."is_scholar"());`
+  - `canonical_verses`: `CREATE POLICY "Scholars and admins can manage verses" ON "public"."canonical_verses" USING ("public"."is_scholar"());`
+- **Reconciliation Impact:** Applying Section 11 re-creates these two policies with explicit `TO authenticated`, eliminating anonymous scholar privilege evaluation.
+
+### 6.2 Policy Duplicate Prevention
+- **Database Engine Guarantee:** PostgreSQL enforces policy uniqueness per table. Creating a duplicate policy name on the same table raises `ERROR: 42710 (duplicate_object)`.
+- **Idempotent Re-Creation:** Section 11 of the migration script explicitly runs `DROP POLICY IF EXISTS "<name>" ON <table_name>;` immediately before every `CREATE POLICY ...` (verified across 32 `DROP POLICY IF EXISTS` statements).
+- **Result:** Accidental policy duplication is structurally and syntactically impossible.
+
+### 6.3 Migration History Idempotency & Constraint Integrity
+- **Table Definition:** `supabase_migrations.schema_migrations` defines `version TEXT PRIMARY KEY`.
+- **Upsert Logic:** The insertion statement uses `ON CONFLICT (version) DO UPDATE SET name = EXCLUDED.name;`.
+- **Result:** Inserting version `20261114000000` is fully idempotent. Primary key constraint violations and duplicate migration rows cannot occur.
+
+### 6.4 Isolation of Mutating Statements Within Transaction Boundaries
+- **Pre-Transaction Phase (Lines 149–239):** Executes strictly read-only `SELECT` statements (`pg_tables`, `count(*)`, `pg_proc`, `pg_policies`). Zero DDL or DML mutations execute outside the transaction.
+- **Transaction Block (Lines 291–369):** The transaction begins with `BEGIN;`. All policy definitions, postcondition assertions, privilege checks, and migration-history insertions execute inside this boundary.
+- **Commit Boundary (Line 369):** The transaction commits (`COMMIT;`) only if all statements and postcondition assertions succeed.
+
+### 6.5 Rollback Mechanics Under Failure Modes
+- **SQL Error or Assertion Failure:** The `try...catch` block (lines 293–377) intercepts any error or postcondition failure, immediately executes `ROLLBACK;`, prints the fatal diagnostic notice, and terminates with exit code 1.
+- **Socket Disconnect / Connection Loss:** If the client disconnects or network connectivity is severed before `COMMIT` is executed and acknowledged, PostgreSQL server-side transaction management automatically aborts and rolls back the in-flight transaction.
+- **Result:** In both failure modes, the remote database remains completely protected and rolls back to its exact pre-reconciliation state.
+
+### 6.6 Active Recovery Point Verification
+The active backup set was independently re-verified via `scripts/backup-staging.ts --verify`:
+- **Manifest:** `staging_backup_2026-11-15T18-54-57-175Z.meta.json` (Status: `COMPLETED`).
+- **Cryptographic Parity:** All 3 dump files exist on disk with non-zero sizes and 100% SHA-256 match.
+- **Filesystem Permissions:** Verified locked down to operator `as` and `SYSTEM` only.
+
+---
+
+## 7. Prohibited Operations Audit
 
 During this safety audit:
 - `scripts/reconcile-staging-schema.ts --execute` was **NOT executed**.
@@ -166,7 +205,7 @@ During this safety audit:
 
 ---
 
-## 7. Recommended Execution Plan for Gate B
+## 8. Recommended Execution Plan for Gate B
 
 When the human operator issues explicit authorization:
 
@@ -190,7 +229,7 @@ npx.cmd supabase db push --dry-run
 
 ---
 
-## 8. Final Audit Verdict
+## 9. Final Audit Verdict
 
 ```
 ==============================================================================
