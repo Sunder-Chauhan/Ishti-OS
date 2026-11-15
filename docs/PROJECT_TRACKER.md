@@ -89,9 +89,20 @@
 - [x] Decoupled Three-Gate Protocol: Formalized Gate A (Backup), Gate B (Reconciliation), and Gate C (Hosted Integration Tests) with independent authorization barriers
 - [x] Staging Execution Runbook Deliverable ([docs/M03_2_STAGING_EXECUTION_RUNBOOK.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_STAGING_EXECUTION_RUNBOOK.md))
 - [x] Staging Database Rollback & Recovery Runbook Deliverable ([docs/M03_2_ROLLBACK_PROCEDURE.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_ROLLBACK_PROCEDURE.md))
-- [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard
+
+## M03.2.1 — Gate A Backup Readiness Review & Failure Containment
+- [x] Audit backup runner (`scripts/backup-staging.ts`) and endpoint validator (`scripts/validate-staging-url.ts`)
+- [x] Decouple Razorpay key rotation from Gate A and Gate B readiness (prerequisite for Gate C payment testing only)
+- [x] Harden partial backup failure containment: isolate incomplete dumps with `.FAILED_INCOMPLETE`, record failure manifest, preserve historical backups, zero external uploads
+- [x] Add cryptographic SHA-256 manifest generation (`staging_backup_[TS].meta.json`) and automated CLI integrity verifier (`scripts/backup-staging.ts --verify`)
+- [x] Credential sanitization in error logs and exception handlers
+- [x] Gate A Readiness Review Deliverable ([docs/M03_2_1_GATE_A_READINESS_REVIEW.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_1_GATE_A_READINESS_REVIEW.md))
+- [x] Backup Failure Modes & Recovery Runbook Deliverable ([docs/M03_2_1_BACKUP_FAILURE_HANDLING.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_1_BACKUP_FAILURE_HANDLING.md))
+- [x] Decision log updated (ADR-013)
+- [x] Full test suite (106/106 tests passed) and TypeScript typecheck (0 errors)
 - [ ] Operator explicit approval for Gate A: Hosted Pre-Reconciliation Backup
 - [ ] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation
+- [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard (Gate C prerequisite)
 - [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
 
 ## Brand Identity System — Digital Logo Family Implementation
@@ -104,7 +115,7 @@
 - [x] Centralized CSS and TypeScript design tokens (`ISHTI_COLORS`, `ISHTI_TYPOGRAPHY`, `ISHTI_CLEARSPACE`)
 - [x] Interactive Brand Showcase page at `/brand` with download links, color swatches, clear-space rules, and scale test
 - [x] Brand Guidelines updated to v1.1 ([docs/BRAND_GUIDELINES.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/BRAND_GUIDELINES.md))
-- [x] Full test suite (89/89 tests passed) and Next.js 15 production build verified (0 errors)
+- [x] Full test suite (106/106 tests passed) and Next.js 15 production build verified (0 errors)
 
 ## M04 — Application Foundation & User Experience Shell (Pending M03 Sign-Off)
 - [ ] Implement Next.js 15 application shell layout and font loading
@@ -114,6 +125,6 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.2 — EXECUTION PLAN READY / AWAITING EXPLICIT APPROVAL`
-- **Restrictions:** Preparation milestone complete. Zero remote database mutations executed. No remote backups or DDL/DML sent to remote projects. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
-- **Action Required:** Operator must confirm Razorpay key revocation in dashboard, supply `STAGING_DATABASE_URL` via local untracked environment, and grant explicit approval for Gate A (Staging Backup) to begin execution.
+- **Status:** `M03.2.1 — READY FOR EXPLICIT GATE A APPROVAL`
+- **Restrictions:** Inspection-only review complete. Zero remote database mutations executed. No remote backups or DDL/DML sent to remote projects. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
+- **Action Required:** Operator must supply `STAGING_DATABASE_URL` via local untracked environment and grant explicit approval for Gate A (Staging Backup) to begin execution. Razorpay key revocation is required prior to Gate C.

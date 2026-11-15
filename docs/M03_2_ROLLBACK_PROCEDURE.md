@@ -1,9 +1,9 @@
 # ISHTI Milestone M03.2: Staging Database Rollback & Recovery Runbook
 
-**Document Version:** 1.0  
+**Document Version:** 1.1 (Updated for M03.2.1 Gate A Review)  
 **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)  
 **Quarantined Production Project:** `zxwkfnvmmxoojewhvsdc` (**STRICTLY UNTOUCHED — NEVER TARGETED**)  
-**Milestone Status:** `M03.2 — EXECUTION PLAN READY / AWAITING EXPLICIT APPROVAL`  
+**Milestone Status:** `M03.2.1 — GATE A READINESS REVIEW COMPLETE / AWAITING EXPLICIT GATE A APPROVAL`  
 
 ---
 
@@ -16,13 +16,15 @@ The ISHTI staging reconciliation strategy is designed with a defense-in-depth re
 │ LEVEL 1: Automatic In-Transaction Rollback                             │
 │ Trigger: Any query failure or postcondition assertion failure          │
 │ Action:  Instantaneous PostgreSQL ROLLBACK; zero objects persisted     │
+│ Auth:    Built-in safe default (non-persisted transaction abort)       │
 └──────────────────────────────────┬─────────────────────────────────────┘
                                    │ If transaction committed but issues
                                    ▼ arise in subsequent application tests
 ┌────────────────────────────────────────────────────────────────────────┐
-│ LEVEL 2: Selective Post-Reconciliation Rollback                         │
+│ LEVEL 2: Selective Post-Reconciliation Rollback (Emergency SQL)        │
 │ Trigger: Schema synchronized, but downstream integration test fails   │
 │ Action:  Execute emergency SQL script to revert policies & migration   │
+│ Auth:    EXPLICIT OPERATOR APPROVAL REQUIRED BEFORE EXECUTION          │
 └──────────────────────────────────┬─────────────────────────────────────┘
                                    │ If severe data corruption or
                                    ▼ unrecoverable drift occurs
@@ -30,8 +32,14 @@ The ISHTI staging reconciliation strategy is designed with a defense-in-depth re
 │ LEVEL 3: Full Disaster-Recovery Restoration                            │
 │ Trigger: Unrecoverable state requiring full point-in-time revert       │
 │ Action:  Restore pre-reconciliation logical schema and data dumps      │
+│ Auth:    EXPLICIT OPERATOR APPROVAL REQUIRED BEFORE EXECUTION          │
 └────────────────────────────────────────────────────────────────────────┘
 ```
+
+> [!CAUTION]
+> **GOVERNANCE MANDATE: NO AUTOMATIC RESTORATION**
+> Under NO circumstances may automated scripts automatically restore, drop, or truncate hosted database objects following a failed backup or reconciliation attempt.
+> Level 2 (selective rollback) and Level 3 (full disaster restoration) modify hosted database state and **strictly require prior explicit operator authorization**.
 
 ---
 
@@ -52,18 +60,21 @@ COMMIT;
 - If any error occurs prior to `COMMIT`, the script intercepts the exception, issues `ROLLBACK;`, and terminates with exit code 1.
 - No policies are added, no roles altered, and no migration records persisted.
 - **Recovery Time:** 0 seconds (Immediate).
+- Does not modify hosted data or schema.
 
 ---
 
 ## 3. Level 2: Selective Post-Reconciliation Rollback (Emergency SQL)
 
-If the reconciliation transaction commits successfully, but subsequent application testing (Gate C) reveals an unexpected issue, the operator can execute the following targeted SQL script to return the database to its exact pre-reconciliation state:
+**Condition:** Transaction committed, but Gate C application tests reveal an unforeseen issue.  
+**Requirement:** **EXPLICIT OPERATOR AUTHORIZATION REQUIRED.** The operator must review and authorize execution.
 
 ### Emergency Rollback SQL Script
 ```sql
 -- ==============================================================================
 -- ISHTI M03.2: EMERGENCY RECONCILIATION ROLLBACK SCRIPT
 -- Target: zrjptpkhtklfgnovdrny ONLY
+-- Prerequisite: Explicit Operator Approval
 -- ==============================================================================
 
 BEGIN;
@@ -118,12 +129,17 @@ COMMIT;
 
 In the unlikely event of database corruption or unrecoverable drift, the database can be fully restored from the pre-reconciliation logical backups captured during Gate A.
 
+**Condition:** Unrecoverable drift or corruption.  
+**Requirement:** **EXPLICIT OPERATOR AUTHORIZATION REQUIRED.** Never automatically triggered.
+
 ### 4.1 Prerequisites
-1. Staging backup files exist:
-   - `supabase/backups/staging_schema_pre_reconciliation.sql`
-   - `supabase/backups/staging_data_pre_reconciliation.sql`
-2. Checksums match the recorded SHA-256 hashes from Gate A execution.
+1. Staging backup files exist and pass verification:
+   ```bash
+   npx tsx scripts/backup-staging.ts --verify
+   ```
+2. Checksums match the recorded SHA-256 hashes in `staging_backup_[TIMESTAMP].meta.json`.
 3. Target environment is verified to be staging (`zrjptpkhtklfgnovdrny`).
+4. **Operator Approval Granted.**
 
 ### 4.2 Step-by-Step Restoration Sequence
 
@@ -136,11 +152,11 @@ npx tsx scripts/backup-staging.ts
 
 # Step 3: Restore DDL Schema
 # Uses psql to apply the schema backup containing IF NOT EXISTS declarations
-psql "$STAGING_DATABASE_URL" -f supabase/backups/staging_schema_pre_reconciliation.sql
+psql "$STAGING_DATABASE_URL" -f supabase/backups/staging_schema_[TIMESTAMP].sql
 
 # Step 4: Restore Data Records with trigger bypass
 # The data dump starts with SET session_replication_role = replica;
-psql "$STAGING_DATABASE_URL" -f supabase/backups/staging_data_pre_reconciliation.sql
+psql "$STAGING_DATABASE_URL" -f supabase/backups/staging_data_[TIMESTAMP].sql
 ```
 
 ### 4.3 Post-Restoration Verification Queries
@@ -172,7 +188,7 @@ SELECT count(*) FROM supabase_migrations.schema_migrations;
 
 > [!WARNING]
 > **ROLE DUMP PROHIBITION:**
-> The file `staging_roles_pre_reconciliation.sql` contains cluster roles managed exclusively by the Supabase Cloud control plane (`postgres`, `anon`, `authenticated`, `service_role`).
+> The file `staging_roles_[TIMESTAMP].sql` contains cluster roles managed exclusively by the Supabase Cloud control plane (`postgres`, `anon`, `authenticated`, `service_role`).
 > It must **NEVER** be executed against a hosted Supabase project. Attempting to restore it will cause permission errors and could disrupt database access roles.
 
 > [!CAUTION]

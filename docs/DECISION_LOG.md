@@ -174,3 +174,21 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
 - **Final Gate Status:** `M03.2 — EXECUTION PLAN READY / AWAITING EXPLICIT APPROVAL`. Zero remote database mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.
 
 
+
+## 2026-11-15: ADR-013 — Milestone M03.2.1: Gate A Backup Readiness Review & Failure Containment
+- **Context:** Following Milestone M03.2, a dedicated inspection-only review was conducted to audit the staging backup implementation, credential dependencies, and failure modes before requesting operator approval for Gate A.
+- **Decision:**
+  1. **Decoupled Credential Dependencies:** Separated Razorpay test credential revocation from database backup (Gate A) and schema reconciliation (Gate B). Gate A and Gate B require exclusively staging database connection authorization (`STAGING_DATABASE_URL`). Razorpay key rotation remains mandatory for payment sandbox integration (Gate C). The credential exposure incident remains marked UNRESOLVED until operator dashboard revocation is confirmed.
+  2. **Safe Handling of Partial Backup Failures:** Hardened `scripts/backup-staging.ts` so that any failure in Pass 1 (Schema), Pass 2 (Data), or Pass 3 (Roles) immediately marks the overall run as `FAILED` (never `PARTIAL SUCCESS`). Incomplete dump artifacts from the current run are quarantined with `.FAILED_INCOMPLETE` (or cleanly removed). A failure manifest `staging_backup_[TS].FAILED.json` is generated. Pre-existing historical backups are never deleted.
+  3. **Zero External Cloud Uploads & Local Hygiene:** Verified that backup artifacts remain strictly on local disk (`supabase/backups/`) and are never uploaded to external cloud services. Excluded from version control via `.gitignore`.
+  4. **Cryptographic Integrity & Companion Manifests:** Implemented automatic SHA-256 calculation for all 3 dump files upon successful generation, emitting `staging_backup_[TS].meta.json` recording timestamp, project ref (`zrjptpkhtklfgnovdrny`), file sizes, and SHA-256 hashes.
+  5. **Automated Verification Mode:** Added `npx tsx scripts/backup-staging.ts --verify [timestamp]` to independently validate backup integrity (asserting file existence, non-zero sizes, and SHA-256 match against manifest).
+  6. **Credential Sanitization in Error Logs:** Added `sanitizeErrorMessage()` wrapping all CLI outputs and exception handlers to scrub plaintext passwords and raw connection strings.
+  7. **Governance Safeguards for Gate B & Rollback:** Reaffirmed that ordinary `db push` is forbidden (only `db push --dry-run` permitted), `migration repair` cannot substitute for SQL execution, and all rollbacks modifying hosted data require explicit operator authorization (no automated host-modifying rollbacks).
+  8. **Deliverables:**
+     - `docs/M03_2_1_GATE_A_READINESS_REVIEW.md`
+     - `docs/M03_2_1_BACKUP_FAILURE_HANDLING.md`
+     - Hardened `scripts/backup-staging.ts` with `--verify` and partial failure quarantine
+     - Updated `docs/M03_2_STAGING_EXECUTION_RUNBOOK.md`, `docs/M03_2_PREFLIGHT_CHECKLIST.md`, and `docs/M03_2_ROLLBACK_PROCEDURE.md`
+     - Unit test suite expanded (106 automated tests passing 100%)
+- **Final Gate Status:** `M03.2.1 — READY FOR EXPLICIT GATE A APPROVAL`. Zero remote database mutations executed. Production project `zxwkfnvmmxoojewhvsdc` remains untouched.

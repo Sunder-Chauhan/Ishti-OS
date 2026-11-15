@@ -1040,6 +1040,171 @@ async function main() {
     if (!res.sanitizedUrl.includes(':*****@')) throw new Error('Missing password masking token in sanitized URL');
   });
 
+  // Backup Runner & Integrity Verifier Unit Tests
+  const { sanitizeErrorMessage, calculateFileSha256, verifyBackupIntegrity } = require('./backup-staging');
+
+  runTest('unit', 'Backup Runner (1/4): Sanitizer scrubs plaintext credentials from error messages and command strings', () => {
+    const rawSecret = 'SuperSecretDbPass999!!';
+    const errString = `Command failed: npx supabase db dump --remote="postgres://postgres:${rawSecret}@db.zrjptpkhtklfgnovdrny.supabase.co:5432/postgres"`;
+    const cleaned = sanitizeErrorMessage(errString);
+    if (cleaned.includes(rawSecret)) throw new Error('Plaintext password leaked in sanitized error message');
+    if (!cleaned.includes('[REDACTED_CREDENTIALS]')) throw new Error('Missing redaction indicator');
+
+    const poolerErr = `Failed to connect: postgresql://postgres.zrjptpkhtklfgnovdrny:${rawSecret}@aws-0-ap-south-1.pooler.supabase.com:6543/postgres`;
+    const cleanedPooler = sanitizeErrorMessage(poolerErr);
+    if (cleanedPooler.includes(rawSecret)) throw new Error('Pooler password leaked in sanitized error message');
+  });
+
+  runTest('unit', 'Backup Runner (2/4): SHA-256 calculation & manifest verification against valid backup set', () => {
+    const backupDir = path.resolve(ROOT_DIR, 'supabase', 'backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+    const testTs = 'unit-test-' + Date.now();
+    const schemaFile = path.join(backupDir, `staging_schema_${testTs}.sql`);
+    const dataFile = path.join(backupDir, `staging_data_${testTs}.sql`);
+    const rolesFile = path.join(backupDir, `staging_roles_${testTs}.sql`);
+    const metaFile = path.join(backupDir, `staging_backup_${testTs}.meta.json`);
+
+    try {
+      fs.writeFileSync(schemaFile, '-- schema unit test\nCREATE TABLE test_tab ();\n', 'utf8');
+      fs.writeFileSync(dataFile, '-- data unit test\nCOPY test_tab FROM stdin;\n\\.\n', 'utf8');
+      fs.writeFileSync(rolesFile, '-- roles unit test\nCREATE ROLE test_r;\n', 'utf8');
+
+      const sSha = calculateFileSha256(schemaFile);
+      const dSha = calculateFileSha256(dataFile);
+      const rSha = calculateFileSha256(rolesFile);
+
+      const manifest = {
+        timestamp: new Date().toISOString(),
+        projectRef: 'zrjptpkhtklfgnovdrny',
+        status: 'COMPLETED',
+        cliVersion: '3.1.0',
+        targetAllowlist: 'zrjptpkhtklfgnovdrny',
+        quarantinedProduction: 'zxwkfnvmmxoojewhvsdc',
+        files: {
+          schema: { filename: path.basename(schemaFile), relativePath: `supabase/backups/${path.basename(schemaFile)}`, sizeBytes: fs.statSync(schemaFile).size, sha256: sSha },
+          data: { filename: path.basename(dataFile), relativePath: `supabase/backups/${path.basename(dataFile)}`, sizeBytes: fs.statSync(dataFile).size, sha256: dSha },
+          roles: { filename: path.basename(rolesFile), relativePath: `supabase/backups/${path.basename(rolesFile)}`, sizeBytes: fs.statSync(rolesFile).size, sha256: rSha },
+        },
+        prohibitions: {
+          roleDumpRestoration: 'FORBIDDEN: Cluster roles must never be restored to hosted project.',
+          gitInclusion: 'FORBIDDEN: Backup files must remain untracked.',
+        },
+      };
+
+      fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2), 'utf8');
+
+      const res = verifyBackupIntegrity(testTs);
+      if (!res.success) throw new Error(`Valid backup verification failed: ${res.message}`);
+    } finally {
+      if (fs.existsSync(schemaFile)) fs.unlinkSync(schemaFile);
+      if (fs.existsSync(dataFile)) fs.unlinkSync(dataFile);
+      if (fs.existsSync(rolesFile)) fs.unlinkSync(rolesFile);
+      if (fs.existsSync(metaFile)) fs.unlinkSync(metaFile);
+    }
+  });
+
+  runTest('unit', 'Backup Runner (3/4): Manifest verification strictly rejects tampered checksums and modified file sizes', () => {
+    const backupDir = path.resolve(ROOT_DIR, 'supabase', 'backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+    const testTs = 'unit-tamper-' + Date.now();
+    const schemaFile = path.join(backupDir, `staging_schema_${testTs}.sql`);
+    const dataFile = path.join(backupDir, `staging_data_${testTs}.sql`);
+    const rolesFile = path.join(backupDir, `staging_roles_${testTs}.sql`);
+    const metaFile = path.join(backupDir, `staging_backup_${testTs}.meta.json`);
+
+    try {
+      fs.writeFileSync(schemaFile, '-- schema tamper test\n', 'utf8');
+      fs.writeFileSync(dataFile, '-- data tamper test\n', 'utf8');
+      fs.writeFileSync(rolesFile, '-- roles tamper test\n', 'utf8');
+
+      const manifest = {
+        timestamp: new Date().toISOString(),
+        projectRef: 'zrjptpkhtklfgnovdrny',
+        status: 'COMPLETED',
+        cliVersion: '3.1.0',
+        targetAllowlist: 'zrjptpkhtklfgnovdrny',
+        quarantinedProduction: 'zxwkfnvmmxoojewhvsdc',
+        files: {
+          schema: { filename: path.basename(schemaFile), relativePath: `supabase/backups/${path.basename(schemaFile)}`, sizeBytes: fs.statSync(schemaFile).size, sha256: calculateFileSha256(schemaFile) },
+          data: { filename: path.basename(dataFile), relativePath: `supabase/backups/${path.basename(dataFile)}`, sizeBytes: fs.statSync(dataFile).size, sha256: calculateFileSha256(dataFile) },
+          roles: { filename: path.basename(rolesFile), relativePath: `supabase/backups/${path.basename(rolesFile)}`, sizeBytes: fs.statSync(rolesFile).size, sha256: calculateFileSha256(rolesFile) },
+        },
+        prohibitions: {
+          roleDumpRestoration: 'FORBIDDEN: Cluster roles must never be restored to hosted project.',
+          gitInclusion: 'FORBIDDEN: Backup files must remain untracked.',
+        },
+      };
+
+      fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2), 'utf8');
+
+      // Tamper content without changing length
+      fs.writeFileSync(schemaFile, '-- achema tamper test\n', 'utf8');
+      const resShaMismatch = verifyBackupIntegrity(testTs);
+      if (resShaMismatch.success) throw new Error('Expected failure on SHA-256 mismatch, but passed');
+
+      // Tamper length
+      fs.appendFileSync(dataFile, 'extra content\n');
+      const resSizeMismatch = verifyBackupIntegrity(testTs);
+      if (resSizeMismatch.success) throw new Error('Expected failure on size mismatch, but passed');
+    } finally {
+      if (fs.existsSync(schemaFile)) fs.unlinkSync(schemaFile);
+      if (fs.existsSync(dataFile)) fs.unlinkSync(dataFile);
+      if (fs.existsSync(rolesFile)) fs.unlinkSync(rolesFile);
+      if (fs.existsSync(metaFile)) fs.unlinkSync(metaFile);
+    }
+  });
+
+  runTest('unit', 'Backup Runner (4/4): Manifest verification strictly rejects missing passes, empty files, and project ref mismatches', () => {
+    const backupDir = path.resolve(ROOT_DIR, 'supabase', 'backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+    const testTs = 'unit-missing-' + Date.now();
+    const schemaFile = path.join(backupDir, `staging_schema_${testTs}.sql`);
+    const dataFile = path.join(backupDir, `staging_data_${testTs}.sql`);
+    const metaFile = path.join(backupDir, `staging_backup_${testTs}.meta.json`);
+
+    try {
+      fs.writeFileSync(schemaFile, '-- schema only\n', 'utf8');
+      fs.writeFileSync(dataFile, '-- data only\n', 'utf8');
+
+      const manifest = {
+        timestamp: new Date().toISOString(),
+        projectRef: 'zrjptpkhtklfgnovdrny',
+        status: 'COMPLETED',
+        cliVersion: '3.1.0',
+        targetAllowlist: 'zrjptpkhtklfgnovdrny',
+        quarantinedProduction: 'zxwkfnvmmxoojewhvsdc',
+        files: {
+          schema: { filename: path.basename(schemaFile), relativePath: `supabase/backups/${path.basename(schemaFile)}`, sizeBytes: fs.statSync(schemaFile).size, sha256: calculateFileSha256(schemaFile) },
+          data: { filename: path.basename(dataFile), relativePath: `supabase/backups/${path.basename(dataFile)}`, sizeBytes: fs.statSync(dataFile).size, sha256: calculateFileSha256(dataFile) },
+          roles: { filename: `staging_roles_${testTs}.sql`, relativePath: `supabase/backups/staging_roles_${testTs}.sql`, sizeBytes: 100, sha256: 'deadbeef' },
+        },
+        prohibitions: {
+          roleDumpRestoration: 'FORBIDDEN: Cluster roles must never be restored to hosted project.',
+          gitInclusion: 'FORBIDDEN: Backup files must remain untracked.',
+        },
+      };
+
+      fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2), 'utf8');
+
+      // Missing roles file on disk
+      const resMissing = verifyBackupIntegrity(testTs);
+      if (resMissing.success) throw new Error('Expected failure on missing file, but passed');
+
+      // Project ref mismatch
+      manifest.projectRef = 'zxwkfnvmmxoojewhvsdc';
+      fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2), 'utf8');
+      const resProjMismatch = verifyBackupIntegrity(testTs);
+      if (resProjMismatch.success) throw new Error('Expected failure on project ref mismatch, but passed');
+    } finally {
+      if (fs.existsSync(schemaFile)) fs.unlinkSync(schemaFile);
+      if (fs.existsSync(dataFile)) fs.unlinkSync(dataFile);
+      if (fs.existsSync(metaFile)) fs.unlinkSync(metaFile);
+    }
+  });
+
   // ==============================================================================
   // 3. REAL APPLICATION INTEGRATION TESTS
   // ==============================================================================

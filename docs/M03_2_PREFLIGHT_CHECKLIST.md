@@ -1,25 +1,29 @@
 # ISHTI Milestone M03.2: Staging Database Preflight Checklist
 
-**Document Version:** 1.0  
+**Document Version:** 1.1 (Updated for M03.2.1 Gate A Review)  
 **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)  
 **Quarantined Production Project:** `zxwkfnvmmxoojewhvsdc` (**HARD-QUARANTINED**)  
 **Canonical Baseline Migration:** `supabase/migrations/20261114000000_initial_schema.sql`  
 **Migration SHA-256:** `3399a7317e1933f989d4a9688cac84d6d407006e930614ad90508efa52ea87ed`  
-**Milestone Status:** `M03.2 — EXECUTION PLAN READY / AWAITING EXPLICIT APPROVAL`  
+**Milestone Status:** `M03.2.1 — GATE A READINESS REVIEW COMPLETE / AWAITING EXPLICIT GATE A APPROVAL`  
 
 ---
 
 ## 1. Governance & Precondition Gate
 
-| Check ID | Item Description | Verification Source | Status | Notes |
-|---|---|---|:---:|---|
-| **GOV-01** | Production Hard-Quarantine | `scripts/validate-staging-url.ts` | **ENFORCED** | Rejects `zxwkfnvmmxoojewhvsdc` across host, username, query, and path. |
-| **GOV-02** | Staging Endpoint Allowlist | `scripts/validate-staging-url.ts` | **ENFORCED** | Enforces exact host `db.zrjptpkhtklfgnovdrny.supabase.co` or pooler `aws-0-ap-south-1.pooler.supabase.com`. |
-| **GOV-03** | Exact Pooler Username Check | `scripts/validate-staging-url.ts` | **ENFORCED** | Strictly requires `postgres.zrjptpkhtklfgnovdrny`; rejects suffix extensions. |
-| **GOV-04** | Direct Username Check | `scripts/validate-staging-url.ts` | **ENFORCED** | Strictly requires `postgres`. |
-| **GOV-05** | Credential Hygiene | Repository & Log Scan | **VERIFIED** | Zero secrets, tokens, or passwords logged or committed to Git. |
-| **GOV-06** | Razorpay Key Revocation | Operator Dashboard Action | **PENDING** | Operator must confirm revocation in Razorpay dashboard. |
-| **GOV-07** | Non-Destructive Safety Rule | `reconcile-staging-schema.ts` | **ENFORCED** | **NO AUTO-REPAIR:** Unexpected objects are NEVER dropped or altered automatically. |
+| Check ID | Item Description | Verification Source | Scope / Target Phase | Status | Notes |
+|---|---|---|---|:---:|---|
+| **GOV-01** | Production Hard-Quarantine | `scripts/validate-staging-url.ts` | All Gates | **ENFORCED** | Rejects `zxwkfnvmmxoojewhvsdc` across host, username, query, and path. |
+| **GOV-02** | Staging Endpoint Allowlist | `scripts/validate-staging-url.ts` | All Gates | **ENFORCED** | Enforces exact host `db.zrjptpkhtklfgnovdrny.supabase.co` or pooler `aws-0-ap-south-1.pooler.supabase.com`. |
+| **GOV-03** | Exact Pooler Username Check | `scripts/validate-staging-url.ts` | All Gates | **ENFORCED** | Strictly requires `postgres.zrjptpkhtklfgnovdrny`; rejects suffix extensions. |
+| **GOV-04** | Direct Username Check | `scripts/validate-staging-url.ts` | All Gates | **ENFORCED** | Strictly requires `postgres`. |
+| **GOV-05** | Credential Hygiene | Repository & Log Scan | All Gates | **VERIFIED** | Zero secrets, tokens, or passwords logged or committed to Git. |
+| **GOV-06** | Razorpay Key Revocation | Operator Dashboard Action | **Gate C ONLY** | **PENDING** | **Decoupled from Gate A & Gate B.** Required prior to Gate C payment sandbox testing. Incident remains UNRESOLVED until operator confirms revocation. |
+| **GOV-07** | Non-Destructive Safety Rule | `reconcile-staging-schema.ts` | Gate B | **ENFORCED** | **NO AUTO-REPAIR:** Unexpected objects are NEVER dropped or altered automatically. |
+| **GOV-08** | Backup Integrity Verification | `scripts/backup-staging.ts --verify` | Gate A | **READY** | Automated verification of 3 passes, non-zero file sizes, and SHA-256 manifest. |
+| **GOV-09** | Role Dump Restoration Block | `scripts/backup-staging.ts` | Gate A | **ENFORCED** | Explicit prohibition: cluster role dump must NEVER be restored into hosted Supabase. |
+| **GOV-10** | Historical Backup Preservation | `scripts/backup-staging.ts` | Gate A | **ENFORCED** | Pre-existing backups are never deleted; failed runs isolate only current run's artifacts. |
+| **GOV-11** | Zero External Uploads | `scripts/backup-staging.ts` | Gate A | **ENFORCED** | Dumps remain on local disk (`supabase/backups/`); zero cloud/remote uploads. |
 
 ---
 
@@ -125,3 +129,4 @@ The canonical schema specifies **31 RLS policies**. The initial manual execution
 > - Automatically truncate table data.
 > - Automatically alter column types.
 > - Bypass security checks or ignore missing tables.
+> - Automatically execute a rollback or restore database objects without explicit operator approval.
