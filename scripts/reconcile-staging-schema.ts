@@ -38,19 +38,18 @@ const EXPECTED_TABLES = [
 ];
 
 const EXPECTED_FUNCTIONS = [
-  "set_updated_at",
+  "assign_user_role",
+  "check_rate_limit",
+  "cleanup_rate_limit_events",
+  "enforce_booking_update_integrity",
+  "enforce_expert_integrity",
+  "enforce_profile_update_integrity",
+  "handle_new_user",
   "is_admin",
   "is_scholar",
-  "is_astrologer",
-  "assign_user_role",
-  "handle_new_user",
-  "enforce_profile_update_integrity",
   "prevent_audit_log_tampering",
-  "prevent_plaintext_kundli_dob",
   "validate_and_reserve_booking_slot",
-  "cleanup_stale_slot_reservations",
-  "cleanup_rate_limit_events",
-  "check_rate_limit",
+  "validate_kundli_ciphertext_payload",
 ];
 
 interface ExpectedPolicy {
