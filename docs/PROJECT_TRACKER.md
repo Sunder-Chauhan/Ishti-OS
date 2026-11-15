@@ -109,7 +109,18 @@
 - [x] Final Gate A dry-run execution (staging allowlist verified, production hard-block verified, exit codes confirmed)
 - [x] Deliverable ([docs/M03_2_2_GATE_A_FINAL_CHECK.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_2_GATE_A_FINAL_CHECK.md))
 - [x] Decision log updated (ADR-014)
-- [ ] Operator explicit approval for Gate A: Hosted Pre-Reconciliation Backup
+
+## M03.2.3 — Gate A Local Operational Preflight
+- [x] Repository integrity verified: branch `main`, commit `e458a14`, clean working tree
+- [x] Docker Desktop verification: daemon not running (`failed to connect to the docker API`) -> BLOCKED
+- [x] Staging connection configuration: `STAGING_DATABASE_URL` not set in session -> BLOCKED
+- [x] Dry-run skipped per gating rules (prerequisites not met)
+- [x] Windows ACL permissions on `supabase/backups/` verified (`SYSTEM:(OI)(CI)(F)` and `as:(OI)(CI)(F)`)
+- [x] Operational preflight report deliverable ([docs/M03_2_3_GATE_A_PREFLIGHT_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_2_3_GATE_A_PREFLIGHT_REPORT.md))
+- [ ] Operator starts Docker Desktop (engine running)
+- [ ] Operator configures `STAGING_DATABASE_URL` in local untracked shell
+- [ ] Operator executes local dry-run (`npx.cmd tsx scripts/backup-staging.ts`)
+- [ ] Operator explicit approval for Gate A: Hosted Pre-Reconciliation Backup ("I explicitly authorize Gate A only.")
 - [ ] Operator explicit approval for Gate B: Hosted Staging Schema Reconciliation
 - [ ] Operator confirmation of Razorpay sandbox key revocation in merchant dashboard (Gate C prerequisite)
 - [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
@@ -134,6 +145,6 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.2.2 — READY FOR EXPLICIT GATE A APPROVAL`
-- **Restrictions:** Inspection-only review complete. Zero remote database mutations executed. No remote backups or DDL/DML sent to remote projects. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
-- **Action Required:** Operator must start Docker Desktop, supply `STAGING_DATABASE_URL` via local untracked environment, and grant explicit authorization ("I explicitly authorize Gate A only.") for Gate A (Staging Backup) to begin execution. Razorpay key revocation is required prior to Gate C.
+- **Status:** `M03.2.3 — BLOCKED ON LOCAL OPERATIONAL PREREQUISITES`
+- **Restrictions:** Preflight only. Zero live backups executed. Zero remote database mutations executed. Production (`zxwkfnvmmxoojewhvsdc`) strictly quarantined.
+- **Action Required:** Operator must start Docker Desktop (engine running), configure `STAGING_DATABASE_URL` in local untracked shell, verify dry-run, and grant explicit authorization: "I explicitly authorize Gate A only."
