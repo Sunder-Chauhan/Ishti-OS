@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { Check, ArrowLeft } from "lucide-react";
 import { useAuth } from "../../../lib/auth/auth-context";
 import { Breadcrumbs } from "../../components/layout/Breadcrumbs";
 import type { ConsentPurpose } from "@spiritual-os/types";
@@ -140,8 +141,18 @@ export default function ConsentCenterPage() {
 
       {/* Save Notification Toast */}
       {saveMessage && (
-        <div className="authModalInfo" style={{ marginBottom: "20px" }} role="status">
-          ✓ {saveMessage}
+        <div
+          className="authModalInfo"
+          style={{
+            marginBottom: "20px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+          role="status"
+        >
+          <Check size={15} strokeWidth={2.2} />
+          <span>{saveMessage}</span>
         </div>
       )}
 
@@ -215,8 +226,19 @@ export default function ConsentCenterPage() {
 
       {/* Bottom Actions */}
       <div style={{ marginTop: "32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/profile" className="btnExploreModule" style={{ maxWidth: "200px", marginTop: 0 }}>
-          <span>← Back to Profile</span>
+        <Link
+          href="/profile"
+          className="btnExploreModule"
+          style={{
+            maxWidth: "200px",
+            marginTop: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <ArrowLeft size={14} strokeWidth={1.8} />
+          <span>Back to Profile</span>
         </Link>
         <span style={{ fontSize: "12px", color: "var(--ishti-warm-bronze)" }}>
           Legal Notice: DPDP Compliance Governance v1.0

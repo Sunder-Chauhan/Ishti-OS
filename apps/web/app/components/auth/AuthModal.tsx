@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { X } from "lucide-react";
 import { useAuth } from "../../../lib/auth/auth-context";
 import { IshtiLogo } from "../brand";
 
@@ -185,7 +186,7 @@ export function AuthModal() {
             onClick={closeAuthModal}
             aria-label="Close sign-in dialog"
           >
-            ✕
+            <X size={18} strokeWidth={1.8} />
           </button>
         </div>
 

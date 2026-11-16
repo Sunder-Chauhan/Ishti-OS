@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Check, AlertTriangle } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 
 export default function PanchangPage() {
@@ -164,7 +165,7 @@ export default function PanchangPage() {
         {/* Auspicious Muhurtas */}
         <div className="profileCard">
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <span style={{ color: "var(--ishti-success)", fontSize: "18px" }}>✓</span>
+            <Check size={18} strokeWidth={2.2} style={{ color: "var(--ishti-success)" }} aria-hidden="true" />
             <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)", margin: 0 }}>
               Shubha Muhurtas (Auspicious)
             </h3>
@@ -192,7 +193,7 @@ export default function PanchangPage() {
         {/* Inauspicious Muhurtas */}
         <div className="profileCard">
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <span style={{ color: "var(--ishti-error)", fontSize: "18px" }}>⚠</span>
+            <AlertTriangle size={18} strokeWidth={1.8} style={{ color: "var(--ishti-error)" }} aria-hidden="true" />
             <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)", margin: 0 }}>
               Ashubha Kaal (Inauspicious)
             </h3>

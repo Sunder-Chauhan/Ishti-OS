@@ -1,4 +1,13 @@
 import React from "react";
+import {
+  Flame,
+  Orbit,
+  CalendarDays,
+  BookOpen,
+  UsersRound,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { Breadcrumbs, type BreadcrumbItem } from "./Breadcrumbs";
 
 export type PillarKey =
@@ -20,13 +29,13 @@ interface PillarShellProps {
   children: React.ReactNode;
 }
 
-const PILLAR_ICONS: Record<PillarKey, string> = {
-  bhakti: "📜",
-  panchang: "📅",
-  puja: "🔥",
-  astro: "✨",
-  experts: "🪔",
-  community: "🌸",
+const PILLAR_ICONS: Record<PillarKey, LucideIcon> = {
+  bhakti: BookOpen,
+  panchang: CalendarDays,
+  puja: Flame,
+  astro: Orbit,
+  experts: UsersRound,
+  community: Users,
 };
 
 export function PillarShell({
@@ -39,7 +48,7 @@ export function PillarShell({
   actionSlot,
   children,
 }: PillarShellProps) {
-  const icon = PILLAR_ICONS[pillarKey] || "🕉️";
+  const IconComponent = PILLAR_ICONS[pillarKey] || Flame;
 
   return (
     <div className={`pillarShell pillar-${pillarKey}`}>
@@ -53,7 +62,7 @@ export function PillarShell({
         <header className="pillarHeader">
           <div className="pillarHeaderMain">
             <div className="pillarIconBadge" aria-hidden="true">
-              {icon}
+              <IconComponent size={26} strokeWidth={1.8} className="pillarHeroIcon" />
             </div>
             <div className="pillarTitles">
               {sanskritTagline && (

@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
 export interface BreadcrumbItem {
   label: string;
@@ -27,8 +28,12 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
           return (
             <li key={index} className="breadcrumbItem">
               {index > 0 && (
-                <span className="breadcrumbSeparator" aria-hidden="true">
-                  ›
+                <span
+                  className="breadcrumbSeparator"
+                  aria-hidden="true"
+                  style={{ display: "inline-flex", alignItems: "center" }}
+                >
+                  <ChevronRight size={12} strokeWidth={2} />
                 </span>
               )}
               {isCurrent || !item.href ? (

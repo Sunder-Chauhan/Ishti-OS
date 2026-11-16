@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Check, ArrowRight } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 
 interface ScriptureWork {
@@ -198,8 +199,18 @@ export default function BhaktiPage() {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "8px" }}>
                 <span className="userRoleBadge">{work.category}</span>
-                <span style={{ fontSize: "11px", color: "var(--ishti-success)", fontWeight: 600 }}>
-                  ✓ {work.rights === "cleared" ? "Public Domain" : "In Review"}
+                <span
+                  style={{
+                    fontSize: "11px",
+                    color: "var(--ishti-success)",
+                    fontWeight: 600,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <Check size={11} strokeWidth={2.2} />
+                  <span>{work.rights === "cleared" ? "Public Domain" : "In Review"}</span>
                 </span>
               </div>
               <h3 style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--ishti-temple-maroon)", marginBottom: "4px" }}>
@@ -221,7 +232,7 @@ export default function BhaktiPage() {
                 onClick={() => alert(`Opening ${work.title} reader. All verses are authenticated per ADR-006.`)}
               >
                 <span>Read Canonical Text</span>
-                <span aria-hidden="true">→</span>
+                <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
               </button>
             </div>
           </div>

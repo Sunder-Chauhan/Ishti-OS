@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { Clock } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 import { useAuth } from "../../lib/auth/auth-context";
 
@@ -99,8 +100,9 @@ export default function PujaPage() {
                     <h3 style={{ fontSize: "17px", fontWeight: 600, color: "var(--ishti-temple-charcoal)" }}>
                       {puja.name}
                     </h3>
-                    <span style={{ fontSize: "12px", color: "var(--ishti-warm-bronze)" }}>
-                      ⏱ {puja.duration}
+                    <span style={{ fontSize: "12px", color: "var(--ishti-warm-bronze)", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <Clock size={13} strokeWidth={1.8} />
+                      <span>{puja.duration}</span>
                     </span>
                   </div>
                   <div style={{ fontSize: "12px", fontFamily: "var(--font-devanagari)", color: "var(--ishti-vedic-saffron)", fontWeight: 600, marginBottom: "6px" }}>

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 import { useAuth } from "../../lib/auth/auth-context";
 
@@ -49,8 +50,18 @@ export default function AstroPage() {
       breadcrumbs={[{ label: "ISHTI Astro", current: true }]}
       actionSlot={
         <div style={{ display: "flex", gap: "10px" }}>
-          <span className="userRoleBadge" style={{ backgroundColor: "var(--ishti-success-surface)", color: "var(--ishti-success)" }}>
-            AES-256-GCM Encrypted
+          <span
+            className="userRoleBadge"
+            style={{
+              backgroundColor: "var(--ishti-success-surface)",
+              color: "var(--ishti-success)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <ShieldCheck size={14} strokeWidth={1.8} />
+            <span>Private &amp; Confidential Sanctuary</span>
           </span>
         </div>
       }

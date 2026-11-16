@@ -1899,7 +1899,10 @@ button {
 }
 
 .userAvatarBindu {
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ishti-temple-maroon);
 }
 
 .userNameShort {
@@ -2046,7 +2049,10 @@ button {
 }
 
 .bottomTabIcon {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
   line-height: 1;
 }
 
@@ -2164,12 +2170,17 @@ button {
 }
 
 .pillarIconBadge {
-  font-size: 36px;
-  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
   background-color: var(--surface-card);
   border: 1px solid var(--border-card);
   border-radius: var(--border-radius-lg);
-  line-height: 1;
+  color: var(--ishti-temple-maroon);
+  box-shadow: 0 2px 8px rgba(113, 27, 22, 0.05);
 }
 
 .pillarTitles {
@@ -2553,12 +2564,12 @@ button {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background-color: var(--ishti-temple-maroon);
-  color: var(--ishti-ivory-paper);
+  background-color: rgba(113, 27, 22, 0.08);
+  border: 1px solid rgba(113, 27, 22, 0.2);
+  color: var(--ishti-temple-maroon);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
 }
 
 .profileMeta {

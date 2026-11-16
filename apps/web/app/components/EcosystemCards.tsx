@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 interface PillarData {
   id: string;
@@ -204,7 +205,7 @@ export function EcosystemCards() {
           <div className="cardFooter">
             <Link href={pillar.route} className="btnExploreModule">
               <span>Enter {pillar.name}</span>
-              <span aria-hidden="true">→</span>
+              <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
             </Link>
           </div>
         </article>

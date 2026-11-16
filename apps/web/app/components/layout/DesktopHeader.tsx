@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UserRound, X } from "lucide-react";
 import { IshtiLogo } from "../brand";
 import { useAuth } from "../../../lib/auth/auth-context";
 
@@ -76,7 +77,9 @@ export function DesktopHeader() {
                 className={`userProfileLink ${pathname.startsWith("/profile") ? "profileActive" : ""}`}
                 aria-label={`Devotee Profile: ${user.full_name}`}
               >
-                <span className="userAvatarBindu" aria-hidden="true">🕉</span>
+                <span className="userAvatarBindu" aria-hidden="true">
+                  <UserRound size={13} strokeWidth={2} />
+                </span>
                 <span className="userNameShort">
                   {user.full_name.split(" ")[0]}
                 </span>
@@ -140,7 +143,7 @@ export function DesktopHeader() {
               className="mobileDrawerClose"
               aria-label="Close navigation drawer"
             >
-              ✕
+              <X size={20} strokeWidth={1.8} />
             </button>
           </div>
 

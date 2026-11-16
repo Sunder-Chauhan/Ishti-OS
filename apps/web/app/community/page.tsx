@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { ArrowRight } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 import { useAuth } from "../../lib/auth/auth-context";
 
@@ -109,7 +110,7 @@ export default function CommunityPage() {
                   style={{ marginTop: 0 }}
                 >
                   <span>Participate in Circle</span>
-                  <span aria-hidden="true">→</span>
+                  <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
                 </button>
               </div>
             </div>

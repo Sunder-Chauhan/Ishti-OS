@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Check } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 import { useAuth } from "../../lib/auth/auth-context";
 
@@ -122,8 +123,18 @@ export default function ExpertsPage() {
                     {expert.title}
                   </p>
                 </div>
-                <span className="userRoleBadge" style={{ backgroundColor: "var(--ishti-success-surface)", color: "var(--ishti-success)" }}>
-                  ✓ Vetted
+                <span
+                  className="userRoleBadge"
+                  style={{
+                    backgroundColor: "var(--ishti-success-surface)",
+                    color: "var(--ishti-success)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <Check size={12} strokeWidth={2.2} />
+                  <span>Vetted</span>
                 </span>
               </div>
 

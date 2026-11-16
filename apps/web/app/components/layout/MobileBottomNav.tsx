@@ -3,26 +3,36 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  House,
+  BookOpen,
+  CalendarDays,
+  Flame,
+  Orbit,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { useAuth } from "../../../lib/auth/auth-context";
 
 interface BottomTab {
   name: string;
   href: string;
-  icon: string;
+  icon: LucideIcon;
   ariaLabel: string;
 }
 
 const TABS: BottomTab[] = [
-  { name: "Home", href: "/", icon: "🏛️", ariaLabel: "Home Ecosystem" },
-  { name: "Bhakti", href: "/bhakti", icon: "📜", ariaLabel: "Canonical Scriptures" },
-  { name: "Panchang", href: "/panchang", icon: "📅", ariaLabel: "Vedic Panchang" },
-  { name: "Astro", href: "/astro", icon: "✨", ariaLabel: "Encrypted Kundli" },
-  { name: "Profile", href: "/profile", icon: "👤", ariaLabel: "Devotee Profile" },
+  { name: "Home", href: "/", icon: House, ariaLabel: "Home Ecosystem" },
+  { name: "Bhakti", href: "/bhakti", icon: BookOpen, ariaLabel: "Canonical Scriptures" },
+  { name: "Panchang", href: "/panchang", icon: CalendarDays, ariaLabel: "Vedic Panchang" },
+  { name: "Puja", href: "/puja", icon: Flame, ariaLabel: "Vedic Rituals & Pujas" },
+  { name: "Astro", href: "/astro", icon: Orbit, ariaLabel: "Encrypted Kundli" },
+  { name: "Profile", href: "/profile", icon: UserRound, ariaLabel: "Devotee Profile" },
 ];
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const { user, openAuthModal } = useAuth();
+  const { user } = useAuth();
 
   const isTabActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -34,9 +44,8 @@ export function MobileBottomNav() {
       <div className="mobileBottomNavContainer">
         {TABS.map((tab) => {
           const active = isTabActive(tab.href);
-          const isProfileTab = tab.href === "/profile";
+          const Icon = tab.icon;
 
-          // If user clicks profile tab while logged out, we can open auth modal or let them view guest profile state
           return (
             <Link
               key={tab.href}
@@ -44,15 +53,9 @@ export function MobileBottomNav() {
               className={`mobileBottomTab ${active ? "bottomTabActive" : ""}`}
               aria-current={active ? "page" : undefined}
               aria-label={tab.ariaLabel}
-              onClick={(e) => {
-                if (isProfileTab && !user) {
-                  // Let user navigate to /profile where guest explanation is shown,
-                  // or open auth modal on secondary click
-                }
-              }}
             >
               <span className="bottomTabIcon" aria-hidden="true">
-                {tab.icon}
+                <Icon size={20} strokeWidth={1.8} />
               </span>
               <span className="bottomTabLabel">{tab.name}</span>
               {active && <span className="bottomTabActiveDot" aria-hidden="true" />}

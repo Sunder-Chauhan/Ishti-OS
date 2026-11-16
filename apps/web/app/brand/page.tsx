@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { Check, ArrowLeft } from 'lucide-react';
 import {
   IshtiLogo,
   IshtiLogoIcon,
@@ -82,7 +83,7 @@ export default function BrandShowcasePage() {
       {/* Download Toast Notification */}
       {downloadMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#711B16] text-[#F8F4ED] px-4 py-2.5 rounded-lg shadow-xl text-sm font-medium animate-fade-in flex items-center gap-2">
-          <span>✓</span>
+          <Check size={16} strokeWidth={2.2} />
           <span>{downloadMsg}</span>
         </div>
       )}
@@ -92,9 +93,10 @@ export default function BrandShowcasePage() {
         <div>
           <Link
             href="/"
-            className="inline-flex items-center text-xs font-medium text-[#711B16] hover:text-[#EF7428] mb-6 transition-colors"
+            className="inline-flex items-center text-xs font-medium text-[#711B16] hover:text-[#EF7428] mb-6 transition-colors gap-1.5"
           >
-            ← Back to Sanctuary
+            <ArrowLeft size={14} strokeWidth={1.8} />
+            <span>Back to Sanctuary</span>
           </Link>
           <div className="border-b border-[#D1A477]/40 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>

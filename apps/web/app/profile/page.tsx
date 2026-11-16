@@ -2,6 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
+import {
+  UserRound,
+  Check,
+  ShieldCheck,
+  Orbit,
+  UsersRound,
+  ArrowRight,
+} from "lucide-react";
 import { useAuth } from "../../lib/auth/auth-context";
 import { Breadcrumbs } from "../components/layout/Breadcrumbs";
 
@@ -14,8 +22,17 @@ export default function ProfilePage() {
         <Breadcrumbs items={[{ label: "Devotee Profile", current: true }]} />
 
         <div className="profileCard" style={{ textAlign: "center", padding: "64px 32px" }}>
-          <div className="profileAvatar" style={{ margin: "0 auto 20px" }}>
-            🕉️
+          <div
+            className="profileAvatar"
+            style={{
+              margin: "0 auto 20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--ishti-temple-maroon)",
+            }}
+          >
+            <UserRound size={36} strokeWidth={1.8} />
           </div>
           <h1 className="profileName" style={{ fontSize: "32px", marginBottom: "12px" }}>
             Devotee Sanctuary Profile
@@ -55,11 +72,19 @@ export default function ProfilePage() {
       {/* Main Profile Card */}
       <div className="profileCard">
         <div className="profileHeaderRow">
-          <div className="profileAvatar">
+          <div
+            className="profileAvatar"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--ishti-temple-maroon)",
+            }}
+          >
             {user.avatar_url ? (
               <img src={user.avatar_url} alt={user.full_name} style={{ width: "100%", height: "100%", borderRadius: "50%" }} />
             ) : (
-              <span>🕉️</span>
+              <UserRound size={36} strokeWidth={1.8} />
             )}
           </div>
           <div className="profileMeta">
@@ -67,12 +92,32 @@ export default function ProfilePage() {
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <span className="userRoleBadge">{user.role}</span>
               {user.is_verified ? (
-                <span style={{ fontSize: "12px", color: "var(--ishti-success)", fontWeight: 600 }}>
-                  ✓ Identity Verified
+                <span
+                  style={{
+                    fontSize: "12px",
+                    color: "var(--ishti-success)",
+                    fontWeight: 600,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <Check size={13} strokeWidth={2.2} />
+                  <span>Identity Verified</span>
                 </span>
               ) : (
-                <span style={{ fontSize: "12px", color: "var(--ishti-warning)", fontWeight: 600 }}>
-                  ○ Community Devotee
+                <span
+                  style={{
+                    fontSize: "12px",
+                    color: "var(--ishti-warning)",
+                    fontWeight: 600,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--ishti-warning)" }} />
+                  <span>Community Devotee</span>
                 </span>
               )}
             </div>
@@ -117,7 +162,9 @@ export default function ProfilePage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px", marginBottom: "32px" }}>
         {/* DPDP Consent Center */}
         <div className="profileCard" style={{ marginBottom: 0 }}>
-          <div style={{ fontSize: "28px", marginBottom: "12px" }}>🛡️</div>
+          <div style={{ marginBottom: "14px", color: "var(--ishti-temple-maroon)" }}>
+            <ShieldCheck size={28} strokeWidth={1.8} />
+          </div>
           <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)", marginBottom: "8px" }}>
             DPDP Act 2023 Consent Center
           </h2>
@@ -126,13 +173,15 @@ export default function ProfilePage() {
           </p>
           <Link href="/profile/consent" className="btnExploreModule" style={{ marginTop: 0 }}>
             <span>Manage Consent Preferences</span>
-            <span aria-hidden="true">→</span>
+            <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
           </Link>
         </div>
 
         {/* Encrypted Kundli */}
         <div className="profileCard" style={{ marginBottom: 0 }}>
-          <div style={{ fontSize: "28px", marginBottom: "12px" }}>✨</div>
+          <div style={{ marginBottom: "14px", color: "var(--ishti-temple-maroon)" }}>
+            <Orbit size={28} strokeWidth={1.8} />
+          </div>
           <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)", marginBottom: "8px" }}>
             Encrypted Kundli Sanctuary
           </h2>
@@ -141,22 +190,24 @@ export default function ProfilePage() {
           </p>
           <Link href="/astro" className="btnExploreModule" style={{ marginTop: 0 }}>
             <span>Open ISHTI Astro</span>
-            <span aria-hidden="true">→</span>
+            <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
           </Link>
         </div>
 
         {/* Ritual Bookings */}
         <div className="profileCard" style={{ marginBottom: 0 }}>
-          <div style={{ fontSize: "28px", marginBottom: "12px" }}>🪔</div>
+          <div style={{ marginBottom: "14px", color: "var(--ishti-temple-maroon)" }}>
+            <UsersRound size={28} strokeWidth={1.8} />
+          </div>
           <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)", marginBottom: "8px" }}>
-            Vetted Pandits & Consultations
+            Vetted Pandits &amp; Consultations
           </h2>
           <p style={{ fontSize: "13px", color: "var(--ishti-warm-bronze)", lineHeight: 1.5, marginBottom: "18px" }}>
             Explore accredited Vedic pandits and manage upcoming ritual consultations.
           </p>
           <Link href="/experts" className="btnExploreModule" style={{ marginTop: 0 }}>
             <span>Find an Acharya</span>
-            <span aria-hidden="true">→</span>
+            <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
           </Link>
         </div>
       </div>
