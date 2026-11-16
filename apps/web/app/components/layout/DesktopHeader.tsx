@@ -37,14 +37,14 @@ export function DesktopHeader() {
   return (
     <header className="siteHeader" role="banner">
       <div className="headerContainer">
-        {/* Brand identity */}
+        {/* Brand identity - auto-adjustable responsive horizontal lockup */}
         <Link href="/" className="brandLink" aria-label="ISHTI - Rooted in Tradition. Connected to Today.">
-          <span className="brandDesktopLogo">
-            <IshtiLogo variant="horizontal" width={220} priority decorative />
-          </span>
-          <span className="brandMobileLogo">
-            <IshtiLogo variant="secondary" width={125} priority decorative />
-          </span>
+          <IshtiLogo
+            variant="horizontal"
+            priority
+            decorative
+            className="headerBrandLogo"
+          />
         </Link>
 
         {/* Primary Desktop Navigation Links */}
@@ -127,7 +127,12 @@ export function DesktopHeader() {
         <div className="mobileDrawerContent">
           <div className="mobileDrawerHeader">
             <Link href="/" onClick={closeDrawer} className="mobileBrandLink" aria-label="ISHTI">
-              <IshtiLogo variant="secondary" width={130} priority decorative />
+              <IshtiLogo
+                variant="secondary"
+                priority
+                decorative
+                className="mobileDrawerBrandLogo"
+              />
             </Link>
             <button
               type="button"

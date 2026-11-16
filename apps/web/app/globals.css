@@ -136,14 +136,107 @@ button {
   flex-shrink: 0;
 }
 
-.brandDesktopLogo {
-  display: inline-flex;
-  align-items: center;
+/* ==========================================================================
+   ISHTI BRAND LOGO RESPONSIVE AUTO-ADJUSTMENT RULES
+   - Auto-adjustable according to device / screen type
+   - Strict visibility floor: never shrinks to an illegible or minuscule size
+   - Preserves sacred Vedi altar, Agni flame, bindu, wordmark & taglines
+   ========================================================================== */
+
+/* 1. Header Horizontal Brand Logo (Desktop, Tablet & Mobile) */
+.headerBrandLogo {
+  width: 220px;
+  min-width: 175px;
+  max-width: 240px;
+  height: auto;
+  display: block;
+  flex-shrink: 0;
+  transition: width 180ms ease;
 }
 
-.brandMobileLogo {
-  display: none;
-  align-items: center;
+@media (max-width: 1024px) {
+  .headerBrandLogo {
+    width: clamp(190px, 22vw, 220px);
+    min-width: 175px;
+  }
+}
+
+@media (max-width: 768px) {
+  .headerBrandLogo {
+    width: clamp(170px, 46vw, 195px);
+    min-width: 165px;
+  }
+}
+
+@media (max-width: 480px) {
+  .headerBrandLogo {
+    width: clamp(165px, 50vw, 185px);
+    min-width: 160px;
+  }
+}
+
+/* 2. Mobile Navigation Drawer Secondary Brand Logo */
+.mobileDrawerBrandLogo {
+  width: 180px;
+  min-width: 150px;
+  max-width: 220px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* 3. Sanctuary Footer Primary Brand Logo */
+.footerBrandLogo {
+  width: 215px;
+  min-width: 180px;
+  max-width: 240px;
+  height: auto;
+  display: block;
+  transition: width 180ms ease;
+}
+
+@media (max-width: 768px) {
+  .footerBrandLogo {
+    width: clamp(180px, 48vw, 215px);
+    min-width: 170px;
+  }
+}
+
+/* 4. About / Philosophy Primary Brand Logo Centerpiece */
+.philosophyBrandLogo {
+  width: 330px;
+  min-width: 260px;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  transition: width 180ms ease;
+}
+
+@media (max-width: 768px) {
+  .philosophyBrandLogo {
+    width: clamp(240px, 75vw, 300px);
+    min-width: 220px;
+  }
+}
+
+/* 5. Auth Modal Secondary Brand Logo */
+.authModalBrandLogo {
+  width: 155px;
+  min-width: 135px;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* 6. 404 Sanctuary Secondary Brand Logo */
+.notFoundBrandLogo {
+  width: 210px;
+  min-width: 170px;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
 }
 
 .brandText {
@@ -1666,14 +1759,6 @@ button {
 }
 
 @media (max-width: 768px) {
-  .brandDesktopLogo {
-    display: none;
-  }
-
-  .brandMobileLogo {
-    display: inline-flex;
-  }
-
   .desktopNav {
     display: none;
   }
@@ -1688,8 +1773,9 @@ button {
 
   .headerContainer {
     padding: 6px 16px;
-    min-height: 72px;
+    min-height: 74px;
     height: auto;
+    gap: 12px;
   }
 
   .mobileDrawer {

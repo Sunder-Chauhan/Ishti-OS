@@ -485,17 +485,16 @@ export default function BrandShowcasePage() {
                   Mobile Header &amp; Drawer Mockup
                 </span>
                 <span className="font-mono text-[#8B6846] bg-[#F8F4ED] px-2.5 py-1 rounded-md">
-                  Icon: 48px • Drawer: 130px
+                  Bar: 175px • Drawer: 180px
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {/* Mobile Top Bar */}
                 <div className="rounded-xl border border-[#D1A477]/40 bg-[#F1EBDD] p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <IshtiLogoIcon size={46} decorative />
-                    <span className="font-serif font-bold text-sm text-[#711B16]">ISHTI</span>
+                  <div className="flex items-center">
+                    <IshtiLogoHorizontal width={175} decorative />
                   </div>
-                  <div className="flex flex-col gap-1 w-5">
+                  <div className="flex flex-col gap-1 w-5 shrink-0 ml-2">
                     <span className="h-0.5 bg-[#711B16] w-full" />
                     <span className="h-0.5 bg-[#711B16] w-full" />
                     <span className="h-0.5 bg-[#711B16] w-full" />
@@ -504,12 +503,12 @@ export default function BrandShowcasePage() {
 
                 {/* Mobile Drawer Top */}
                 <div className="rounded-xl border border-[#D1A477]/40 bg-white p-3 flex flex-col items-center justify-center text-center">
-                  <IshtiLogoSecondary width={125} decorative />
-                  <span className="text-[10px] text-[#8B6846] mt-1 font-mono">Drawer Header (125px)</span>
+                  <IshtiLogoSecondary width={170} decorative />
+                  <span className="text-[10px] text-[#8B6846] mt-1 font-mono">Drawer Header (170px)</span>
                 </div>
               </div>
               <p className="text-xs text-[#8B6846] leading-relaxed">
-                Mobile bar uses the <strong>46–48px Icon</strong> for instant tap recognition, while the drawer header uses the <strong>125–130px Secondary</strong> lockup.
+                Mobile bar dynamically renders the <strong>175px Horizontal lockup</strong> for clear wordmark and tagline visibility without squeezing, while the drawer renders the prominent <strong>170–180px Secondary</strong> lockup.
               </p>
             </div>
 
@@ -583,42 +582,42 @@ export default function BrandShowcasePage() {
                 <tr className="hover:bg-[#FDFBF7]">
                   <td className="p-4 font-semibold">Desktop header — horizontal logo</td>
                   <td className="p-4 font-mono text-[#8B6846]">200–240px wide</td>
-                  <td className="p-4 font-mono font-bold text-[#711B16]">220px (78px height)</td>
+                  <td className="p-4 font-mono font-bold text-[#711B16]">220px (min 175px on tablet)</td>
                   <td className="p-4"><code>ishti-horizontal.svg</code></td>
                   <td className="p-4 font-mono">680 × 240 (2.833)</td>
                 </tr>
                 <tr className="hover:bg-[#FDFBF7]">
-                  <td className="p-4 font-semibold">Desktop header — secondary logo</td>
-                  <td className="p-4 font-mono text-[#8B6846]">150–190px wide</td>
-                  <td className="p-4 font-mono text-[#8B6846]">Supported fallback</td>
+                  <td className="p-4 font-semibold">Mobile header — auto-adjustable horizontal</td>
+                  <td className="p-4 font-mono text-[#8B6846]">Fluid responsive</td>
+                  <td className="p-4 font-mono font-bold text-[#711B16]">170–195px (floor: min 165px)</td>
+                  <td className="p-4"><code>ishti-horizontal.svg</code></td>
+                  <td className="p-4 font-mono">680 × 240 (2.833)</td>
+                </tr>
+                <tr className="hover:bg-[#FDFBF7]">
+                  <td className="p-4 font-semibold">Mobile drawer header — secondary logo</td>
+                  <td className="p-4 font-mono text-[#8B6846]">150–200px wide</td>
+                  <td className="p-4 font-mono font-bold text-[#711B16]">180px (min 150px)</td>
                   <td className="p-4"><code>ishti-secondary.svg</code></td>
                   <td className="p-4 font-mono">400 × 460 (0.870)</td>
                 </tr>
                 <tr className="hover:bg-[#FDFBF7]">
-                  <td className="p-4 font-semibold">Mobile header — icon</td>
+                  <td className="p-4 font-semibold">Mobile bar touch icon (compact)</td>
                   <td className="p-4 font-mono text-[#8B6846]">44–52px</td>
-                  <td className="p-4 font-mono font-bold text-[#711B16]">48px (48px height)</td>
+                  <td className="p-4 font-mono font-bold text-[#711B16]">48px (min 44px)</td>
                   <td className="p-4"><code>ishti-icon.svg</code></td>
                   <td className="p-4 font-mono">400 × 400 (1.000)</td>
                 </tr>
                 <tr className="hover:bg-[#FDFBF7]">
-                  <td className="p-4 font-semibold">Mobile header — secondary logo</td>
-                  <td className="p-4 font-mono text-[#8B6846]">110–140px wide</td>
-                  <td className="p-4 font-mono font-bold text-[#711B16]">125–130px (drawer)</td>
-                  <td className="p-4"><code>ishti-secondary.svg</code></td>
-                  <td className="p-4 font-mono">400 × 460 (0.870)</td>
-                </tr>
-                <tr className="hover:bg-[#FDFBF7]">
                   <td className="p-4 font-semibold">Footer — primary logo</td>
                   <td className="p-4 font-mono text-[#8B6846]">180–220px wide</td>
-                  <td className="p-4 font-mono font-bold text-[#711B16]">200px (270px height)</td>
+                  <td className="p-4 font-mono font-bold text-[#711B16]">215px (fluid, min 170px)</td>
                   <td className="p-4"><code>ishti-primary.svg</code></td>
                   <td className="p-4 font-mono">400 × 540 (0.741)</td>
                 </tr>
                 <tr className="hover:bg-[#FDFBF7]">
                   <td className="p-4 font-semibold">About / brand section — primary logo</td>
                   <td className="p-4 font-mono text-[#8B6846]">280–360px wide</td>
-                  <td className="p-4 font-mono font-bold text-[#711B16]">320px (432px height)</td>
+                  <td className="p-4 font-mono font-bold text-[#711B16]">330px (fluid, min 220px)</td>
                   <td className="p-4"><code>ishti-primary.svg</code></td>
                   <td className="p-4 font-mono">400 × 540 (0.741)</td>
                 </tr>

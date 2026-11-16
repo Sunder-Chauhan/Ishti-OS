@@ -71,6 +71,9 @@ export function IshtiLogo({
     }
   }
 
+  const attrWidth = typeof resolvedWidth === 'number' ? resolvedWidth : meta.intrinsicWidth;
+  const attrHeight = typeof resolvedHeight === 'number' ? resolvedHeight : meta.intrinsicHeight;
+
   const computedStyle: React.CSSProperties = {
     aspectRatio: `${meta.intrinsicWidth} / ${meta.intrinsicHeight}`,
     objectFit: 'contain',
@@ -78,6 +81,8 @@ export function IshtiLogo({
     verticalAlign: 'middle',
     maxWidth: '100%',
     height: 'auto',
+    ...(typeof resolvedWidth === 'string' ? { width: resolvedWidth } : {}),
+    ...(typeof resolvedHeight === 'string' ? { height: resolvedHeight } : {}),
     ...style,
   };
 
@@ -92,8 +97,8 @@ export function IshtiLogo({
       title={decorative ? undefined : (title ?? meta.title)}
       role={decorative ? 'presentation' : 'img'}
       aria-hidden={decorative ? 'true' : undefined}
-      width={resolvedWidth}
-      height={resolvedHeight}
+      width={attrWidth}
+      height={attrHeight}
       loading={priority ? 'eager' : 'lazy'}
       decoding="async"
       style={computedStyle}

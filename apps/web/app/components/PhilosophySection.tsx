@@ -19,7 +19,11 @@ export function PhilosophySection() {
       {/* Brand Identity Centerpiece */}
       <div className="philosophyBrandCenterpiece">
         <div className="philosophyLogoContainer">
-          <IshtiLogo variant="primary" width={320} decorative />
+          <IshtiLogo
+            variant="primary"
+            decorative
+            className="philosophyBrandLogo"
+          />
         </div>
         <p className="philosophyLogoCaption">
           Vedic Essence &amp; Rituals • Rooted in Tradition. Connected to Today.
