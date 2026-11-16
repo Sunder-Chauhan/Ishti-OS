@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { IshtiLogoIcon } from "./brand";
+import { IshtiLogo } from "./brand";
 
 export function Footer() {
   return (
@@ -9,10 +9,7 @@ export function Footer() {
         {/* Brand identity column */}
         <div className="footerBrandColumn">
           <div className="footerBrand">
-            <IshtiLogoIcon size={38} decorative />
-            <div className="footerBrandText">
-              <span className="footerBrandName">ISHTI</span>
-            </div>
+            <IshtiLogo variant="secondary" height={54} decorative />
           </div>
           <p className="footerTagline">Rooted in Tradition. Connected to Today.</p>
           <p className="footerDescription">

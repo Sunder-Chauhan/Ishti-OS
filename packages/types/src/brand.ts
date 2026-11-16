@@ -98,11 +98,15 @@ export type IshtiLogoVariant =
   | 'monochrome'
   | 'reversed';
 
-export interface IshtiLogoProps extends React.ComponentPropsWithoutRef<'svg'> {
+export interface IshtiLogoProps {
   size?: number | string;
+  width?: number | string;
+  height?: number | string;
   variant?: IshtiLogoVariant;
   className?: string;
   decorative?: boolean;
+  priority?: boolean;
   title?: string;
   desc?: string;
+  alt?: string;
 }

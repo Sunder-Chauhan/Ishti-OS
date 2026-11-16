@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IshtiLogoIcon } from "../brand";
+import { IshtiLogo } from "../brand";
 import { useAuth } from "../../../lib/auth/auth-context";
 
 interface NavItem {
@@ -39,10 +39,7 @@ export function DesktopHeader() {
       <div className="headerContainer">
         {/* Brand identity */}
         <Link href="/" className="brandLink" aria-label="ISHTI - Rooted in Tradition. Connected to Today.">
-          <IshtiLogoIcon size={34} decorative />
-          <div className="brandText">
-            <span className="brandName">ISHTI</span>
-          </div>
+          <IshtiLogo variant="horizontal" height={36} priority decorative />
         </Link>
 
         {/* Primary Desktop Navigation Links */}
@@ -124,9 +121,8 @@ export function DesktopHeader() {
       >
         <div className="mobileDrawerContent">
           <div className="mobileDrawerHeader">
-            <Link href="/" onClick={closeDrawer} className="mobileBrandLink">
-              <IshtiLogoIcon size={30} decorative />
-              <span className="brandName">ISHTI</span>
+            <Link href="/" onClick={closeDrawer} className="mobileBrandLink" aria-label="ISHTI">
+              <IshtiLogo variant="secondary" height={44} priority decorative />
             </Link>
             <button
               type="button"

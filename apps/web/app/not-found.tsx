@@ -1,13 +1,13 @@
 import React from 'react';
 import Link from 'next/link';
-import { IshtiLogoIcon } from './components/brand';
+import { IshtiLogo } from './components/brand';
 
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-[#F8F4ED] text-[#302B2A] flex flex-col items-center justify-center p-6 text-center">
       <div className="space-y-6 max-w-md">
         <div className="flex justify-center">
-          <IshtiLogoIcon size={64} decorative />
+          <IshtiLogo variant="secondary" height={80} decorative />
         </div>
         <h1 className="text-3xl font-serif text-[#711B16] font-bold">Sacred Path Not Found</h1>
         <p className="text-sm text-[#8B6846] leading-relaxed">

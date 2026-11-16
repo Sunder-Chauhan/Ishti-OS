@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../../lib/auth/auth-context";
-import { IshtiLogoIcon } from "../brand";
+import { IshtiLogo } from "../brand";
 
 export function AuthModal() {
   const {
@@ -173,8 +173,7 @@ export function AuthModal() {
         {/* Header with Emblem & Close Button */}
         <div className="authModalHeader">
           <div className="authModalBrand">
-            <IshtiLogoIcon size={32} decorative />
-            <span className="authModalBrandText">ISHTI Identity</span>
+            <IshtiLogo variant="secondary" height={40} decorative />
           </div>
           <button
             type="button"

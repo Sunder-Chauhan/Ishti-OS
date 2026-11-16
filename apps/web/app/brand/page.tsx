@@ -116,9 +116,9 @@ export default function BrandShowcasePage() {
               <div className="mt-4 pt-4 border-t border-[#D1A477]/20 flex items-center justify-between text-xs">
                 <span className="text-[#8B6846]">Official Master Lockup</span>
                 <a
-                  href="/brand/ishti-logo-primary.svg"
-                  download="ishti-logo-primary.svg"
-                  onClick={() => showDownloadNotification('ishti-logo-primary.svg')}
+                  href="/brand/ishti-primary.svg"
+                  download="ishti-primary.svg"
+                  onClick={() => showDownloadNotification('ishti-primary.svg')}
                   className="font-medium text-[#711B16] hover:text-[#EF7428] transition-colors"
                 >
                   Download SVG ↓
@@ -140,9 +140,9 @@ export default function BrandShowcasePage() {
               <div className="mt-4 pt-4 border-t border-[#D1A477]/20 flex items-center justify-between text-xs">
                 <span className="text-[#8B6846]">App &amp; Web Headers</span>
                 <a
-                  href="/brand/ishti-logo-secondary.svg"
-                  download="ishti-logo-secondary.svg"
-                  onClick={() => showDownloadNotification('ishti-logo-secondary.svg')}
+                  href="/brand/ishti-secondary.svg"
+                  download="ishti-secondary.svg"
+                  onClick={() => showDownloadNotification('ishti-secondary.svg')}
                   className="font-medium text-[#711B16] hover:text-[#EF7428] transition-colors"
                 >
                   Download SVG ↓
@@ -164,9 +164,9 @@ export default function BrandShowcasePage() {
               <div className="mt-4 pt-4 border-t border-[#D1A477]/20 flex items-center justify-between text-xs">
                 <span className="text-[#8B6846]">Favicon &amp; App Icon</span>
                 <a
-                  href="/brand/ishti-logo-icon.svg"
-                  download="ishti-logo-icon.svg"
-                  onClick={() => showDownloadNotification('ishti-logo-icon.svg')}
+                  href="/brand/ishti-icon.svg"
+                  download="ishti-icon.svg"
+                  onClick={() => showDownloadNotification('ishti-icon.svg')}
                   className="font-medium text-[#711B16] hover:text-[#EF7428] transition-colors"
                 >
                   Download SVG ↓
@@ -188,9 +188,9 @@ export default function BrandShowcasePage() {
               <div className="mt-4 pt-4 border-t border-[#D1A477]/20 flex items-center justify-between text-xs">
                 <span className="text-[#8B6846]">Navigation bars &amp; horizontal banners</span>
                 <a
-                  href="/brand/ishti-logo-horizontal.svg"
-                  download="ishti-logo-horizontal.svg"
-                  onClick={() => showDownloadNotification('ishti-logo-horizontal.svg')}
+                  href="/brand/ishti-horizontal.svg"
+                  download="ishti-horizontal.svg"
+                  onClick={() => showDownloadNotification('ishti-horizontal.svg')}
                   className="font-medium text-[#711B16] hover:text-[#EF7428] transition-colors"
                 >
                   Download SVG ↓
@@ -212,9 +212,9 @@ export default function BrandShowcasePage() {
               <div className="mt-4 pt-4 border-t border-[#D1A477]/20 flex items-center justify-between text-xs">
                 <span className="text-[#8B6846]">Print, Stamping &amp; Receipts</span>
                 <a
-                  href="/brand/ishti-logo-monochrome.svg"
-                  download="ishti-logo-monochrome.svg"
-                  onClick={() => showDownloadNotification('ishti-logo-monochrome.svg')}
+                  href="/brand/ishti-monochrome.svg"
+                  download="ishti-monochrome.svg"
+                  onClick={() => showDownloadNotification('ishti-monochrome.svg')}
                   className="font-medium text-[#711B16] hover:text-[#EF7428] transition-colors"
                 >
                   Download SVG ↓
@@ -236,9 +236,9 @@ export default function BrandShowcasePage() {
               <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
                 <span className="text-white/60">Dark mode &amp; Night sanctuary</span>
                 <a
-                  href="/brand/ishti-logo-reversed.svg"
-                  download="ishti-logo-reversed.svg"
-                  onClick={() => showDownloadNotification('ishti-logo-reversed.svg')}
+                  href="/brand/ishti-reversed.svg"
+                  download="ishti-reversed.svg"
+                  onClick={() => showDownloadNotification('ishti-reversed.svg')}
                   className="font-medium text-[#D7A64A] hover:text-[#FFF3B3] transition-colors"
                 >
                   Download SVG ↓

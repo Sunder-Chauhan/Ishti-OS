@@ -5,7 +5,7 @@
   
   
   <defs>
-    <!-- Sacred Agni Flame Gradient -->
+    <!-- Sacred Agni Flame Gradient: Temple Maroon to Vedic Saffron to Radiant Gold -->
     <linearGradient id="ico-flame" x1="50%" y1="100%" x2="50%" y2="0%">
       <stop offset="0%" stop-color="#711B16" />
       <stop offset="25%" stop-color="#A8281A" />

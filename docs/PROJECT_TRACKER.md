@@ -194,3 +194,17 @@
   6. **Milestone M04 (App Foundation & UX Shell):** Complete (**13/13 routes statically prerendered**, 110/110 tests passed, 0 TypeScript errors).
 - **Restrictions:** Production strictly quarantined (`zxwkfnvmmxoojewhvsdc`).
 - **Next Action:** Ready for operator review and roadmap planning for deep feature implementation (M05).
+
+
+## M04.6 — Official ISHTI Digital Logo Family Integration (CLOSED & VERIFIED)
+- [x] Immutable Master Vector Reference preserved: `preview_v2.html` (root and `docs/preview_v2.html`)
+- [x] Extraction of 6 official SVG assets with 100% vector parity to `apps/web/public/brand/` (`ishti-primary.svg`, `ishti-secondary.svg`, `ishti-icon.svg`, `ishti-horizontal.svg`, `ishti-monochrome.svg`, `ishti-reversed.svg`)
+- [x] Synchronized legacy aliases (`ishti-logo-*.svg`) maintained for backward compatibility
+- [x] Reusable typed React component `<IshtiLogo />` and variant wrappers (`IshtiLogoPrimary`, `IshtiLogoSecondary`, `IshtiLogoIcon`, `IshtiLogoHorizontal`, `IshtiLogoMonochrome`, `IshtiLogoReversed`)
+- [x] Direct image asset rendering strategy avoiding DOM gradient ID collisions while guaranteeing zero layout shift
+- [x] Application placement updates: Desktop navigation (`horizontal`), mobile navigation drawer (`secondary`), footer (`secondary`), auth modal (`secondary`), 404 sanctuary (`secondary`), brand showcase (`brand/page.tsx`)
+- [x] Browser favicon (`/favicon.ico`, `/icon.svg`) and Web App Manifest (`/manifest.webmanifest`)
+- [x] Typography token alignment: `Cinzel` font integration alongside `Cormorant Garamond`, `Inter`, and `Noto Sans Devanagari`
+- [x] Verification audit (`scripts/verify-approved-logos.mjs`) passing 100% of checks across all 6 variants
+- [x] Monorepo TypeScript check (0 errors), security/RLS test suite (110/110 passed), and Next.js 15 production build verified (15/15 routes prerendered)
+- [x] Decision log updated (ADR-020 in [docs/DECISION_LOG.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/DECISION_LOG.md))

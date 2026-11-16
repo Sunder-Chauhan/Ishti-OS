@@ -333,3 +333,41 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Updated `apps/web/app/layout.tsx`, `apps/web/app/page.tsx`, `apps/web/app/components/Navbar.tsx`, `apps/web/app/components/Footer.tsx`, `apps/web/app/components/EcosystemCards.tsx`, and `apps/web/app/globals.css`
      - Updated `docs/PROJECT_TRACKER.md` and `docs/DECISION_LOG.md`
 - **Final Gate Status:** `MILESTONE M04 COMPLETE & FULLY VERIFIED`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.
+
+
+## 2026-11-16: ADR-020 — Official ISHTI Digital Logo Family Integration and Brand Asset Preservation
+- **Context:** The official digital logo family for ISHTI was finalized and approved in master vector file `preview_v2.html` containing six distinct SVG variants. The directive mandated strictly an asset-integration task, NOT a logo-design task. The six logos are immutable brand assets: redesign, recreation, font substitution, geometric alteration, color modification, lossy SVG optimization, and rasterization were strictly prohibited. The application was required to be implemented around these approved logos, never the logos around the application.
+- **Decision:**
+  1. **Source of Truth & Standalone Assets (`apps/web/public/brand/`):**
+     - Preserved `preview_v2.html` as the immutable master reference at repository root and in `docs/preview_v2.html`.
+     - Extracted all six approved SVG variants verbatim without lossy optimization, path alteration, or ID renaming into `apps/web/public/brand/`:
+       * `ishti-primary.svg` (`viewBox="0 0 400 540"`, 39,858 bytes)
+       * `ishti-secondary.svg` (`viewBox="0 0 400 460"`, 39,344 bytes)
+       * `ishti-icon.svg` (`viewBox="0 0 400 400"`, 31,354 bytes)
+       * `ishti-horizontal.svg` (`viewBox="0 0 680 240"`, 39,837 bytes)
+       * `ishti-monochrome.svg` (`viewBox="0 0 400 460"`, 38,188 bytes, fill `#2A2726`)
+       * `ishti-reversed.svg` (`viewBox="0 0 400 460"`, 39,144 bytes, dark tile `#282A36`)
+     - Maintained synchronized legacy aliases (`ishti-logo-*.svg`) to preserve backward compatibility with existing tests and download paths.
+  2. **Reusable Typed React Component (`<IshtiLogo />`):**
+     - Engineered `<IshtiLogo />` in `apps/web/app/components/brand/IshtiLogo.tsx` with strongly typed props (`IshtiLogoProps`), explicit variant selection (`IshtiLogoVariant`), automatic aspect-ratio computation (`${intrinsicWidth} / ${intrinsicHeight}`), `objectFit: 'contain'`, responsive scaling, and comprehensive accessibility treatment (`role="img"`, `aria-label`, `decorative`).
+     - Adopted the preferred direct image rendering strategy (`<img src="/brand/ishti-*.svg" />`), completely isolating SVG gradient definitions (`pri-flame`, `sec-flame`, `ico-flame`, `horiz-flame`) to eliminate DOM gradient ID collision risks across concurrent renders while achieving 100% vector fidelity and zero layout shift.
+     - Provided typed wrapper components (`IshtiLogoPrimary`, `IshtiLogoSecondary`, `IshtiLogoIcon`, `IshtiLogoHorizontal`, `IshtiLogoMonochrome`, `IshtiLogoReversed`).
+  3. **Application Location Alignment:**
+     - Desktop Navigation (`DesktopHeader.tsx`): Updated to use the approved `horizontal` variant (`height={36}`) featuring the sacred flame symbol, custom serif ISHTI wordmark, and stacked tagline in official proportions.
+     - Mobile Navigation Drawer (`DesktopHeader.tsx`): Updated to use the approved `secondary` variant (`height={44}`).
+     - Footer (`Footer.tsx`): Updated to use the approved `secondary` variant (`height={54}`).
+     - Authentication Modal (`AuthModal.tsx`): Updated to use the approved `secondary` variant (`height={40}`).
+     - 404 Sanctuary Page (`not-found.tsx`): Updated to use the approved `secondary` variant (`height={80}`).
+     - Brand Identity Showcase (`brand/page.tsx`): Updated all 6 showcase cards and download endpoints to canonical filenames.
+  4. **Favicon, PWA & Metadata Integration:**
+     - Deployed `ishti-icon.svg` as `/favicon.ico` in `apps/web/public/` and Next.js App Router dynamic icon `/icon.svg` in `apps/web/app/`.
+     - Created `apps/web/app/manifest.ts` delivering Web App Manifest with `ishti-icon.svg`.
+     - Updated `apps/web/app/layout.tsx` metadata with icon links, OpenGraph images (`ishti-primary.svg`), and Twitter summary cards.
+     - Integrated `Cinzel` font alongside `Cormorant Garamond`, `Inter`, and `Noto Sans Devanagari`.
+  5. **Design Tokens & Verification:**
+     - Verified central design tokens match approved colors: `#F8F4ED` (Background), `#711B16` (Temple Maroon), `#EF7428` (Vedic Saffron), `#D7A64A` (Sacred Gold), `#282A36` (Dark Surface), `#9E764E` (Muted Gold), `#2A2726` (Monochrome Charcoal).
+     - Automated verification script `scripts/verify-approved-logos.mjs` verifies 100% byte-for-byte parity for all 6 variants.
+     - Monorepo typecheck: 0 errors.
+     - Security and RLS test suite: 110/110 passing (100%).
+     - Next.js production build: Succeeded with 0 errors across all 15 prerendered static routes.
+- **Final Gate Status:** `OFFICIAL ISHTI LOGO FAMILY INTEGRATION VERIFIED`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.

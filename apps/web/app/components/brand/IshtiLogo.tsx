@@ -1,33 +1,105 @@
 'use client';
 
 import React from 'react';
-import { IshtiLogoIcon } from './IshtiLogoIcon';
-import { IshtiLogoSecondary } from './IshtiLogoSecondary';
-import { IshtiLogoPrimary } from './IshtiLogoPrimary';
-import { IshtiLogoHorizontal } from './IshtiLogoHorizontal';
-import { IshtiLogoMonochrome } from './IshtiLogoMonochrome';
-import { IshtiLogoReversed } from './IshtiLogoReversed';
+import { ISHTI_LOGO_VARIANTS } from './types';
 import type { IshtiLogoProps } from './types';
 
 export function IshtiLogo({
   variant = 'secondary',
-  ...props
+  size,
+  width,
+  height,
+  className,
+  style,
+  decorative = false,
+  priority = false,
+  title,
+  desc,
+  alt,
+  ...restProps
 }: IshtiLogoProps) {
-  switch (variant) {
-    case 'primary':
-      return <IshtiLogoPrimary {...props} />;
-    case 'icon':
-      return <IshtiLogoIcon {...props} />;
-    case 'horizontal':
-      return <IshtiLogoHorizontal {...props} />;
-    case 'monochrome':
-      return <IshtiLogoMonochrome {...props} />;
-    case 'reversed':
-      return <IshtiLogoReversed {...props} />;
-    case 'secondary':
-    default:
-      return <IshtiLogoSecondary {...props} />;
+  const meta = ISHTI_LOGO_VARIANTS[variant] ?? ISHTI_LOGO_VARIANTS.secondary;
+
+  // Compute clean width and height preserving intrinsic aspect ratio
+  let resolvedWidth: number | string | undefined = width;
+  let resolvedHeight: number | string | undefined = height;
+
+  if (size !== undefined) {
+    if (variant === 'icon') {
+      resolvedWidth = size;
+      resolvedHeight = size;
+    } else if (variant === 'horizontal') {
+      // Horizontal lockup (680 x 240, ratio 2.833)
+      if (typeof size === 'number') {
+        if (size <= 120) {
+          // If a small size is passed (e.g. 36 in a navbar), treat it as the target height
+          resolvedHeight = size;
+          resolvedWidth = Math.round(size * meta.aspectRatio);
+        } else {
+          resolvedWidth = size;
+          resolvedHeight = Math.round(size / meta.aspectRatio);
+        }
+      } else {
+        resolvedHeight = size;
+        resolvedWidth = 'auto';
+      }
+    } else {
+      // Vertical lockups (primary: 400x540; secondary/mono/rev: 400x460)
+      if (typeof size === 'number') {
+        if (size <= 120) {
+          resolvedHeight = size;
+          resolvedWidth = Math.round(size * meta.aspectRatio);
+        } else {
+          resolvedWidth = size;
+          resolvedHeight = Math.round(size / meta.aspectRatio);
+        }
+      } else {
+        resolvedWidth = size;
+        resolvedHeight = 'auto';
+      }
+    }
+  } else if (width !== undefined && height === undefined) {
+    if (typeof width === 'number') {
+      resolvedHeight = Math.round(width / meta.aspectRatio);
+    } else {
+      resolvedHeight = 'auto';
+    }
+  } else if (height !== undefined && width === undefined) {
+    if (typeof height === 'number') {
+      resolvedWidth = Math.round(height * meta.aspectRatio);
+    } else {
+      resolvedWidth = 'auto';
+    }
   }
+
+  const computedStyle: React.CSSProperties = {
+    aspectRatio: `${meta.intrinsicWidth} / ${meta.intrinsicHeight}`,
+    objectFit: 'contain',
+    display: 'inline-block',
+    verticalAlign: 'middle',
+    ...style,
+  };
+
+  const computedAlt = decorative
+    ? ''
+    : (alt ?? title ?? desc ?? meta.defaultAlt);
+
+  return (
+    <img
+      src={meta.src}
+      alt={computedAlt}
+      title={decorative ? undefined : (title ?? meta.title)}
+      role={decorative ? 'presentation' : 'img'}
+      aria-hidden={decorative ? 'true' : undefined}
+      width={resolvedWidth}
+      height={resolvedHeight}
+      loading={priority ? 'eager' : 'lazy'}
+      decoding="async"
+      style={computedStyle}
+      className={className}
+      {...restProps}
+    />
+  );
 }
 
 export * from './IshtiLogoIcon';
