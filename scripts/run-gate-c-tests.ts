@@ -261,39 +261,74 @@ async function runGateCTests() {
     // ============================================================================
     console.log("--- SUITE 3: HOSTED PUBLIC SCRIPTURE CATALOG RLS & RIGHTS ENFORCEMENT ---");
 
-    await test("HOSTED_SCRIPTURE", "Public/Anonymous read strictly filtered to cleared & curated catalog", async () => {
+    await test("HOSTED_SCRIPTURE", "Public/Anonymous read strictly hides seed scripture pending review & clearance (RSK-01/02)", async () => {
       await client.query("SET ROLE anon;");
       try {
-        const res = await client.query("SELECT id, slug, status, rights_clearance_status FROM public.scripture_catalog;");
-        if (res.rows.length !== 1) {
-          throw new Error(`Expected exactly 1 curated scripture catalog row, got ${res.rows.length}`);
+        const catRes = await client.query("SELECT count(*) FROM public.scripture_catalog;");
+        const verseRes = await client.query("SELECT count(*) FROM public.canonical_verses;");
+        const catCount = parseInt(catRes.rows[0].count, 10);
+        const verseCount = parseInt(verseRes.rows[0].count, 10);
+
+        if (catCount !== 0) {
+          throw new Error(`Uncurated scripture leaked to anonymous caller! Count: ${catCount}`);
         }
-        if (res.rows[0].status !== "curated" || res.rows[0].rights_clearance_status !== "cleared") {
-          throw new Error(`Leaked unapproved scripture row: status=${res.rows[0].status}`);
+        if (verseCount !== 0) {
+          throw new Error(`Unreviewed canonical verse leaked to anonymous caller! Count: ${verseCount}`);
         }
-        return `Returned exactly 1 curated & cleared row (${res.rows[0].slug})`;
+        return "Anonymous caller receives exactly 0 rows for unverified & pending-clearance seed data";
       } finally {
         await client.query("RESET ROLE;");
       }
     });
 
-    await test("HOSTED_SCRIPTURE", "Public/Anonymous read strictly filtered to cleared & verified canonical verses", async () => {
-      await client.query("SET ROLE anon;");
+    await test("HOSTED_SCRIPTURE", "Public/Anonymous read allows verified & cleared scripture (Transient Transaction Test)", async () => {
+      const tempScriptureId = crypto.randomUUID();
+      const tempVerseId = crypto.randomUUID();
+
+      await client.query("BEGIN;");
       try {
-        const res = await client.query("SELECT id, verse_reference, review_status, rights_clearance_status FROM public.canonical_verses;");
-        if (res.rows.length !== 1) {
-          throw new Error(`Expected exactly 1 verified canonical verse, got ${res.rows.length}`);
+        // 1. Insert temporary curated & cleared scripture and verse as postgres
+        await client.query(`
+          INSERT INTO public.scripture_catalog (
+            id, slug, title_iast, title_devanagari, category, description,
+            source_edition, publication_publisher, rights_holder, license_type,
+            commercial_rights_status, rights_clearance_status, status
+          ) VALUES (
+            '${tempScriptureId}', 'gita-transient-test', 'Bhagavad Gita Test', 'भगवद्गीता', 'gita', 'Test text',
+            'Public Edition', 'Publisher', 'Public Domain', 'Public Domain',
+            'public_domain_unrestricted', 'cleared', 'curated'
+          );
+
+          INSERT INTO public.canonical_verses (
+            id, scripture_id, canto_kanda_mandal, chapter_adhyaya_sukta, verse_number,
+            devanagari, iast, source_citation, rights_clearance_status, review_status
+          ) VALUES (
+            '${tempVerseId}', '${tempScriptureId}', 1, 2, 47,
+            'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन', 'karmaṇyevādhikāraste mā phaleṣu kadācana',
+            'Gita 2.47', 'cleared', 'verified'
+          );
+        `);
+
+        // 2. Query as anonymous role
+        await client.query("SET ROLE anon;");
+        const catRes = await client.query(`SELECT id, slug FROM public.scripture_catalog WHERE id = '${tempScriptureId}';`);
+        const verseRes = await client.query(`SELECT id, iast FROM public.canonical_verses WHERE id = '${tempVerseId}';`);
+
+        if (catRes.rows.length !== 1) {
+          throw new Error(`Curated scripture was not readable by anonymous role! Count: ${catRes.rows.length}`);
         }
-        if (res.rows[0].review_status !== "verified" || res.rows[0].rights_clearance_status !== "cleared") {
-          throw new Error(`Leaked unverified verse: review_status=${res.rows[0].review_status}`);
+        if (verseRes.rows.length !== 1) {
+          throw new Error(`Verified verse was not readable by anonymous role! Count: ${verseRes.rows.length}`);
         }
-        return `Returned exactly 1 verified verse (${res.rows[0].verse_reference})`;
+
+        return `Curated scripture and verified verse readable by public (Gita 2.47: ${verseRes.rows[0].iast.slice(0, 20)}...)`;
       } finally {
         await client.query("RESET ROLE;");
+        await client.query("ROLLBACK;");
       }
     });
 
-    await test("HOSTED_SCRIPTURE", "Public/Anonymous read returns 0 rows for unverified verses without 42501 crash", async () => {
+    await test("HOSTED_SCRIPTURE", "Public/Anonymous read returns 0 rows for unverified query without 42501 crash", async () => {
       await client.query("SET ROLE anon;");
       try {
         const res = await client.query("SELECT count(*) FROM public.canonical_verses WHERE review_status = 'pending_peer_review';");
@@ -538,19 +573,28 @@ async function runGateCTests() {
 
     const testSubscriberEmail = `gate_c_test_${Date.now()}@ishti-test.internal`;
 
-    await test("HOSTED_RATE_LIMIT", "Distributed rate limiting RPC public.check_rate_limit() atomic execution", async () => {
+    await test("HOSTED_RATE_LIMIT", "Distributed rate limiting RPC public.check_rate_limit() atomic execution & quota enforcement", async () => {
       const identifierHash = crypto.createHash("sha256").update(`test_ip_${Date.now()}`).digest("hex");
-      const res = await client.query(`
-        SELECT * FROM public.check_rate_limit('early_access', '${identifierHash}', 5, 60);
+      // 1. First check with quota 1 should be allowed
+      const res1 = await client.query(`
+        SELECT public.check_rate_limit('early_access', '${identifierHash}', 1, 60) as allowed;
       `);
-      if (res.rows.length !== 1) {
-        throw new Error("check_rate_limit did not return exactly 1 row.");
+      if (res1.rows[0]?.allowed !== true) {
+        throw new Error(`Expected first request allowed=true, got ${res1.rows[0]?.allowed}`);
       }
-      const { allowed, remaining_requests } = res.rows[0];
-      if (!allowed || typeof remaining_requests !== "number") {
-        throw new Error(`Unexpected rate limit return: allowed=${allowed}, remaining=${remaining_requests}`);
+
+      // 2. Immediate second check for same identifier exceeds quota and must be rejected
+      const res2 = await client.query(`
+        SELECT public.check_rate_limit('early_access', '${identifierHash}', 1, 60) as allowed;
+      `);
+      if (res2.rows[0]?.allowed !== false) {
+        throw new Error(`Expected second request allowed=false (rate limited), got ${res2.rows[0]?.allowed}`);
       }
-      return `Rate limit checked: allowed=${allowed}, remaining=${remaining_requests}`;
+
+      // Clean up event rows generated by this test
+      await client.query(`DELETE FROM public.rate_limit_events WHERE identifier_hash = '${identifierHash}';`);
+
+      return "Rate limit enforcement verified: request 1 allowed, request 2 blocked (sliding-window quota active)";
     });
 
     await test("HOSTED_EARLY_ACCESS", "Devotee anonymous early access registration insertion", async () => {
