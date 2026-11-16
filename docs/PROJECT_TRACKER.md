@@ -170,15 +170,18 @@
 - [x] Brand Guidelines updated to v1.1 ([docs/BRAND_GUIDELINES.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/BRAND_GUIDELINES.md))
 - [x] Full test suite (108/108 tests passed) and Next.js 15 production build verified (0 errors)
 
-## M04 — Application Foundation & User Experience Shell (ACTIVE MILESTONE)
-- [ ] Implement Next.js 15 application shell layout and font loading
-- [ ] Implement responsive navigation header (desktop) and bottom navigation (mobile)
-- [ ] Implement India-first phone OTP authentication modal and session middleware
-- [ ] Implement user profile view and DPDP Act 2023 consent center UI
-- [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
+## M04 — Application Foundation & User Experience Shell (CLOSED & VERIFIED)
+- [x] Foundation & Design System Audit deliverable ([docs/M04_FOUNDATION_AND_DESIGN_SYSTEM_AUDIT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M04_FOUNDATION_AND_DESIGN_SYSTEM_AUDIT.md))
+- [x] Implement Next.js 15 application shell layout and font loading (`AppShell`, `design-tokens.css`, `layout.tsx`)
+- [x] Implement responsive navigation header (desktop) and bottom navigation (mobile) (`DesktopHeader`, `MobileBottomNav`, `Breadcrumbs`)
+- [x] Implement India-first phone OTP authentication modal and session middleware (`AuthModal`, `useAuth`, `auth-context.tsx`)
+- [x] Implement user profile view and DPDP Act 2023 consent center UI (`/profile`, `/profile/consent`)
+- [x] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community) (`/puja`, `/astro`, `/bhakti`, `/panchang`, `/experts`, `/community`)
+- [x] Decision log updated (ADR-019 in [docs/DECISION_LOG.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/DECISION_LOG.md))
+- [x] Full test suite (110/110 passed), monorepo TypeScript check (0 errors), and Next.js 15 production build verified (13/13 routes)
 
 ## Current Gate Status
-- **Status:** `MILESTONE M03 COMPLETE & SIGNED OFF — READY FOR MILESTONE M04`
+- **Status:** `MILESTONE M04 COMPLETE & FULLY VERIFIED`
 - **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
 - **Active Recovery Point:** `staging_backup_2026-11-15T18-54-57-175Z.meta.json` (Verified 100% SHA-256 and size parity)
 - **Canonical Migration:** `20261114000000_initial_schema.sql` (SHA-256 `3399a731...` verified)
@@ -188,5 +191,6 @@
   3. **INC-01 (Razorpay Sandbox Key Rotation):** Resolved in merchant dashboard; live tested in Gate C.
   4. **Pre-Gate C Independent Verification:** Complete (72/72 catalog checks passed with zero mutations).
   5. **Gate C (Hosted Application & Payment Sandbox Tests):** Complete (**18/18 integration tests passed**; zero residual pollution in transactional tables; seed records preserved).
+  6. **Milestone M04 (App Foundation & UX Shell):** Complete (**13/13 routes statically prerendered**, 110/110 tests passed, 0 TypeScript errors).
 - **Restrictions:** Production strictly quarantined (`zxwkfnvmmxoojewhvsdc`).
-- **Next Action:** Begin Milestone M04 execution (Next.js 15 application shell, layout, navigation, phone OTP authentication flow, user profile view, DPDP Act 2023 consent center UI).
+- **Next Action:** Ready for operator review and roadmap planning for deep feature implementation (M05).

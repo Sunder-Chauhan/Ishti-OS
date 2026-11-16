@@ -1,7 +1,9 @@
 import React from "react";
+import Link from "next/link";
 
 interface PillarData {
   id: string;
+  route: string;
   name: string;
   devanagari: string;
   tagline: string;
@@ -14,6 +16,7 @@ interface PillarData {
 const pillars: PillarData[] = [
   {
     id: "puja",
+    route: "/puja",
     name: "ISHTI Puja",
     devanagari: "पूजा एवं विधि",
     tagline: "Authentic Ritual Guidance & AI Pandit",
@@ -27,7 +30,6 @@ const pillars: PillarData[] = [
     accentColor: "var(--terracotta)",
     icon: (color) => (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        {/* Kalash & Coconut with sacred leaves */}
         <path d="M 12 18 Q 8 22 10 27 L 22 27 Q 24 22 20 18 Z" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.1" />
         <ellipse cx="16" cy="18" rx="4" ry="1.5" stroke={color} strokeWidth="1.5" />
         <circle cx="16" cy="14" r="3" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.2" />
@@ -38,7 +40,8 @@ const pillars: PillarData[] = [
     ),
   },
   {
-    id: "astrology",
+    id: "astro",
+    route: "/astro",
     name: "ISHTI Astro",
     devanagari: "ज्योतिष शास्त्र",
     tagline: "Kundli, Dasha & Planetary Transits",
@@ -52,115 +55,109 @@ const pillars: PillarData[] = [
     accentColor: "var(--gold)",
     icon: (color) => (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        {/* Vedic Kundli Square Geometry */}
         <rect x="5" y="5" width="22" height="22" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.08" />
         <line x1="5" y1="5" x2="27" y2="27" stroke={color} strokeWidth="1.25" />
         <line x1="27" y1="5" x2="5" y2="27" stroke={color} strokeWidth="1.25" />
-        {/* Inner Diamond */}
         <path d="M 16 5 L 27 16 L 16 27 L 5 16 Z" stroke={color} strokeWidth="1.25" />
-        <circle cx="16" cy="16" r="2.5" fill={color} />
+        <circle cx="16" cy="16" r="2" fill={color} />
       </svg>
     ),
   },
   {
-    id: "music",
+    id: "bhakti",
+    route: "/bhakti",
     name: "ISHTI Bhakti",
-    devanagari: "भक्ति संगीत",
-    tagline: "Sacred Chants & Traditional Ragas",
+    devanagari: "भक्ति एवं स्तोत्र",
+    tagline: "Devotional Chants, Aartis & Living Prayers",
     description:
-      "Immersive devotional listening curated from classical gharanas, temple traditions, Vedic chanting groups, and celebrated devotional artists.",
+      "A serene repository of devotional compositions: aartis, stotras, chalisa, and suktas with lyrical transliteration and canonical explanations.",
     capabilities: [
-      "Lossless meditative stotras, suktas, and regional bhajans",
-      "Time-of-day Raga alignments for morning, twilight, and evening contemplation",
-      "Respectful artist royalties and provenance rights management",
+      "Curated library of traditional chants across all major Hindu traditions",
+      "Sanskrit Devanagari text alongside readable IAST and English meanings",
+      "High-clarity audio recordings by verified traditional chanters",
     ],
-    accentColor: "var(--sage)",
+    accentColor: "var(--terracotta)",
     icon: (color) => (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        {/* Tanpura / Sacred Resonance soundwaves & strings */}
-        <circle cx="16" cy="22" r="6" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.1" />
-        <line x1="16" y1="16" x2="16" y2="5" stroke={color} strokeWidth="1.75" strokeLinecap="round" />
-        <line x1="13" y1="8" x2="19" y2="8" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="16" cy="22" r="2" fill={color} />
-        {/* Harmonic resonance arcs */}
-        <path d="M 6 16 C 6 10 10 6 16 6" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeDasharray="2 3" />
-        <path d="M 26 16 C 26 10 22 6 16 6" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeDasharray="2 3" />
+        <path d="M 10 7 C 8 7 6 9 6 11 L 6 23 C 6 25 8 27 10 27 L 22 27 C 24 27 26 25 26 23 L 26 11 C 26 9 24 7 22 7 Z" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.08" />
+        <line x1="16" y1="7" x2="16" y2="27" stroke={color} strokeWidth="1.25" />
+        <line x1="9" y1="12" x2="13" y2="12" stroke={color} strokeWidth="1.25" strokeLinecap="round" />
+        <line x1="9" y1="16" x2="13" y2="16" stroke={color} strokeWidth="1.25" strokeLinecap="round" />
+        <line x1="19" y1="12" x2="23" y2="12" stroke={color} strokeWidth="1.25" strokeLinecap="round" />
+        <line x1="19" y1="16" x2="23" y2="16" stroke={color} strokeWidth="1.25" strokeLinecap="round" />
       </svg>
     ),
   },
   {
     id: "panchang",
+    route: "/panchang",
     name: "ISHTI Panchang",
     devanagari: "पञ्चाङ्ग एवं मुहूर्त",
-    tagline: "Exact Solar, Lunar & Muhurat Coordinates",
+    tagline: "Astronomically Accurate Vedic Almanac",
     description:
-      "Precise astronomical timings computed for your specific latitude and longitude. Tithi, Nakshatra, Yoga, Karana, and auspicious windows.",
+      "Precision calculation of the five limbs of time: Tithi, Vaar, Nakshatra, Yoga, and Karana. Auspicious muhurtas calculated for your exact location.",
     capabilities: [
-      "Micro-location solar sunrise, sunset, and twilight calculation",
-      "Choghadiya, Rahu Kalam, Yamaganda, and Abhijit Muhurat alerts",
-      "Regional calendar alignments (Amavasyant, Purnimant, Solar Tamil/Bengali)",
+      "Exact sunrise, sunset, and twilight calculation by geographic coordinates",
+      "Choghadiya, Rahu Kalam, Yamagandam, and Abhijit Muhurta indicators",
+      "Major festival dates across regional calendars (Purnimanta & Amanta)",
     ],
     accentColor: "var(--gold)",
     icon: (color) => (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        {/* Sun & Crescent Moon intersection dial */}
-        <circle cx="14" cy="15" r="8" stroke={color} strokeWidth="1.5" />
-        <path d="M 17 8 A 8 8 0 0 1 25 18 A 8 8 0 0 0 17 8 Z" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="1.25" />
-        {/* Sun rays */}
-        <line x1="14" y1="4" x2="14" y2="2" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="6" y1="15" x2="4" y2="15" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="8" y1="9" x2="6.5" y2="7.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="8" y1="21" x2="6.5" y2="22.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+        <rect x="5" y="8" width="22" height="19" rx="2" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.08" />
+        <line x1="5" y1="14" x2="27" y2="14" stroke={color} strokeWidth="1.25" />
+        <line x1="10" y1="5" x2="10" y2="9" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="22" y1="5" x2="22" y2="9" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="11" cy="19" r="1.5" fill={color} />
+        <circle cx="16" cy="19" r="1.5" fill={color} />
+        <circle cx="21" cy="19" r="1.5" fill={color} />
+        <circle cx="11" cy="23" r="1.5" fill={color} />
+        <circle cx="16" cy="23" r="1.5" fill={color} />
       </svg>
     ),
   },
   {
     id: "experts",
+    route: "/experts",
     name: "ISHTI Experts",
-    devanagari: "प्रमाणित आचार्य",
-    tagline: "Vetted Pandits, Astrologers & Gurus",
+    devanagari: "विद्वत् परिषद",
+    tagline: "Vetted Pandits, Acharyas & Gurus",
     description:
-      "Direct access to qualified spiritual practitioners verified for lineage, scholarly training, transparent pricing, and ethical conduct.",
+      "Direct, transparent access to qualified spiritual practitioners. Strict verification of lineage, credentials, and authentic ritual practice.",
     capabilities: [
-      "Rigorous background verification of Sanskrit qualification and lineage",
-      "Transparent fixed-pricing with no hidden fees or fear tactics",
-      "Seamless online or in-person ceremony coordination",
+      "Verified credentials, Vedic pathshala affiliation, and lineage disclosure",
+      "Transparent honorariums without hidden commercial pressure",
+      "Virtual and in-person ritual bookings with clear preparation guidance",
     ],
-    accentColor: "var(--terracotta)",
+    accentColor: "var(--sage)",
     icon: (color) => (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        {/* Scholarly Seal & Pothi / Manuscript */}
-        <rect x="7" y="11" width="18" height="15" rx="1.5" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.1" />
-        <line x1="10" y1="16" x2="22" y2="16" stroke={color} strokeWidth="1.25" strokeLinecap="round" />
-        <line x1="10" y1="20" x2="18" y2="20" stroke={color} strokeWidth="1.25" strokeLinecap="round" />
-        {/* Verification Check Seal */}
-        <circle cx="23" cy="9" r="5" fill="#F1EBDD" stroke={color} strokeWidth="1.5" />
-        <path d="M 21 9 L 22.5 10.5 L 25 7.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="16" cy="11" r="5" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.1" />
+        <path d="M 6 26 C 6 21 10 19 16 19 C 22 19 26 21 26 26" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+        <circle cx="16" cy="8" r="1" fill={color} />
       </svg>
     ),
   },
   {
     id: "community",
+    route: "/community",
     name: "ISHTI Community",
-    devanagari: "सत्संग एवं समुदाय",
-    tagline: "Satsangs, Festivals & Shared Heritage",
+    devanagari: "सत्संग एवं सेवा",
+    tagline: "Satsang, Seva & Temple Connection",
     description:
-      "A peaceful digital sanctuary to share sacred observations, temple histories, philosophical questions, and participate in collective chanting.",
+      "A dignified space for spiritual fellowship. Connect with local temple events, seva opportunities, and philosophical study circles.",
     capabilities: [
-      "Curated temple festival broadcasts and collaborative seva initiatives",
-      "Moderated, respectful community discussion without toxicity or political noise",
-      "Cross-generational knowledge preservation for global families",
+      "Moderated philosophical discussions bounded by dignity and respect",
+      "Local temple event listings, utsava calendars, and seva coordination",
+      "Study circles focusing on classical commentaries and living wisdom",
     ],
     accentColor: "var(--sage)",
     icon: (color) => (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        {/* Mandapa Gathering Circle of lights */}
-        <circle cx="16" cy="16" r="10" stroke={color} strokeWidth="1.5" strokeDasharray="3 3" />
-        <circle cx="16" cy="16" r="4" fill={color} fillOpacity="0.25" stroke={color} strokeWidth="1.25" />
-        <circle cx="16" cy="6" r="2" fill={color} />
-        <circle cx="26" cy="16" r="2" fill={color} />
-        <circle cx="16" cy="26" r="2" fill={color} />
-        <circle cx="6" cy="16" r="2" fill={color} />
+        <circle cx="11" cy="12" r="4" stroke={color} strokeWidth="1.25" fill={color} fillOpacity="0.08" />
+        <circle cx="21" cy="12" r="4" stroke={color} strokeWidth="1.25" fill={color} fillOpacity="0.08" />
+        <path d="M 4 25 C 4 21 7 19 11 19 C 13.5 19 15.6 20 16.5 21.5" stroke={color} strokeWidth="1.25" strokeLinecap="round" fill="none" />
+        <path d="M 15.5 21.5 C 16.4 20 18.5 19 21 19 C 25 19 28 21 28 25" stroke={color} strokeWidth="1.25" strokeLinecap="round" fill="none" />
       </svg>
     ),
   },
@@ -168,7 +165,7 @@ const pillars: PillarData[] = [
 
 export function EcosystemCards() {
   return (
-    <div className="ecosystemGrid">
+    <div id="ecosystem" className="ecosystemGrid">
       {pillars.map((pillar, index) => (
         <article
           key={pillar.id}
@@ -192,7 +189,7 @@ export function EcosystemCards() {
 
           {/* Feature highlights */}
           <div className="capabilitiesWrap">
-            <span className="capabilitiesHeading">Planned Capabilities</span>
+            <span className="capabilitiesHeading">Core Capabilities</span>
             <ul className="cardCapabilities">
               {pillar.capabilities.map((cap, i) => (
                 <li key={i} className="capabilityItem">
@@ -203,16 +200,15 @@ export function EcosystemCards() {
             </ul>
           </div>
 
-          {/* Planned status badge */}
+          {/* Card Action Link */}
           <div className="cardFooter">
-            <span className="plannedBadge" title="Planned feature for upcoming release">
-              <span className="plannedDot" />
-              Planned &bull; In Development
-            </span>
+            <Link href={pillar.route} className="btnExploreModule">
+              <span>Enter {pillar.name}</span>
+              <span aria-hidden="true">→</span>
+            </Link>
           </div>
         </article>
       ))}
     </div>
   );
 }
-

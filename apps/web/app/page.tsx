@@ -1,20 +1,15 @@
 import React from "react";
-import { Navbar } from "./components/Navbar";
 import { HeroVisual } from "./components/HeroVisual";
 import { EcosystemCards } from "./components/EcosystemCards";
 import { PhilosophySection } from "./components/PhilosophySection";
 import { TrustSection } from "./components/TrustSection";
 import { ExperiencePreview } from "./components/ExperiencePreview";
 import { CtaSection } from "./components/CtaSection";
-import { Footer } from "./components/Footer";
 
 export default function Home() {
   return (
     <div className="pageWrapper">
-      {/* Top Navigation */}
-      <Navbar />
-
-      <main id="mainContent" className="mainShell">
+      <div className="mainShell">
         {/* Hero Section */}
         <section className="heroSection" aria-labelledby="heroHeadline">
           <div className="heroGrid">
@@ -60,23 +55,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right Authentic Heritage Artwork Column */}
-            <div className="heroGraphicColumn">
-              <HeroVisual />
-            </div>
-          </div>
-        </section>
-
-        {/* Six Product Families Section */}
-        <section id="ecosystem" className="section ecosystemSection" aria-labelledby="ecosystemHeading">
-          <div className="sectionHeader">
-            <p className="sectionKicker">The Six Product Families &bull; Architectural Blueprint</p>
-            <h2 id="ecosystemHeading" className="sectionTitle">
-              One Master Sanctuary, Six Sacred Families
-            </h2>
-            <p className="sectionSubtitle">
-              The product families below represent the planned master brand architecture. Each area is in active development to ensure scriptural fidelity, deterministic mathematics, and living tradition preservation.
-            </p>
+            {/* Right Sacred Visual */}
+            <HeroVisual />
           </div>
 
           <EcosystemCards />
@@ -93,10 +73,7 @@ export default function Home() {
 
         {/* Early Access CTA Band */}
         <CtaSection />
-      </main>
-
-      {/* Footer */}
-      <Footer />
+      </div>
     </div>
   );
 }

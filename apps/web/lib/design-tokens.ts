@@ -1,7 +1,3 @@
-/**
- * ISHTI Brand Design Tokens
- * Master visual truth grounded in Vedic geometry and Temple aesthetics.
- */
 
 export const ISHTI_COLORS = {
   // Core Brand Palette
@@ -22,6 +18,16 @@ export const ISHTI_COLORS = {
   slateCharcoal: '#282A36',
   altarShadow: '#6E1612',
   altarLight: '#E86424',
+
+  // Semantic Status Tokens
+  success: '#2E6B4F',
+  successSurface: '#EAF4EE',
+  warning: '#C06B1A',
+  warningSurface: '#FDF5EB',
+  error: '#9E2B25',
+  errorSurface: '#FBEBEB',
+  info: '#3D6485',
+  infoSurface: '#EBF2F8',
 } as const;
 
 export const ISHTI_TYPOGRAPHY = {
@@ -29,6 +35,7 @@ export const ISHTI_TYPOGRAPHY = {
     serif: "'Cinzel', 'Trajan Pro', Georgia, serif",
     subSerif: "'Cormorant Garamond', 'Times New Roman', Georgia, serif",
     sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    devanagari: "'Noto Sans Devanagari', sans-serif",
   },
   letterSpacing: {
     tighter: '-0.02em',
@@ -37,6 +44,18 @@ export const ISHTI_TYPOGRAPHY = {
     wider: '0.12em',
     widest: '0.22em',
   },
+} as const;
+
+export const ISHTI_SPACING = {
+  space1: '4px',
+  space2: '8px',
+  space3: '12px',
+  space4: '16px',
+  space6: '24px',
+  space8: '32px',
+  space12: '48px',
+  space16: '64px',
+  space24: '96px',
 } as const;
 
 export const ISHTI_CLEARSPACE = {

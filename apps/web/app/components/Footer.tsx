@@ -29,43 +29,43 @@ export function Footer() {
           <div className="footerColumn">
             <h4 className="footerColumnTitle">Our Ecosystem</h4>
             <ul className="footerLinksList">
-              <li><a href="#ecosystem">ISHTI Puja</a></li>
-              <li><a href="#ecosystem">ISHTI Astro</a></li>
-              <li><a href="#ecosystem">ISHTI Bhakti</a></li>
-              <li><a href="#ecosystem">ISHTI Panchang</a></li>
-              <li><a href="#ecosystem">ISHTI Experts</a></li>
-              <li><a href="#ecosystem">ISHTI Community</a></li>
+              <li><Link href="/puja">ISHTI Puja</Link></li>
+              <li><Link href="/astro">ISHTI Astro</Link></li>
+              <li><Link href="/bhakti">ISHTI Bhakti</Link></li>
+              <li><Link href="/panchang">ISHTI Panchang</Link></li>
+              <li><Link href="/experts">ISHTI Experts</Link></li>
+              <li><Link href="/community">ISHTI Community</Link></li>
             </ul>
           </div>
 
           <div className="footerColumn">
             <h4 className="footerColumnTitle">Trust & Governance</h4>
             <ul className="footerLinksList">
-              <li><a href="#trust">Verified Shastric Sources</a></li>
-              <li><a href="#trust">Preserving Living Traditions</a></li>
-              <li><a href="#trust">Bounded AI Principles</a></li>
-              <li><a href="#trust">Scholar Verification Standards</a></li>
-              <li><a href="#trust">Content Provenance & Rights</a></li>
+              <li><Link href="/bhakti">Verified Shastric Sources</Link></li>
+              <li><Link href="/experts">Living Traditions & Pandits</Link></li>
+              <li><Link href="/profile/consent">DPDP Act 2023 Consent</Link></li>
+              <li><Link href="/profile">Devotee Profile Sanctuary</Link></li>
+              <li><Link href="/brand">Brand Identity Guidelines</Link></li>
             </ul>
           </div>
 
           <div className="footerColumn">
             <h4 className="footerColumnTitle">Philosophy</h4>
             <ul className="footerLinksList">
-              <li><a href="#philosophy">Our Purpose & Vision</a></li>
-              <li><a href="#philosophy">Tradition & Technology</a></li>
-              <li><a href="#experience">A Day with ISHTI</a></li>
-              <li><a href="#early-access">Request Early Access</a></li>
+              <li><a href="/#philosophy">Our Purpose & Vision</a></li>
+              <li><a href="/#philosophy">Tradition & Technology</a></li>
+              <li><a href="/#experience">Daily Sadhana Practice</a></li>
+              <li><a href="/#early-access">Request Early Access</a></li>
             </ul>
           </div>
 
           <div className="footerColumn">
             <h4 className="footerColumnTitle">Transparency</h4>
             <ul className="footerLinksList">
-              <li><a href="#early-access">Privacy & Sanctuary</a></li>
-              <li><a href="#trust">No Commercial Fear Claims</a></li>
-              <li><a href="#trust">Transparent Expert Honorariums</a></li>
-              <li><a href="#early-access">Accessibility Commitment</a></li>
+              <li><Link href="/profile/consent">DPDP Act 2023 Sanctuary</Link></li>
+              <li><a href="/#trust">No Commercial Fear Claims</a></li>
+              <li><a href="/#trust">Transparent Expert Honorariums</a></li>
+              <li><a href="/#trust">Accessibility Commitment</a></li>
             </ul>
           </div>
         </div>
@@ -78,6 +78,8 @@ export function Footer() {
         </p>
         <div className="footerBottomMeta">
           <Link href="/brand" className="hover:underline">Brand System v1.1</Link>
+          <span className="metaDivider">&bull;</span>
+          <Link href="/profile/consent" className="hover:underline">DPDP Privacy Rights</Link>
           <span className="metaDivider">&bull;</span>
           <span>WCAG 2.2 Accessible System</span>
         </div>

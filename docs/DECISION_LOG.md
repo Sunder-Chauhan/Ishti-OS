@@ -294,3 +294,42 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
 - **Final Gate Status:** `MILESTONE M03 COMPLETE & SIGNED OFF — READY FOR MILESTONE M04`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.
 
 
+
+## 2026-11-16: ADR-019 — Milestone M04: Application Foundation & User Experience Shell Implementation
+- **Context:** Following formal sign-off and closure of Milestone M03, ISHTI initiated Milestone M04 to establish the application foundation and responsive user experience shell. The directive mandated building a coherent, interconnected ISHTI ecosystem rather than six disconnected applications, adhering to three foundation rules: (1) design system before individual pages, (2) guest browsing by default with authentication required only for personalized features, and (3) meaningful DPDP Act 2023 §6 purpose-specific consent governance.
+- **Decision:**
+  1. **Foundation & Design System Tokens (M04.1):**
+     - Enriched `apps/web/app/design-tokens.css` and `apps/web/lib/design-tokens.ts` with 8pt Vedic modular spatial tokens (`--space-1` through `--space-24`), layout container constraints (`--container-sm` through `--container-xl`), surface elevation tiers, and WCAG 2.2 AAA/AA compliant color tokens.
+     - Engineered `AppShell` (`apps/web/app/components/layout/AppShell.tsx`) wrapping all routes with global `<AuthProvider>`, accessible skip-to-content landmark, `DesktopHeader`, semantic `<main id="main-content">`, `Footer`, `MobileBottomNav`, and top-layer `AuthModal`.
+  2. **Navigation & Responsive UX Architecture (M04.2):**
+     - Implemented `DesktopHeader` (`apps/web/app/components/layout/DesktopHeader.tsx`) featuring official `IshtiLogoIcon` vector branding, active route highlighting across the 6 core product domains, guest "Sign In" trigger, and authenticated devotee profile menu with role badge and sign-out action.
+     - Engineered `MobileBottomNav` (`apps/web/app/components/layout/MobileBottomNav.tsx`) with 5 thumb-friendly touchpoints (Home, Bhakti, Panchang, Astro, Profile) meeting WCAG 2.2 touch target minimums ($\ge 48\text{ px}$).
+     - Created accessible `Breadcrumbs` (`apps/web/app/components/layout/Breadcrumbs.tsx`) and `PillarShell` (`apps/web/app/components/layout/PillarShell.tsx`) for unified module headers and Shastric subheads.
+  3. **India-First Phone OTP Authentication Shell (M04.3):**
+     - Built `AuthProvider` and `useAuth` hook (`apps/web/lib/auth/auth-context.tsx`) managing devotee profiles, role state, and session persistence via `@supabase/ssr` with a transparent Staging Sandbox fallback mode for local/offline environments.
+     - Implemented accessible `AuthModal` (`apps/web/app/components/auth/AuthModal.tsx`) using native HTML `<dialog>` with `overscroll-behavior: contain`, `::backdrop` blur, light-dismiss, +91 Indian phone validation, 6-digit OTP verification, 60-second resend countdown, and guest continuation link.
+  4. **Devotee Profile & DPDP Act 2023 §6 Consent Center (M04.4):**
+     - Authored `/profile` route (`apps/web/app/profile/page.tsx`) displaying devotee identity metadata, sampradaya tradition, verification status, and quick links to encrypted Kundli, pandit consultations, and consent preferences.
+     - Engineered `/profile/consent` route (`apps/web/app/profile/consent/page.tsx`) providing granular, unbundled, purpose-specific consent toggles (`kundli_astrology`, `expert_consultation`, `marketing_updates`, `analytics`) with statutory notice and explanation of Data Principal rights under §§6(4), 11, 12, and 13 of the DPDP Act 2023.
+  5. **Six Coherent Product Module Shells (M04.5):**
+     - Implemented `/puja` (ISHTI Puja): Canonical ritual guides, samagri checklists, and Acharya consultation requests.
+     - Implemented `/astro` (ISHTI Astro): Encrypted Kundli birth chart calculator shell, Graha Spashta ephemeris table, and ethical non-commercial dosha guidance.
+     - Implemented `/bhakti` (ISHTI Bhakti): Canonical scripture reader, featured Rigveda 10.191.2 (Samjnana Sukta) verse, and rights-cleared Shastric text search.
+     - Implemented `/panchang` (ISHTI Panchang): Real-time calculation of the Five Limbs of Time (Tithi, Vaara, Nakshatra, Yoga, Karana), auspicious Muhurtas, inauspicious periods, and Purnimanta/Amanta toggles.
+     - Implemented `/experts` (ISHTI Experts): Verified Pandit and Acharya directory with accredited credentials, Vedic pathshala lineages, and published transparent honorariums.
+     - Implemented `/community` (ISHTI Community): Dignified Satsang circles, temple seva opportunities, and Community Dignity Charter (सद्भाव संहिता).
+  6. **Verification Evidence:**
+     - Next.js 15 production build (`npm.cmd run build:web`) succeeded with 0 errors across all 13 prerendered static routes.
+     - Monorepo TypeScript check (`npm.cmd run typecheck`) passed with 0 errors across `@spiritual-os/mobile` and `@spiritual-os/web`.
+     - Full security and RLS test suite (`npm.cmd run test:security`) passed 110/110 tests (100% pass rate).
+     - Production quarantine on `zxwkfnvmmxoojewhvsdc` strictly maintained.
+  7. **Deliverables:**
+     - `docs/M04_FOUNDATION_AND_DESIGN_SYSTEM_AUDIT.md`
+     - `apps/web/app/design-tokens.css` & `apps/web/lib/design-tokens.ts`
+     - `apps/web/app/components/layout/` (`AppShell.tsx`, `DesktopHeader.tsx`, `MobileBottomNav.tsx`, `Breadcrumbs.tsx`, `PillarShell.tsx`, `index.ts`)
+     - `apps/web/app/components/auth/AuthModal.tsx` & `apps/web/lib/auth/auth-context.tsx`
+     - `apps/web/app/profile/page.tsx` & `apps/web/app/profile/consent/page.tsx`
+     - `apps/web/app/puja/page.tsx`, `apps/web/app/astro/page.tsx`, `apps/web/app/bhakti/page.tsx`, `apps/web/app/panchang/page.tsx`, `apps/web/app/experts/page.tsx`, `apps/web/app/community/page.tsx`
+     - Updated `apps/web/app/layout.tsx`, `apps/web/app/page.tsx`, `apps/web/app/components/Navbar.tsx`, `apps/web/app/components/Footer.tsx`, `apps/web/app/components/EcosystemCards.tsx`, and `apps/web/app/globals.css`
+     - Updated `docs/PROJECT_TRACKER.md` and `docs/DECISION_LOG.md`
+- **Final Gate Status:** `MILESTONE M04 COMPLETE & FULLY VERIFIED`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.

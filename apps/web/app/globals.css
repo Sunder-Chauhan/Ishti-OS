@@ -1710,3 +1710,957 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ==========================================================================
+   MILESTONE M04: APPLICATION FOUNDATION & UX SHELL STYLES
+   ========================================================================== */
+
+/* 1. App Shell Layout */
+.ishtiAppShellWrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+}
+
+.ishtiSkipLink {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 999;
+  padding: 10px 18px;
+  background-color: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow-md);
+}
+
+.ishtiAppMain {
+  flex: 1;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .ishtiAppMain {
+    padding-bottom: 74px; /* Space for Mobile Bottom Nav */
+  }
+}
+
+/* 2. Header Active & Auth Additions */
+.navItemActive {
+  color: var(--ishti-temple-maroon) !important;
+  font-weight: 600 !important;
+}
+
+.navItemActive::after {
+  width: 100% !important;
+  background-color: var(--ishti-vedic-saffron) !important;
+}
+
+.signInButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  background-color: transparent;
+  color: var(--ishti-temple-maroon);
+  border: 1px solid var(--ishti-temple-maroon);
+  border-radius: var(--border-radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: all 180ms ease;
+  cursor: pointer;
+}
+
+.signInButton:hover {
+  background-color: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+}
+
+.userProfileMenu {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.userProfileLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+  text-decoration: none;
+  transition: all 180ms ease;
+}
+
+.userProfileLink:hover,
+.profileActive {
+  border-color: var(--ishti-vedic-saffron);
+  background-color: var(--ishti-ivory-paper);
+}
+
+.userAvatarBindu {
+  font-size: 14px;
+}
+
+.userNameShort {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userRoleBadge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  background-color: var(--ishti-sacred-gold-light);
+  color: var(--ishti-temple-maroon-dark);
+  border-radius: var(--border-radius-sm);
+  font-weight: 700;
+}
+
+.btnHeaderSignOut {
+  font-size: 12px;
+  color: var(--ishti-warm-bronze);
+  padding: 4px 8px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: color 160ms ease;
+}
+
+.btnHeaderSignOut:hover {
+  color: var(--ishti-error);
+}
+
+/* Mobile Drawer Additions */
+.mobileDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mobileBrandLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.mobileDrawerClose {
+  font-size: 18px;
+  color: var(--ishti-temple-charcoal);
+  padding: 8px;
+  cursor: pointer;
+}
+
+.mobileNavItemActive {
+  background-color: var(--ishti-ivory-paper-warm) !important;
+  border-left: 3px solid var(--ishti-vedic-saffron) !important;
+}
+
+.mobileAuthStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mobileLoggedInText {
+  font-size: 14px;
+  color: var(--ishti-temple-charcoal);
+}
+
+.mobileBtnSignOut {
+  padding: 10px 16px;
+  background-color: transparent;
+  border: 1px solid var(--border-card);
+  color: var(--ishti-error);
+  border-radius: var(--border-radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mobileBtnSignIn {
+  display: block;
+  width: 100%;
+  padding: 12px 20px;
+  background-color: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+  border-radius: var(--border-radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+/* 3. Mobile Bottom Navigation (<768px) */
+.mobileBottomNav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--mobile-nav-height);
+  background-color: rgba(248, 244, 237, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-card);
+  box-shadow: 0 -2px 12px rgba(42, 39, 38, 0.08);
+  z-index: 90;
+}
+
+@media (max-width: 768px) {
+  .mobileBottomNav {
+    display: block;
+  }
+}
+
+.mobileBottomNavContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 8px;
+}
+
+.mobileBottomTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  height: 48px; /* Minimum 48px touch target */
+  padding: 4px 6px;
+  text-decoration: none;
+  color: var(--ishti-warm-bronze);
+  position: relative;
+  transition: color 160ms ease;
+}
+
+.bottomTabIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.bottomTabLabel {
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 3px;
+}
+
+.bottomTabActive {
+  color: var(--ishti-temple-maroon);
+}
+
+.bottomTabActive .bottomTabLabel {
+  font-weight: 700;
+}
+
+.bottomTabActiveDot {
+  position: absolute;
+  top: 2px;
+  right: 14px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--ishti-vedic-saffron);
+}
+
+/* 4. Breadcrumbs */
+.breadcrumbsNav {
+  padding: 12px 0;
+  margin-bottom: 8px;
+}
+
+.breadcrumbList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ishti-warm-bronze);
+}
+
+.breadcrumbItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breadcrumbSeparator {
+  color: var(--ishti-sacred-gold);
+  font-weight: 600;
+}
+
+.breadcrumbLink {
+  color: var(--ishti-warm-bronze);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.breadcrumbLink:hover {
+  color: var(--ishti-temple-maroon);
+  text-decoration: underline;
+}
+
+.breadcrumbCurrent {
+  color: var(--ishti-temple-charcoal);
+  font-weight: 600;
+}
+
+/* 5. Pillar Shell (Module Header & Wrapper) */
+.pillarShell {
+  width: 100%;
+  padding-bottom: 64px;
+}
+
+.pillarContainer {
+  max-width: var(--container-xl);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+@media (max-width: 640px) {
+  .pillarContainer {
+    padding: 0 16px;
+  }
+}
+
+.pillarHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  padding: 24px 0 32px;
+  border-bottom: 1px solid var(--border-card);
+  margin-bottom: 40px;
+}
+
+@media (max-width: 840px) {
+  .pillarHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+}
+
+.pillarHeaderMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  max-width: 760px;
+}
+
+.pillarIconBadge {
+  font-size: 36px;
+  padding: 12px;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-lg);
+  line-height: 1;
+}
+
+.pillarTitles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pillarSanskritTagline {
+  font-family: var(--font-devanagari), sans-serif;
+  font-size: 13px;
+  color: var(--ishti-vedic-saffron);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.pillarTitle {
+  font-family: var(--font-display), serif;
+  font-size: 36px;
+  font-weight: 600;
+  color: var(--ishti-temple-maroon);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.pillarDescription {
+  font-size: 15px;
+  color: var(--ishti-warm-bronze);
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+.pillarHeaderAside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 840px) {
+  .pillarHeaderAside {
+    align-items: flex-start;
+  }
+}
+
+.pillarGuestBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: var(--ishti-success-surface);
+  border: 1px solid rgba(46, 107, 79, 0.25);
+  border-radius: var(--border-radius-full);
+}
+
+.guestBadgeDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--ishti-success);
+}
+
+.guestBadgeText {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ishti-success);
+}
+
+/* 6. Auth Modal (Native <dialog> with Modern Web Guidance) */
+.authModal {
+  padding: 0;
+  border: none;
+  background: transparent;
+  max-width: 440px;
+  width: 90%;
+  margin: auto;
+}
+
+.authModal::backdrop {
+  background-color: rgba(32, 28, 26, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.authModalContent {
+  background-color: var(--ishti-ivory-paper);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--border-radius-lg);
+  padding: 32px 28px;
+  box-shadow: var(--shadow-modal);
+  position: relative;
+}
+
+.authModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.authModalBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.authModalBrandText {
+  font-family: var(--font-display), serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ishti-temple-maroon);
+  letter-spacing: 0.08em;
+}
+
+.authModalCloseBtn {
+  font-size: 18px;
+  color: var(--ishti-warm-bronze);
+  cursor: pointer;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+}
+
+.authModalCloseBtn:hover {
+  color: var(--ishti-temple-charcoal);
+}
+
+.authModalHeadingGroup {
+  margin-bottom: 20px;
+}
+
+.authModalTitle {
+  font-family: var(--font-display), serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+  margin-bottom: 6px;
+}
+
+.authModalSubtitle {
+  font-size: 14px;
+  color: var(--ishti-warm-bronze);
+  line-height: 1.5;
+}
+
+.authModalSandboxBanner {
+  background-color: var(--ishti-warning-surface);
+  border: 1px solid rgba(192, 107, 26, 0.3);
+  border-radius: var(--border-radius-md);
+  padding: 10px 14px;
+  margin-bottom: 18px;
+}
+
+.authSandboxBadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ishti-warning);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.authSandboxText {
+  font-size: 12px;
+  color: #7A3F0C;
+  line-height: 1.4;
+}
+
+.authModalError {
+  background-color: var(--ishti-error-surface);
+  border: 1px solid rgba(158, 43, 37, 0.3);
+  color: var(--ishti-error);
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 16px;
+}
+
+.authModalInfo {
+  background-color: var(--ishti-info-surface);
+  border: 1px solid rgba(61, 100, 133, 0.3);
+  color: var(--ishti-info);
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 16px;
+}
+
+.authModalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.formFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+}
+
+.phoneInputWrapper {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  background-color: #FFFFFF;
+  overflow: hidden;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.phoneInputWrapper:focus-within {
+  border-color: var(--ishti-vedic-saffron);
+  box-shadow: 0 0 0 2px rgba(239, 116, 40, 0.15);
+}
+
+.countryCodePrefix {
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ishti-warm-bronze);
+  background-color: var(--surface-card);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.authInput {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 16px;
+  border: none;
+  outline: none;
+  color: var(--ishti-temple-charcoal);
+  background: transparent;
+  font-family: inherit;
+}
+
+.otpInput {
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  background-color: #FFFFFF;
+  text-align: center;
+  letter-spacing: 0.35em;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.otpInput:focus {
+  border-color: var(--ishti-vedic-saffron);
+  box-shadow: 0 0 0 2px rgba(239, 116, 40, 0.15);
+}
+
+.formFieldHint {
+  font-size: 11px;
+  color: var(--ishti-warm-bronze);
+}
+
+.btnAuthPrimary {
+  width: 100%;
+  padding: 13px 20px;
+  background-color: var(--ishti-vedic-saffron);
+  color: #1B1816;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: var(--border-radius-md);
+  border: none;
+  cursor: pointer;
+  transition: background-color 160ms ease, transform 140ms ease;
+}
+
+.btnAuthPrimary:hover:not(:disabled) {
+  background-color: var(--ishti-vedic-saffron-light);
+  transform: translateY(-1px);
+}
+
+.btnAuthPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.otpLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btnChangePhone {
+  font-size: 12px;
+  color: var(--ishti-vedic-saffron);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.resendRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.resendCountdown {
+  font-size: 12px;
+  color: var(--ishti-warm-bronze);
+}
+
+.btnResendOtp {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ishti-temple-maroon);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.authModalFooter {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.btnContinueGuest {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ishti-warm-bronze);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btnContinueGuest:hover {
+  color: var(--ishti-temple-charcoal);
+}
+
+.dpdpNotice {
+  font-size: 11px;
+  color: var(--ishti-warm-bronze);
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* 7. Profile & DPDP Act 2023 Consent Styles */
+.profileShell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+.profileCard {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 28px;
+}
+
+.profileHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+}
+
+.profileAvatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+.profileMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profileName {
+  font-family: var(--font-display), serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+}
+
+.profileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.profileField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profileFieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ishti-warm-bronze);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.profileFieldValue {
+  font-size: 15px;
+  color: var(--ishti-temple-charcoal);
+  font-weight: 500;
+}
+
+/* Consent Cards */
+.consentCardsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.consentCard {
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.consentCard:hover {
+  border-color: var(--ishti-sacred-gold);
+  box-shadow: var(--shadow-sm);
+}
+
+.consentCardText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 600px;
+}
+
+.consentCardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+}
+
+.consentPurposeTag {
+  display: inline-block;
+  font-size: 11px;
+  font-family: monospace;
+  background-color: var(--surface-card);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--ishti-warm-bronze);
+  margin-left: 8px;
+}
+
+.consentCardDesc {
+  font-size: 13px;
+  color: var(--ishti-warm-bronze);
+  line-height: 1.5;
+}
+
+/* Accessible Modern Switch */
+.consentSwitch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.consentSwitchInput {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.consentSwitchSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #D1CCC4;
+  border-radius: 28px;
+  transition: 200ms ease;
+}
+
+.consentSwitchSlider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 200ms ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.consentSwitchInput:checked + .consentSwitchSlider {
+  background-color: var(--ishti-success);
+}
+
+.consentSwitchInput:focus-visible + .consentSwitchSlider {
+  outline: 2px solid var(--ishti-temple-charcoal);
+  outline-offset: 2px;
+}
+
+.consentSwitchInput:checked + .consentSwitchSlider:before {
+  transform: translateX(20px);
+}
+
+.dpdpStatutoryBanner {
+  background-color: var(--ishti-ivory-paper-warm);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--border-radius-lg);
+  padding: 24px;
+  margin-top: 32px;
+}
+
+.dpdpStatutoryTitle {
+  font-family: var(--font-display), serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ishti-temple-maroon);
+  margin-bottom: 8px;
+}
+
+.dpdpStatutoryText {
+  font-size: 13px;
+  color: var(--ishti-warm-bronze);
+  line-height: 1.6;
+}
+
+
+.btnExploreModule {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+  text-decoration: none;
+  transition: all 180ms ease;
+  margin-top: 12px;
+}
+
+.btnExploreModule:hover {
+  background-color: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+  border-color: var(--ishti-temple-maroon);
+  transform: translateY(-1px);
+}

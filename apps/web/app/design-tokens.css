@@ -1,24 +1,91 @@
 /**
  * ISHTI Central Design Tokens CSS
+ * Grounded in Vedic Sacred Geometry, Temple Architecture, and WCAG 2.2 AAA/AA Standards.
  */
 :root {
-  /* Brand Color Tokens */
+  /* Brand Color Tokens (Master Palette) */
   --ishti-temple-maroon: #711B16;
   --ishti-temple-maroon-dark: #5D1510;
+  --ishti-temple-maroon-deep: #4A110D;
   --ishti-vedic-saffron: #EF7428;
   --ishti-vedic-saffron-light: #F58A45;
   --ishti-sacred-gold: #D7A64A;
   --ishti-sacred-gold-light: #FFF3B3;
   --ishti-sacred-gold-dark: #B27E24;
   --ishti-ivory-paper: #F8F4ED;
+  --ishti-ivory-paper-warm: #FDFBF7;
   --ishti-warm-sand: #D1A477;
   --ishti-warm-bronze: #8B6846;
   --ishti-muted-gold: #9E764E;
   --ishti-temple-charcoal: #2A2726;
   --ishti-slate-charcoal: #282A36;
 
+  /* Semantic Feedback Tokens */
+  --ishti-success: #2E6B4F;
+  --ishti-success-surface: #EAF4EE;
+  --ishti-warning: #C06B1A;
+  --ishti-warning-surface: #FDF5EB;
+  --ishti-error: #9E2B25;
+  --ishti-error-surface: #FBEBEB;
+  --ishti-info: #3D6485;
+  --ishti-info-surface: #EBF2F8;
+
   /* Typography */
   --ishti-font-serif: 'Cinzel', 'Trajan Pro', Georgia, serif;
   --ishti-font-sub-serif: 'Cormorant Garamond', Georgia, serif;
   --ishti-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ishti-font-devanagari: 'Noto Sans Devanagari', sans-serif;
+
+  /* 8pt Modular Vedic Spacing Grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* Layout Containers */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1200px;
+  --header-height: 76px;
+  --mobile-nav-height: 64px;
+
+  /* Surfaces & Elevation */
+  --surface-page: var(--ishti-ivory-paper);
+  --surface-card: var(--ishti-ivory-paper-warm);
+  --surface-card-subtle: #F3EDE2;
+  --surface-dark: var(--ishti-temple-charcoal);
+  --surface-maroon: var(--ishti-temple-maroon);
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(177, 138, 80, 0.22);
+  --border-card: rgba(177, 138, 80, 0.28);
+  --border-gold: var(--ishti-sacred-gold);
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 14px;
+  --border-radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(42, 39, 38, 0.05);
+  --shadow-md: 0 4px 12px rgba(42, 39, 38, 0.08);
+  --shadow-lg: 0 8px 24px rgba(42, 39, 38, 0.12);
+  --shadow-modal: 0 16px 48px rgba(42, 39, 38, 0.28);
+}
+
+/* Modern Web Guidance: Modal Dialog Scroll Containment & Backdrop Containment */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
 }

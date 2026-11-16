@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter, Noto_Sans_Devanagari } from "next/font/google";
 import type { CSSProperties } from "react";
 import { brandThemeStyle } from "@spiritual-os/types";
+import { AppShell } from "./components/layout/AppShell";
 import "./globals.css";
 
 const display = Cormorant_Garamond({
@@ -46,8 +47,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${devanagari.variable}`} style={brandThemeStyle as CSSProperties}>
-      <body>{children}</body>
+    <html
+      lang="en"
+      className={`${display.variable} ${sans.variable} ${devanagari.variable}`}
+      style={brandThemeStyle as CSSProperties}
+    >
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
