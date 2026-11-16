@@ -82,8 +82,16 @@ async function runGateCTests() {
   console.log("==============================================================================\n");
 
   const results: GateCTestResult[] = [];
+  let client: Client | null = null;
+  let clientConnected = false;
 
   async function test(category: string, name: string, fn: () => Promise<string | void>) {
+    if (client && clientConnected) {
+      try {
+        await client.query("ROLLBACK;");
+        await client.query("RESET ALL;");
+      } catch {}
+    }
     const start = Date.now();
     try {
       const detail = await fn();
@@ -96,6 +104,13 @@ async function runGateCTests() {
       results.push({ category, name, passed: false, durationMs, details: errorMsg });
       console.error(`  [✗] [${category}] ${name} (${durationMs}ms)`);
       console.error(`      Error: ${errorMsg}`);
+    } finally {
+      if (client && clientConnected) {
+        try {
+          await client.query("ROLLBACK;");
+          await client.query("RESET ALL;");
+        } catch {}
+      }
     }
   }
 
@@ -247,13 +262,14 @@ async function runGateCTests() {
     return `Target verified: ${endpoint.sanitizedUrl} (Production ${QUARANTINED_PRODUCTION_PROJECT_REF} strictly blocked)`;
   });
 
-  const client = new Client({
+  client = new Client({
     connectionString: dbUrl,
     ssl: { rejectUnauthorized: false },
   });
 
   try {
     await client.connect();
+    clientConnected = true;
     console.log("  [✓] Connected securely to hosted staging PostgreSQL database.\n");
 
     // ============================================================================
@@ -294,7 +310,7 @@ async function runGateCTests() {
             source_edition, publication_publisher, rights_holder, license_type,
             commercial_rights_status, rights_clearance_status, status
           ) VALUES (
-            '${tempScriptureId}', 'gita-transient-test', 'Bhagavad Gita Test', 'भगवद्गीता', 'gita', 'Test text',
+            '${tempScriptureId}', 'gita-transient-test', 'Bhagavad Gita Test', 'भगवद्गीता', 'itihasa', 'Test text',
             'Public Edition', 'Publisher', 'Public Domain', 'Public Domain',
             'public_domain_unrestricted', 'cleared', 'curated'
           );
@@ -323,8 +339,8 @@ async function runGateCTests() {
 
         return `Curated scripture and verified verse readable by public (Gita 2.47: ${verseRes.rows[0].iast.slice(0, 20)}...)`;
       } finally {
-        await client.query("RESET ROLE;");
-        await client.query("ROLLBACK;");
+        await client.query("ROLLBACK;").catch(() => {});
+        await client.query("RESET ALL;").catch(() => {});
       }
     });
 
@@ -560,11 +576,15 @@ async function runGateCTests() {
     });
 
     // Cleanup Kundli test fixtures
-    await client.query(`
-      DELETE FROM public.kundli_profiles WHERE user_id IN ('${devoteeAId}', '${devoteeBId}');
-      DELETE FROM public.profiles WHERE id IN ('${devoteeAId}', '${devoteeBId}');
-      DELETE FROM auth.users WHERE id IN ('${devoteeAId}', '${devoteeBId}');
-    `);
+    try {
+      await client.query("ROLLBACK;").catch(() => {});
+      await client.query("RESET ALL;").catch(() => {});
+      await client.query(`
+        DELETE FROM public.kundli_profiles WHERE user_id IN ('${devoteeAId}', '${devoteeBId}');
+        DELETE FROM public.profiles WHERE id IN ('${devoteeAId}', '${devoteeBId}');
+        DELETE FROM auth.users WHERE id IN ('${devoteeAId}', '${devoteeBId}');
+      `);
+    } catch {}
 
     // ============================================================================
     // SUITE 6: HOSTED DEVOTEE EARLY ACCESS & DISTRIBUTED RATE LIMITER
