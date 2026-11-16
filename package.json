@@ -17,7 +17,8 @@
     "test:fresh-migration": "npx tsx scripts/verify-fresh-supabase-migration.ts",
     "test:migration-compat": "npx tsx scripts/verify-migration-compat.ts",
     "test:backup-restore": "npx tsx scripts/verify-backup-restore.ts",
-    "verify:staging": "npx tsx scripts/verify-hosted-staging.ts"
+    "verify:staging": "npx tsx scripts/verify-hosted-staging.ts",
+    "test:gate-c": "npx tsx scripts/run-gate-c-tests.ts"
   },
   "engines": {
     "node": ">=22"
