@@ -272,3 +272,25 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Updated `docs/PROJECT_TRACKER.md`, `docs/RISK_REGISTER.md`, and `docs/DECISION_LOG.md`
 - **Final Gate Status:** `M03.3 — GATE B COMPLETE / INC-01 RESOLVED / INDEPENDENT VERIFICATION PASSED / READY FOR GATE C AUTHORIZATION`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.
 
+
+## 2026-11-16: ADR-018 — Milestone M03.3: Gate C Hosted Application Integration & Payment Sandbox Verification (Milestone M03 Closure)
+- **Context:** Following explicit human operator authorization ("I explicitly authorize Gate C only"), the Gate C hosted application integration test runner (`scripts/run-gate-c-tests.ts`, `npm run test:gate-c`) was executed against hosted staging database `zrjptpkhtklfgnovdrny` and the live Razorpay sandbox API.
+- **Decision:**
+  1. **Hosted Application & Payment Integration Verification (18/18 Checks Passed):**
+     - **Payment Sandbox Integration (INC-01 Live Validation):** Validated newly rotated sandbox key pair (`rzp_test_U0ZaQD3U8gxyqI`). Successfully created live sandbox order `order_U0qSio1s***` for ₹1,100 (110,000 paise). Confirmed HMAC-SHA-256 webhook signature verification algorithm and tamper rejection.
+     - **Target Safety & Quarantine Guard:** Confirmed WHATWG URL parser enforces exact staging project allowlist (`zrjptpkhtklfgnovdrny`) and hard-blocks production (`zxwkfnvmmxoojewhvsdc`).
+     - **Hosted Public Scripture Catalog RLS & Rights Protection:** Confirmed that anonymous users receive 0 rows for unverified & pending-clearance seed data, shielding uncurated religious content from public view (RSK-01 / RSK-02). Confirmed that verified & cleared texts (Gita 2.47) are readable by public users in transient transaction tests. Confirmed anonymous writes are blocked with RLS error 42501.
+     - **Hosted Access Control:** Confirmed authenticated devotee writes to `scripture_catalog` are blocked by `is_scholar()` RLS check. Confirmed `is_scholar()` and `is_admin()` evaluate safely without recursion.
+     - **Hosted Kundli Envelope Encryption & Tenant Isolation:** Verified AES-256-GCM envelope encryption round-trip with context-bound AAD (`ishti:kundli_profiles:${userId}:${profileId}:${field}:v1`). Verified database trigger `validate_kundli_ciphertext_payload()` accepts authenticated ciphertext and rejects plaintext birth dates. Confirmed cross-tenant isolation (Devotee B receives 0 rows when querying Devotee A's Kundli profile).
+     - **Hosted Early Access & Rate Limiter:** Confirmed atomic execution of `public.check_rate_limit()` with sliding-window quota enforcement (request 1 allowed, request 2 blocked). Confirmed unique constraint 23505 handling on duplicate email registration.
+     - **Post-Test Database Cleanliness & Zero Pollution:** Confirmed all 9 transactional tables contain exactly 0 rows (pristine state). Confirmed seed scripture records are preserved with 0 rows lost.
+  2. **Milestone M03 Formal Closure:** Formally closed Milestone M03 (Staging Deployment & Integration Validation). All three approval gates (Gate A: Backup, Gate B: Schema Reconciliation, Gate C: Hosted App & Payment Sandbox Tests) have been successfully executed, verified, and audited.
+  3. **Transition to Milestone M04:** Authorized the transition to Milestone M04 (Application Foundation & User Experience Shell).
+  4. **Deliverables:**
+     - `docs/M03_3_GATE_C_COMPLETION_REPORT.md`
+     - `docs/M03_MILESTONE_COMPLETION_REPORT.md`
+     - `scripts/run-gate-c-tests.ts`
+     - Updated `docs/PROJECT_TRACKER.md` and `docs/DECISION_LOG.md`
+- **Final Gate Status:** `MILESTONE M03 COMPLETE & SIGNED OFF — READY FOR MILESTONE M04`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.
+
+

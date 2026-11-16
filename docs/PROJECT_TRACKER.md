@@ -151,7 +151,12 @@
 - [x] Operator confirmation of Razorpay sandbox key rotation in merchant dashboard (`INC-01` resolved; new key pair `rzp_test_U0ZaQD3U8gxyqI` configured in git-ignored `.env`)
 - [x] Read-only independent staging verification prior to Gate C executed via `scripts/verify-hosted-staging.ts` (72/72 checks passed, 0 failed across tables, seed data, function search_path, ACLs, 31 RLS policies, and migration tracking)
 - [x] Pre-Gate C Independent Hosted Staging Verification Report deliverable authored ([docs/M03_3_INDEPENDENT_STAGING_VERIFICATION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_3_INDEPENDENT_STAGING_VERIFICATION_REPORT.md))
-- [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
+- [x] Operator explicit approval for Gate C received ("I explicitly authorize Gate C only.")
+- [x] Gate C hosted application & payment sandbox integration test suite engineered ([scripts/run-gate-c-tests.ts](file:///C:/Users/as/Documents/GitHub/spiritual-OS/scripts/run-gate-c-tests.ts), `npm run test:gate-c`)
+- [x] Gate C live execution verified: 18/18 integration tests passed across live Razorpay sandbox order creation (`order_U0qSio1s***`), webhook signature verification, scripture RLS rights filtering, Kundli AES-256-GCM envelope encryption round-trip, tenant isolation, and post-test zero pollution
+- [x] Gate C Completion Report deliverable authored ([docs/M03_3_GATE_C_COMPLETION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_3_GATE_C_COMPLETION_REPORT.md))
+- [x] Milestone M03 Completion Report deliverable authored ([docs/M03_MILESTONE_COMPLETION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_MILESTONE_COMPLETION_REPORT.md))
+- [x] Milestone M03 formally closed and signed off
 
 ## Brand Identity System — Digital Logo Family Implementation
 - [x] Mathematical vectorization of approved master artwork (6 official SVG variants: Primary, Secondary, Icon, Horizontal, Monochrome, Reversed)
@@ -165,7 +170,7 @@
 - [x] Brand Guidelines updated to v1.1 ([docs/BRAND_GUIDELINES.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/BRAND_GUIDELINES.md))
 - [x] Full test suite (108/108 tests passed) and Next.js 15 production build verified (0 errors)
 
-## M04 — Application Foundation & User Experience Shell (Pending M03 Sign-Off)
+## M04 — Application Foundation & User Experience Shell (ACTIVE MILESTONE)
 - [ ] Implement Next.js 15 application shell layout and font loading
 - [ ] Implement responsive navigation header (desktop) and bottom navigation (mobile)
 - [ ] Implement India-first phone OTP authentication modal and session middleware
@@ -173,19 +178,15 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.3 — GATE B COMPLETE / INC-01 RESOLVED / INDEPENDENT VERIFICATION PASSED / READY FOR GATE C AUTHORIZATION`
+- **Status:** `MILESTONE M03 COMPLETE & SIGNED OFF — READY FOR MILESTONE M04`
 - **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
 - **Active Recovery Point:** `staging_backup_2026-11-15T18-54-57-175Z.meta.json` (Verified 100% SHA-256 and size parity)
 - **Canonical Migration:** `20261114000000_initial_schema.sql` (SHA-256 `3399a731...` verified)
-- **Independent Staging Verification:**
-  - Executed via `scripts/verify-hosted-staging.ts` (`npm.cmd run verify:staging`)
-  - **72/72 checks passed (0 failed)**
-  - Tables & RLS: 11/11 tables verified with RLS active
-  - Seed & Data Isolation: 1 row `scripture_catalog`, 1 row `canonical_verses`, 0 rows in all 9 transactional tables
-  - Functions: 11 `SECURITY DEFINER` with `search_path` + 1 unprivileged `SECURITY INVOKER` validation trigger
-  - Routine ACLs: `is_scholar`, `is_admin`, and `assign_user_role` revoked from `PUBLIC` and `anon`; rate limiting restricted to `service_role`/`postgres`
-  - RLS Policies: Exactly 31 policies matching canonical definitions (`TO authenticated` on scholar management)
-  - Migration Tracking: Version `20261114000000` registered in `supabase_migrations.schema_migrations` with remote parity
-- **Credential Status:** `INC-01` RESOLVED. Rotated Razorpay sandbox key pair (`rzp_test_U0ZaQD3U8gxyqI`) provisioned in git-ignored local environments.
-- **Restrictions:** Production strictly quarantined (`zxwkfnvmmxoojewhvsdc`). Gate C strictly locked. Zero table/column/seed modifications.
-- **Action Required:** Awaiting explicit human operator authorization: `"I explicitly authorize Gate C only."`
+- **Gate Execution Summary:**
+  1. **Gate A (Logical Backup):** Complete (3-pass dump secured under Windows ACL lockdown).
+  2. **Gate B (Schema Reconciliation):** Complete (All 31 RLS policies synchronized; `is_scholar`/`is_admin` hardened; version `20261114000000` registered).
+  3. **INC-01 (Razorpay Sandbox Key Rotation):** Resolved in merchant dashboard; live tested in Gate C.
+  4. **Pre-Gate C Independent Verification:** Complete (72/72 catalog checks passed with zero mutations).
+  5. **Gate C (Hosted Application & Payment Sandbox Tests):** Complete (**18/18 integration tests passed**; zero residual pollution in transactional tables; seed records preserved).
+- **Restrictions:** Production strictly quarantined (`zxwkfnvmmxoojewhvsdc`).
+- **Next Action:** Begin Milestone M04 execution (Next.js 15 application shell, layout, navigation, phone OTP authentication flow, user profile view, DPDP Act 2023 consent center UI).
