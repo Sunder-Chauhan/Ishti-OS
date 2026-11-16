@@ -118,8 +118,9 @@ button {
 .headerContainer {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 0 32px;
-  height: 80px;
+  padding: 6px 32px;
+  min-height: 86px;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -132,6 +133,17 @@ button {
   align-items: center;
   gap: 14px;
   text-decoration: none;
+  flex-shrink: 0;
+}
+
+.brandDesktopLogo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.brandMobileLogo {
+  display: none;
+  align-items: center;
 }
 
 .brandText {
@@ -759,6 +771,38 @@ button {
 .philosophyHeader {
   max-width: 760px;
   margin-bottom: 48px;
+}
+
+.philosophyBrandCenterpiece {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 56px;
+  padding: 36px 28px;
+  max-width: 480px;
+  background: radial-gradient(circle at center, rgba(239, 116, 40, 0.06) 0%, rgba(248, 244, 237, 0.5) 70%, transparent 100%);
+  border: 1px solid rgba(209, 164, 119, 0.3);
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 4px 20px -2px rgba(113, 27, 22, 0.05);
+}
+
+.philosophyLogoContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.philosophyLogoCaption {
+  margin-top: 20px;
+  font-family: var(--font-devanagari), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ishti-warm-bronze, #8B6846);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .synthesisContainer {
@@ -1438,9 +1482,9 @@ button {
 
 .footerBrand {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .footerBrandText {
@@ -1622,6 +1666,14 @@ button {
 }
 
 @media (max-width: 768px) {
+  .brandDesktopLogo {
+    display: none;
+  }
+
+  .brandMobileLogo {
+    display: inline-flex;
+  }
+
   .desktopNav {
     display: none;
   }
@@ -1635,8 +1687,9 @@ button {
   }
 
   .headerContainer {
-    padding: 0 20px;
-    height: 72px;
+    padding: 6px 16px;
+    min-height: 72px;
+    height: auto;
   }
 
   .mobileDrawer {

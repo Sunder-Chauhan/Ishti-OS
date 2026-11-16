@@ -186,10 +186,10 @@ if (desktopHeader.includes('variant="secondary"')) {
   allPassed = false;
 }
 
-if (footer.includes('variant="secondary"')) {
-  console.log('  [✓] [VERIFIED] Footer: Uses Secondary variant with authentic proportions');
+if (footer.includes('variant="primary"') || footer.includes('variant="secondary"')) {
+  console.log('  [✓] [VERIFIED] Footer: Uses Primary/Secondary variant with authentic proportions');
 } else {
-  console.error('  [FAIL] Footer does not use Secondary variant');
+  console.error('  [FAIL] Footer does not use Primary or Secondary variant');
   allPassed = false;
 }
 

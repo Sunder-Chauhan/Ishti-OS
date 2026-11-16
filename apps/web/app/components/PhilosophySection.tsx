@@ -1,4 +1,7 @@
+'use client';
+
 import React from "react";
+import { IshtiLogo } from "./brand";
 
 export function PhilosophySection() {
   return (
@@ -10,6 +13,16 @@ export function PhilosophySection() {
         </h2>
         <p className="sectionSubtitle">
           Millions of seekers seek authentic connection with their heritage, yet encounter fragmented websites, commercially motivated fear-mongering, and unverified information. ISHTI exists to rebuild that sacred trust.
+        </p>
+      </div>
+
+      {/* Brand Identity Centerpiece */}
+      <div className="philosophyBrandCenterpiece">
+        <div className="philosophyLogoContainer">
+          <IshtiLogo variant="primary" width={320} decorative />
+        </div>
+        <p className="philosophyLogoCaption">
+          Vedic Essence &amp; Rituals • Rooted in Tradition. Connected to Today.
         </p>
       </div>
 

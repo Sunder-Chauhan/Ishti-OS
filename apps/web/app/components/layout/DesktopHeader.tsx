@@ -39,7 +39,12 @@ export function DesktopHeader() {
       <div className="headerContainer">
         {/* Brand identity */}
         <Link href="/" className="brandLink" aria-label="ISHTI - Rooted in Tradition. Connected to Today.">
-          <IshtiLogo variant="horizontal" height={36} priority decorative />
+          <span className="brandDesktopLogo">
+            <IshtiLogo variant="horizontal" width={220} priority decorative />
+          </span>
+          <span className="brandMobileLogo">
+            <IshtiLogo variant="secondary" width={125} priority decorative />
+          </span>
         </Link>
 
         {/* Primary Desktop Navigation Links */}
@@ -122,7 +127,7 @@ export function DesktopHeader() {
         <div className="mobileDrawerContent">
           <div className="mobileDrawerHeader">
             <Link href="/" onClick={closeDrawer} className="mobileBrandLink" aria-label="ISHTI">
-              <IshtiLogo variant="secondary" height={44} priority decorative />
+              <IshtiLogo variant="secondary" width={130} priority decorative />
             </Link>
             <button
               type="button"

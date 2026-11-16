@@ -9,7 +9,7 @@ export function Footer() {
         {/* Brand identity column */}
         <div className="footerBrandColumn">
           <div className="footerBrand">
-            <IshtiLogo variant="secondary" height={54} decorative />
+            <IshtiLogo variant="primary" width={200} decorative />
           </div>
           <p className="footerTagline">Rooted in Tradition. Connected to Today.</p>
           <p className="footerDescription">

@@ -173,7 +173,7 @@ export function AuthModal() {
         {/* Header with Emblem & Close Button */}
         <div className="authModalHeader">
           <div className="authModalBrand">
-            <IshtiLogo variant="secondary" height={40} decorative />
+            <IshtiLogo variant="secondary" width={140} decorative />
           </div>
           <button
             type="button"

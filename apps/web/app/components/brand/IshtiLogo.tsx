@@ -76,6 +76,8 @@ export function IshtiLogo({
     objectFit: 'contain',
     display: 'inline-block',
     verticalAlign: 'middle',
+    maxWidth: '100%',
+    height: 'auto',
     ...style,
   };
 
@@ -127,3 +129,4 @@ export function IshtiLogoReversed(props: Omit<IshtiLogoProps, 'variant'>) {
 }
 
 export * from './types';
+export default IshtiLogo;
