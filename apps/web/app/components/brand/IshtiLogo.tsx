@@ -32,7 +32,6 @@ export function IshtiLogo({
       // Horizontal lockup (680 x 240, ratio 2.833)
       if (typeof size === 'number') {
         if (size <= 120) {
-          // If a small size is passed (e.g. 36 in a navbar), treat it as the target height
           resolvedHeight = size;
           resolvedWidth = Math.round(size * meta.aspectRatio);
         } else {
@@ -102,10 +101,29 @@ export function IshtiLogo({
   );
 }
 
-export * from './IshtiLogoIcon';
-export * from './IshtiLogoSecondary';
-export * from './IshtiLogoPrimary';
-export * from './IshtiLogoHorizontal';
-export * from './IshtiLogoMonochrome';
-export * from './IshtiLogoReversed';
+// Variant wrappers defined directly in this module to avoid circular dependency
+export function IshtiLogoPrimary(props: Omit<IshtiLogoProps, 'variant'>) {
+  return <IshtiLogo variant="primary" {...props} />;
+}
+
+export function IshtiLogoSecondary(props: Omit<IshtiLogoProps, 'variant'>) {
+  return <IshtiLogo variant="secondary" {...props} />;
+}
+
+export function IshtiLogoIcon(props: Omit<IshtiLogoProps, 'variant'>) {
+  return <IshtiLogo variant="icon" {...props} />;
+}
+
+export function IshtiLogoHorizontal(props: Omit<IshtiLogoProps, 'variant'>) {
+  return <IshtiLogo variant="horizontal" {...props} />;
+}
+
+export function IshtiLogoMonochrome(props: Omit<IshtiLogoProps, 'variant'>) {
+  return <IshtiLogo variant="monochrome" {...props} />;
+}
+
+export function IshtiLogoReversed(props: Omit<IshtiLogoProps, 'variant'>) {
+  return <IshtiLogo variant="reversed" {...props} />;
+}
+
 export * from './types';
