@@ -149,7 +149,8 @@
 - [x] Remote migration tracking parity verified via `supabase migration list --remote` (`20261114000000` registered locally and remotely)
 - [x] Gate B Completion Report deliverable authored ([docs/M03_3_GATE_B_COMPLETION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_3_GATE_B_COMPLETION_REPORT.md))
 - [x] Operator confirmation of Razorpay sandbox key rotation in merchant dashboard (`INC-01` resolved; new key pair `rzp_test_U0ZaQD3U8gxyqI` configured in git-ignored `.env`)
-- [ ] Read-only independent staging verification prior to Gate C (`scripts/verify-hosted-staging.ts`)
+- [x] Read-only independent staging verification prior to Gate C executed via `scripts/verify-hosted-staging.ts` (72/72 checks passed, 0 failed across tables, seed data, function search_path, ACLs, 31 RLS policies, and migration tracking)
+- [x] Pre-Gate C Independent Hosted Staging Verification Report deliverable authored ([docs/M03_3_INDEPENDENT_STAGING_VERIFICATION_REPORT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M03_3_INDEPENDENT_STAGING_VERIFICATION_REPORT.md))
 - [ ] Operator explicit approval for Gate C: Hosted Application Integration Tests
 
 ## Brand Identity System — Digital Logo Family Implementation
@@ -172,15 +173,19 @@
 - [ ] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community)
 
 ## Current Gate Status
-- **Status:** `M03.3 — GATE B COMPLETE / INC-01 RESOLVED / PRE-GATE C INDEPENDENT VERIFICATION READY`
+- **Status:** `M03.3 — GATE B COMPLETE / INC-01 RESOLVED / INDEPENDENT VERIFICATION PASSED / READY FOR GATE C AUTHORIZATION`
 - **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
 - **Active Recovery Point:** `staging_backup_2026-11-15T18-54-57-175Z.meta.json` (Verified 100% SHA-256 and size parity)
 - **Canonical Migration:** `20261114000000_initial_schema.sql` (SHA-256 `3399a731...` verified)
-- **Gate B Reconciliation Results:**
-  1. All 31 RLS policies synchronized and postcondition verified in `pg_policies`.
-  2. Scholar policies on `scripture_catalog` and `canonical_verses` strictly scoped `TO authenticated`.
-  3. Privileged functions `public.is_scholar()` and `public.is_admin()` have `EXECUTE` revoked from `PUBLIC` and `anon`.
-  4. Migration version `20261114000000` registered in `supabase_migrations.schema_migrations` with 100% remote parity.
+- **Independent Staging Verification:**
+  - Executed via `scripts/verify-hosted-staging.ts` (`npm.cmd run verify:staging`)
+  - **72/72 checks passed (0 failed)**
+  - Tables & RLS: 11/11 tables verified with RLS active
+  - Seed & Data Isolation: 1 row `scripture_catalog`, 1 row `canonical_verses`, 0 rows in all 9 transactional tables
+  - Functions: 11 `SECURITY DEFINER` with `search_path` + 1 unprivileged `SECURITY INVOKER` validation trigger
+  - Routine ACLs: `is_scholar`, `is_admin`, and `assign_user_role` revoked from `PUBLIC` and `anon`; rate limiting restricted to `service_role`/`postgres`
+  - RLS Policies: Exactly 31 policies matching canonical definitions (`TO authenticated` on scholar management)
+  - Migration Tracking: Version `20261114000000` registered in `supabase_migrations.schema_migrations` with remote parity
 - **Credential Status:** `INC-01` RESOLVED. Rotated Razorpay sandbox key pair (`rzp_test_U0ZaQD3U8gxyqI`) provisioned in git-ignored local environments.
-- **Restrictions:** Production strictly quarantined. Gate C strictly locked. Zero table/column/seed modifications.
-- **Action Required:** Execute independent read-only staging verification (`npm.cmd run verify:staging`) before requesting Gate C authorization.
+- **Restrictions:** Production strictly quarantined (`zxwkfnvmmxoojewhvsdc`). Gate C strictly locked. Zero table/column/seed modifications.
+- **Action Required:** Awaiting explicit human operator authorization: `"I explicitly authorize Gate C only."`

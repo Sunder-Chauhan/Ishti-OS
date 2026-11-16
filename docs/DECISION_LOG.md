@@ -252,3 +252,23 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - `docs/M03_3_GATE_B_COMPLETION_REPORT.md`
      - Updated `scripts/reconcile-staging-schema.ts` and `scripts/run-comprehensive-tests.js` (110 automated tests passing 100%)
 - **Final Gate Status:** `M03.3 — GATE B COMPLETE / GATE C LOCKED`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined. Gate C (hosted application testing) is locked pending operator resolution of `INC-01` (Razorpay sandbox key rotation in merchant dashboard).
+
+
+## 2026-11-16: ADR-017 — Milestone M03.3: Pre-Gate C Independent Hosted Staging Verification & INC-01 Key Rotation Resolution
+- **Context:** Following the completion of Gate B schema reconciliation and the operator's merchant dashboard rotation of the historically exposed Razorpay sandbox test key pair (`INC-01`), an autonomous read-only verification was executed directly against hosted staging project `zrjptpkhtklfgnovdrny` using `scripts/verify-hosted-staging.ts` (`npm run verify:staging`).
+- **Decision:**
+  1. **Independent Read-Only Hosted Audit (72/72 Checks Passed):** Executed autonomous catalog inspection with zero DDL or DML mutations:
+     - **Table Inventory & RLS:** All 11 public tables confirmed present with `rowsecurity = true`.
+     - **Seed & Data Isolation:** Exactly 1 row in `scripture_catalog`, 1 row in `canonical_verses`, and exactly 0 rows across all 9 transactional tables (pristine state).
+     - **Function Architecture & Security Semantics:** Verified that all 11 administrative/security functions enforce `SECURITY DEFINER` and hardened `search_path` (`public, pg_catalog, pg_temp`). Confirmed that unprivileged data-validation trigger `validate_kundli_ciphertext_payload()` runs as `SECURITY INVOKER`, adhering to the principle of least privilege.
+     - **Routine Privilege Restrictions:** Confirmed `PUBLIC` and `anon` execution revoked from `public.is_scholar()`, `public.is_admin()`, and `public.assign_user_role()`. Confirmed rate-limiting functions restricted strictly to `service_role` and `postgres`.
+     - **RLS Policy Inventory:** Exactly 31 policies verified in `pg_policies`, matching canonical commands and role targets (`TO authenticated` on scholar-managed scripture tables).
+     - **Migration History Parity:** Confirmed initial schema version `20261114000000` registered in `supabase_migrations.schema_migrations`.
+  2. **Resolution of Incident INC-01:** Formally verified the operator's merchant dashboard rotation of the Razorpay sandbox key pair. Rotated credentials (`rzp_test_U0ZaQD3U8gxyqI`) were provisioned in local git-ignored `.env` and `apps/web/.env.local`, verified via `scripts/verify-staging-keys.js` with zero secret leakage in logs, and `docs/RISK_REGISTER.md` was marked `RESOLVED / KEY ROTATED`.
+  3. **Preservation of Gate C Barrier:** Reaffirmed that Gate C (Hosted Application Integration Testing) is strictly locked and cannot be initiated without explicit human operator authorization: `"I explicitly authorize Gate C only."`
+  4. **Deliverables:**
+     - `docs/M03_3_INDEPENDENT_STAGING_VERIFICATION_REPORT.md`
+     - `scripts/verify-hosted-staging.ts`
+     - Updated `docs/PROJECT_TRACKER.md`, `docs/RISK_REGISTER.md`, and `docs/DECISION_LOG.md`
+- **Final Gate Status:** `M03.3 — GATE B COMPLETE / INC-01 RESOLVED / INDEPENDENT VERIFICATION PASSED / READY FOR GATE C AUTHORIZATION`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.
+
