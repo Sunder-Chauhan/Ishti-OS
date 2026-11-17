@@ -60,11 +60,12 @@ export function Footer() {
               {locale === "hi" ? "विश्वास एवं मर्यादा" : "Trust & Governance"}
             </h4>
             <ul className="footerLinksList">
-              <li><Link href="/bhakti">{dict.home.trustCanon}</Link></li>
-              <li><Link href="/experts">{dict.home.trustAcharyas}</Link></li>
-              <li><Link href="/profile/consent">DPDP Act 2023 Consent</Link></li>
-              <li><Link href="/profile">{dict.common.privateSanctuary}</Link></li>
-              <li><Link href="/brand">Brand Identity Guidelines</Link></li>
+              <li><Link href="/legal">Global Policy Centre</Link></li>
+              <li><Link href="/legal/terms">Terms of Service</Link></li>
+              <li><Link href="/legal/privacy">Privacy &amp; Data Sanctuary</Link></li>
+              <li><Link href="/legal/refunds">Refund &amp; Cancellation</Link></li>
+              <li><Link href="/profile/consent">Consent Management</Link></li>
+              <li><Link href="/legal/grievance">Grievance Redressal</Link></li>
             </ul>
           </div>
 
@@ -121,6 +122,8 @@ export function Footer() {
         </p>
         <div className="footerBottomMeta">
           <Link href="/brand" className="hover:underline">Brand System v1.1</Link>
+          <span className="metaDivider">&bull;</span>
+          <Link href="/legal" className="hover:underline">Legal &amp; Policy Centre</Link>
           <span className="metaDivider">&bull;</span>
           <Link href="/profile/consent" className="hover:underline">DPDP Privacy Rights</Link>
           <span className="metaDivider">&bull;</span>

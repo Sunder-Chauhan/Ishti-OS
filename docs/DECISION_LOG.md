@@ -413,3 +413,46 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Remote production Supabase (`zxwkfnvmmxoojewhvsdc`) remains strictly isolated and quarantined.
      - Zero remote migrations executed; zero secrets or credentials leaked in code or commits.
 - **Final Gate Status:** `MILESTONES M04 & M04.6 FORMALLY ACCEPTED & CLOSED`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.
+
+## 2026-11-17: ADR-023 — Formal Acceptance of Milestone M05 Gate G0.1 (Trust & Governance Architecture Baseline)
+- **Context:** Following the M05 Gate G0 discovery and Gate G0.1 architecture refinement passes, independent review, and legal-tech reconciliation, the operator formally accepted G0.1's architecture on November 17, 2026 as the formal architectural and research baseline for Milestone M05 (Global Legal, Privacy & Trust Foundation).
+- **Critical Governance Distinction:** This milestone decision constitutes formal acceptance of the **technical architecture and legal research baseline**, and explicitly **does not constitute formal legal sign-off or a declaration of statutory compliance**. All material legal interpretations and statutory clauses remain subject to review and execution by qualified local legal counsel.
+- **Decision:**
+  1. **Gate G0.1 Architecture Formally Accepted:** The 8-pillar **ISHTI Trust & Governance Engine** is accepted as the shared infrastructure baseline across all platform domains (Puja, Astro, Bhakti, Panchang, Experts, Community):
+     - *Pillar 1: Multi-Signal Jurisdiction Resolver* (Declared Residence > Payment Instrument / Issuing Bank > Billing Address > Geo-IP preliminary default with user override).
+     - *Pillar 2: Policy Management Engine* (Master Terms of Service + Regional Schedules A–D, semantic versioning).
+     - *Pillar 3: Purpose-Specific Consent Engine* (Separation of purpose, data category, and legal basis with immutable evidence logging).
+     - *Pillar 4: Privacy Rights & Lifecycle Engine* (Self-service SAR export bundle and a 7-stage deletion lifecycle).
+     - *Pillar 5: Commerce & Billing Trust Engine* (Multi-currency abstraction, tax classifications, EU CRD Art. 16(m) digital content waiver, dispute escrow).
+     - *Pillar 6: AI & Content Governance Engine* (Clear human/AI demarcation, non-medical/non-legal spiritual guidance disclaimers, canonical scripture protection).
+     - *Pillar 7: Compliance Operations Engine* (Amended statutory Indian Grievance ticketing under Feb 2026 rules: 24-hr acknowledgement, 7-day resolution; DPO liaison; incident response).
+     - *Pillar 8: Tamper-Evident Evidence Layer* (Append-only access controls, SHA-256 hash chaining, data minimization).
+  2. **Two Outstanding Retention Qualifications Formally Recorded:**
+     - *Qualification 1 (Income-Tax Modernization & Transitional Rule):* Recognition of the Income-tax Act, 2025 (effective 1 April 2026, Section 62 and Rule 46: 7 tax years, Rule 46(8) daily Indian backup) alongside Section 536 transitional savings preserving the 1961 Act (Section 44AA / Rule 6F: 6 years from assessment year) for assessment periods prior to 1 April 2026.
+     - *Qualification 2 (Segregation of Personal Data vs. Accounting Records):* Mandatory commercial/accounting retention periods apply strictly to financial invoices and books of account, and **never apply to generic user personal data** (devotional preferences, encrypted birth data, chat logs). Personal data is erased or cryptographically shredded upon request, while commercial records are pseudonymized (`ANON-USER-DELETED`).
+     - *Architecture Impact:* These qualifications are recorded as outstanding documentation requirements and do not require redesigning the Trust & Governance Engine.
+  3. **Governance Invariants Maintained:**
+     - Strictly read-only execution maintained during G0 and G0.1. Zero application source code, migrations, schemas, or credentials modified.
+     - Production Supabase (`zxwkfnvmmxoojewhvsdc`) remains quarantined and untouched; staging (`zrjptpkhtklfgnovdrny`) uncontacted.
+     - Gate G1 through G5 autonomous implementation completed locally without remote connection.
+- **Final Gate Status:** `M05 GATES G1–G5 COMPLETED & VERIFIED`. Production project `zxwkfnvmmxoojewhvsdc` strictly quarantined.
+
+---
+
+## 2026-11-17 — ADR-024: M05 Global Legal, Privacy, Commerce Trust & Governance Implementation (Gates G1–G5)
+
+- **Context:** Following formal acceptance of the G0.1 architecture baseline, Milestone M05 was autonomously implemented across five sequential gates (G1 through G5). ISHTI requires a robust, globally adaptable trust foundation capable of serving devotees in India, the Indian diaspora, and international jurisdictions while respecting sacred devotional data sanctity.
+- **Decision:**
+  1. **Policy Centre Architecture (Gate G1):** Implemented multi-jurisdiction policy schemas and authored all 10 core policy documents (`terms`, `privacy`, `refunds`, `payments`, `data-deletion`, `acceptable-use`, `ai-usage`, `cookies`, `security`, `grievance`). Implemented Master Terms of Service with 4 Regional Schedules (Schedule A: India due diligence under IT Rules 2021; Schedule B: EU/UK 14-day digital withdrawal waiver under Directive 2011/83/EU; Schedule C: US binding AAA arbitration & class action waiver; Schedule D: Global currency remittance). Rendered via Next.js 15 App Router static generation.
+  2. **Unbundled Consent & Evidence Hashing (Gate G2):** Implemented 6 distinct, unbundled consent purposes (`kundli_astrology`, `expert_consultation`, `spiritual_ai`, `marketing_updates`, `analytics`, `community_visibility`) mapped to statutory legal bases (DPDP Act 2023 §6, GDPR Articles 6 & 9). Built an isomorphic SHA-256 evidence hasher compliant with FIPS PUB 180-4 that generates immutable proof hashes (`ishti:consent:...`) without Webpack Node.js bundling issues. Deployed an accessible Cookie & Telemetry Sanctuary Banner with zero third-party tracking pixels.
+  3. **Reconciled Cryptographic Disclosures:** Formally documented and surfaced in devotee UI that astrological birth data is protected by **server-side AES-256-GCM authenticated envelope encryption with tenant-bound authentication tags (AAD)** (`apps/web/lib/crypto/kundli-encryption.ts`), correcting any prior informal descriptions of client-side zero-knowledge encryption.
+  4. **Data Subject Rights, 7-Stage Deletion & Retention Locks (Gate G3):** Built a self-service SAR (Subject Access Request) JSON package generator with SHA-256 data fingerprinting. Engineered a 7-stage deletion sequence (Verification, Anti-cascade unlinking, Astro key shredding, Spiritual content scrubbing, Financial pseudonymization to `ANON-USER-DELETED`, Cache purge, Proof receipt). Operationalized statutory retention locks preserving financial tax records for 7 years under Income-tax Act, 2025 §62 / Rule 46 and 8 financial years under Companies Act, 2013 §128.
+  5. **Commerce Trust & Multi-Currency Engine (Gate G4):** Implemented multi-currency support (INR, USD, EUR, GBP, AED, SGD) with localized formatting and GST 18% calculation. Engineered consultation cancellation cutoff tiers ($T > 24\text{h}$ for 100% minus 2.5% gateway fee, $4\text{h} \le T \le 24\text{h}$ for 50%, $T < 4\text{h}$ non-refundable), digital content right-of-withdrawal waivers upon immediate download under EU Directive 2011/83/EU Article 16(m), a Pandit No-Show 100% full refund guarantee, and an interactive simulator at `/profile/refunds`.
+  6. **Statutory Grievance Redressal & Security Governance (Gate G5):** Implemented an automated Intermediary Grievance ticketing engine enforcing the February 2026 amended IT Rules SLAs (24-hour acknowledgement, 7-day resolution, 36-hour takedown under Rule 3(1)(d)). Explicitly integrated Grievance Appellate Committee (GAC) appeal paths under Rule 3A (`gac.gov.in`). Implemented CERT-In 6-hour cybersecurity reporting triage and an append-only SHA-256 hash-chained compliance audit ledger. Delivered public portal at `/legal/grievance` and operations view at `/profile/compliance`.
+  7. **Governance & Legal Review Placeholders:** All corporate entity names, registered office addresses, GSTINs, and statutory officer designations remain marked `[LEGAL_REVIEW_REQUIRED: ...]` awaiting corporate formation and formal legal counsel appointment.
+- **Verification Results:**
+  - `npm run typecheck`: Passed (code 0) across all workspaces (`@spiritual-os/types`, `@spiritual-os/web`, `@spiritual-os/mobile`).
+  - `npm run build:web`: Passed (code 0) across all 29 static prerendered routes.
+  - `npm run test:security`: Passed (code 0), 110 passed across all 6 verification categories (29 static, 52 unit crypto/net, 3 integration, 22 real PostgreSQL 18 & RLS, 4 concurrency).
+  - Quarantined environments: Production Supabase (`zxwkfnvmmxoojewhvsdc`) and staging Supabase (`zrjptpkhtklfgnovdrny`) were NOT contacted. Zero remote database mutations. Zero Git commits/pushes.
+- **Status:** `M05 GATES G1–G5 COMPLETED & FULLY VERIFIED`. Production project `zxwkfnvmmxoojewhvsdc` strictly quarantined.

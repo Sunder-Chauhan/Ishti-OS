@@ -196,7 +196,7 @@
 - [x] Milestone M04 formally accepted and closed at commit `cafc920`
 
 ## Current Gate Status
-- **Status:** `MILESTONES M04 & M04.6 FORMALLY ACCEPTED & CLOSED`
+- **Status:** `M05 GATE G0.1 FORMALLY ACCEPTED (ARCHITECTURE & RESEARCH BASELINE)`
 - **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
 - **Active Recovery Point:** `staging_backup_2026-11-15T18-54-57-175Z.meta.json` (Verified 100% SHA-256 and size parity)
 - **Canonical Migration:** `20261114000000_initial_schema.sql` (SHA-256 `3399a731...` verified)
@@ -207,9 +207,14 @@
   4. **Pre-Gate C Independent Verification:** Complete (72/72 catalog checks passed with zero mutations).
   5. **Gate C (Hosted Application & Payment Sandbox Tests):** Complete (**18/18 integration tests passed**; zero residual pollution in transactional tables; seed records preserved).
   6. **Milestone M04 (App Foundation & UX Shell):** **ACCEPTED & CLOSED AT cafc920** (110/110 tests passed, 0 TypeScript errors, 15/15 static routes prerendered, 0 UI emojis, 100% logo parity).
-  7. **Milestone M04.6 (Inclusive Experience & Globalisation Foundation):** **ACCEPTED & CLOSED** (110/110 tests passed, 0 TypeScript errors, 15/15 static routes prerendered, 0 UI emojis, 100% logo parity, WCAG 2.2 accessibility verified, Web Speech API privacy disclosure, deep-fallback i18n, public UX isolation).
-- **Proposed Next Step:** `M05 — Core Platform Domains Implementation` (awaiting separate scoping and authorization).
-- **Restrictions:** Production strictly quarantined (`zxwkfnvmmxoojewhvsdc`). Zero production deployment. No M05 implementation started.
+  7. **Milestone M04.6 (Inclusive Experience & Globalisation Foundation):** **ACCEPTED & CLOSED AT f3c2c5c** (110/110 tests passed, 0 TypeScript errors, 15/15 static routes prerendered, 0 UI emojis, 100% logo parity, WCAG 2.2 accessibility verified, Web Speech API privacy disclosure, deep-fallback i18n, public UX isolation).
+  8. **Milestone M05 Gate G0 (Discovery):** Complete (`docs/M05_DISCOVERY_AND_ARCHITECTURE_REPORT.md`).
+  9. **Milestone M05 Gate G0.1 (Architecture Refinement):** **FORMALLY ACCEPTED ON 17 NOV 2026** (`docs/M05_G0_1_ARCHITECTURE_REFINEMENT_REPORT.md`).
+     - Established 8-pillar ISHTI Trust & Governance Engine.
+     - Two retention qualifications recorded as documentation corrections.
+     - Critical distinction: Acceptance of architecture & research baseline; explicitly not legal sign-off or compliance certification.
+- **Proposed Next Step:** Operator review and formal legal counsel review of M05 implementation deliverables via Draft Pull Request.
+- **Restrictions:** Production strictly quarantined (`zxwkfnvmmxoojewhvsdc`). Staging strictly quarantined (`zrjptpkhtklfgnovdrny`). Zero live remote DB mutations. Zero direct pushes to `main`. Dedicated feature branch `feature/m05-trust-governance` prepared for review.
 
 
 ## M04.5 — Official ISHTI Digital Logo Family Integration (CLOSED & VERIFIED)
@@ -242,3 +247,23 @@ Scope & Deliverables:
 - [x] Voice navigation privacy disclosure (in-UI vendor cloud speech recognition disclosure before microphone activation)
 - [x] Decision log updated (ADR-022 in `docs/DECISION_LOG.md`)
 - [x] Final reconciliation deliverable (`docs/M04_6_FINAL_ACCEPTANCE_RECONCILIATION.md`)
+
+## M05 — Global Legal, Privacy & Trust Foundation (GATES G1–G5 IMPLEMENTED & VERIFIED)
+> **Governance Status:** G1–G5 IMPLEMENTED & VERIFIED — Autonomous implementation completed on November 17, 2026. All 10 policies, 6 consent purposes, SAR export, 7-stage deletion, multi-currency refund calculator, IT Rules statutory grievance portal, and hash-chained audit ledger verified. Awaiting operator review and formal counsel sign-off.
+
+Scope & Gates:
+- [x] Gate G0: Global Legal, Privacy & Trust Discovery (`docs/M05_DISCOVERY_AND_ARCHITECTURE_REPORT.md`)
+- [x] Gate G0.1: Trust & Governance Architecture Refinement (`docs/M05_G0_1_ARCHITECTURE_REFINEMENT_REPORT.md`)
+  - [x] 8-Pillar Trust & Governance Engine architecture specified
+  - [x] Contextual classification of religious & astrological data
+  - [x] Multi-signal jurisdiction resolver model
+  - [x] Subprocessor & cross-border transfer register (*Schrems II* / SCCs)
+  - [x] Two retention qualifications recorded (Income-tax Act 2025 transitional rule; personal vs accounting data separation)
+  - [x] Tamper-evident evidence ledger architecture
+  - [x] Decision log updated (ADR-023 in `docs/DECISION_LOG.md`)
+- [x] Gate G1: Policy Centre Foundation & Public Routes (`/legal/*`, Master Terms, Schedules A–D) — [Report](docs/M05_G1_COMPLETION_REPORT.md)
+- [x] Gate G2: Dynamic Consent & Cookie Governance (6 unbundled purposes, SHA-256 evidence hasher, Sanctuary banner) — [Report](docs/M05_G2_COMPLETION_REPORT.md)
+- [x] Gate G3: Privacy Rights Engine (SAR JSON export, 7-stage deletion, statutory retention lock matrix) — [Report](docs/M05_G3_COMPLETION_REPORT.md)
+- [x] Gate G4: Commerce, Refunds & Billing Governance (Multi-currency, consultation tiers, digital CRD waiver, simulator) — [Report](docs/M05_G4_COMPLETION_REPORT.md)
+- [x] Gate G5: Compliance Operations & Security Governance (Statutory IT Rules grievance portal, GAC appeal, CERT-In triage, hash-chained ledger) — [Report](docs/M05_G5_COMPLETION_REPORT.md)
+- [x] Milestone M05 Overarching Autonomous Execution Summary — [Summary](docs/M05_AUTONOMOUS_EXECUTION_SUMMARY.md)

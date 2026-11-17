@@ -214,6 +214,57 @@ export default function ProfilePage() {
             <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
           </Link>
         </div>
+
+        {/* Privacy Rights & Data Erasure */}
+        <div className="profileCard" style={{ marginBottom: 0 }}>
+          <div style={{ marginBottom: "14px", color: "var(--ishti-temple-maroon)" }}>
+            <ShieldCheck size={28} strokeWidth={1.8} />
+          </div>
+          <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)", marginBottom: "8px" }}>
+            Privacy Rights &amp; Data Sanctuary
+          </h2>
+          <p style={{ fontSize: "13px", color: "var(--ishti-warm-bronze)", lineHeight: 1.5, marginBottom: "18px" }}>
+            Export a full JSON archive (SAR) or execute 7-stage account erasure under DPDP §11–§12 and GDPR Art. 17.
+          </p>
+          <Link href="/profile/privacy" className="btnExploreModule" style={{ marginTop: 0 }}>
+            <span>Privacy &amp; Deletion Hub</span>
+            <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
+          </Link>
+        </div>
+
+        {/* Commerce Trust & Refunds */}
+        <div className="profileCard" style={{ marginBottom: 0 }}>
+          <div style={{ marginBottom: "14px", color: "var(--ishti-temple-maroon)" }}>
+            <ShieldCheck size={28} strokeWidth={1.8} />
+          </div>
+          <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)", marginBottom: "8px" }}>
+            Refunds &amp; Cancellations
+          </h2>
+          <p style={{ fontSize: "13px", color: "var(--ishti-warm-bronze)", lineHeight: 1.5, marginBottom: "18px" }}>
+            Calculate booking refund eligibility, view cutoff tiers, and submit cancellation requests.
+          </p>
+          <Link href="/profile/refunds" className="btnExploreModule" style={{ marginTop: 0 }}>
+            <span>Refund &amp; Cancellation Hub</span>
+            <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
+          </Link>
+        </div>
+
+        {/* Technical Governance & Compliance Audit */}
+        <div className="profileCard" style={{ marginBottom: 0 }}>
+          <div style={{ marginBottom: "14px", color: "var(--ishti-temple-maroon)" }}>
+            <ShieldCheck size={28} strokeWidth={1.8} />
+          </div>
+          <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)", marginBottom: "8px" }}>
+            Compliance &amp; Security Ledger
+          </h2>
+          <p style={{ fontSize: "13px", color: "var(--ishti-warm-bronze)", lineHeight: 1.5, marginBottom: "18px" }}>
+            Inspect technical safeguards, CERT-In incident reporting SLAs, and immutable audit ledgers.
+          </p>
+          <Link href="/profile/compliance" className="btnExploreModule" style={{ marginTop: 0 }}>
+            <span>Operations &amp; Audit Centre</span>
+            <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
+          </Link>
+        </div>
       </div>
 
       {/* Sign Out Action */}

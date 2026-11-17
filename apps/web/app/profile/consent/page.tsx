@@ -2,135 +2,122 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft, Shield, Key, Copy, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../../lib/auth/auth-context";
 import { Breadcrumbs } from "../../components/layout/Breadcrumbs";
-import type { ConsentPurpose } from "@spiritual-os/types";
-
-interface ConsentItem {
-  purpose: ConsentPurpose;
-  title: string;
-  description: string;
-  category: "Essential Sanctuary" | "Consultation" | "Communications" | "Service Quality";
-  mandatory?: boolean;
-}
-
-const CONSENT_DEFINITIONS: ConsentItem[] = [
-  {
-    purpose: "kundli_astrology",
-    title: "Astrological Chart Processing (Encrypted Kundli)",
-    category: "Essential Sanctuary",
-    description:
-      "Authorizes ISHTI to process your date, exact time, and geographic coordinates of birth exclusively for calculating planetary ephemeris, divisional charts, and dasha periods. All birth details are protected under client-side AES-256-GCM envelope encryption with tenant-bound authentication tags.",
-  },
-  {
-    purpose: "expert_consultation",
-    title: "Pandit & Acharya Consultation Sharing",
-    category: "Consultation",
-    description:
-      "Permits sharing your astrological birth chart and ritual intentions with accredited Pandits and Acharyas officiating your booked consultations. Access expires automatically after the session conclusion.",
-  },
-  {
-    purpose: "marketing_updates",
-    title: "Tithi, Muhurat & Festival Communications",
-    category: "Communications",
-    description:
-      "Authorizes ISHTI to send serene, non-intrusive calendar reminders for upcoming Vedic festivals, ekadashi observances, and auspicious muhurta timings matching your geographical location.",
-  },
-  {
-    purpose: "analytics",
-    title: "Privacy-Preserving Telemetry & Reader Diagnostics",
-    category: "Service Quality",
-    description:
-      "Enables aggregated, zero-PII performance metrics to optimize canonical scripture reader rendering speeds and astronomical ephemeris calculation latency.",
-  },
-];
-
-const LOCAL_CONSENT_KEY = "ishti_dpdp_consents_v1";
+import {
+  CONSENT_PURPOSE_DEFINITIONS,
+} from "../../../lib/consent/consent-registry";
+import {
+  loadLocalConsentState,
+  updateLocalConsent,
+  type StoredConsentState,
+} from "../../../lib/consent/consent-service";
+import type { ConsentPurposeId } from "@spiritual-os/types";
 
 export default function ConsentCenterPage() {
   const { user, openAuthModal } = useAuth();
-
-  const [consents, setConsents] = useState<Record<ConsentPurpose, boolean>>({
-    kundli_astrology: true,
-    expert_consultation: true,
-    marketing_updates: false,
-    analytics: false,
-  });
-
-  const [lastUpdated, setLastUpdated] = useState<Record<ConsentPurpose, string>>({
-    kundli_astrology: "2026-11-16T00:00:00Z",
-    expert_consultation: "2026-11-16T00:00:00Z",
-    marketing_updates: "2026-11-16T00:00:00Z",
-    analytics: "2026-11-16T00:00:00Z",
-  });
-
+  const [state, setState] = useState<StoredConsentState | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const cached = localStorage.getItem(LOCAL_CONSENT_KEY);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (parsed.consents) setConsents(parsed.consents);
-          if (parsed.lastUpdated) setLastUpdated(parsed.lastUpdated);
-        } catch {
-          // Fallback to default
-        }
-      }
-    }
+    setState(loadLocalConsentState());
   }, []);
 
-  const handleToggle = (purpose: ConsentPurpose) => {
-    const nextVal = !consents[purpose];
-    const newConsents = { ...consents, [purpose]: nextVal };
-    const newTimestamps = { ...lastUpdated, [purpose]: new Date().toISOString() };
+  const handleToggle = async (purposeId: ConsentPurposeId) => {
+    if (!state) return;
+    const currentVal = !!state.consents[purposeId];
+    const nextVal = !currentVal;
 
-    setConsents(newConsents);
-    setLastUpdated(newTimestamps);
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        LOCAL_CONSENT_KEY,
-        JSON.stringify({ consents: newConsents, lastUpdated: newTimestamps })
-      );
-    }
-
-    setSaveMessage(
-      `Consent for "${purpose.replace(/_/g, " ")}" updated to: ${nextVal ? "GRANTED" : "WITHDRAWN"}.`
+    const { state: nextState } = await updateLocalConsent(
+      purposeId,
+      nextVal,
+      user?.id || "guest-devotee"
     );
-    setTimeout(() => setSaveMessage(null), 3000);
+
+    setState(nextState);
+
+    const def = CONSENT_PURPOSE_DEFINITIONS.find((d) => d.id === purposeId);
+    setSaveMessage(
+      `Consent for "${def?.title || purposeId}" updated to: ${nextVal ? "GRANTED" : "WITHDRAWN"}.`
+    );
+    setTimeout(() => setSaveMessage(null), 3500);
   };
 
+  const handleCopyHash = (hash: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(hash);
+      setCopiedHash(hash);
+      setTimeout(() => setCopiedHash(null), 2500);
+    }
+  };
+
+  if (!state) {
+    return (
+      <div className="profileShell">
+        <div style={{ padding: "40px", textAlign: "center" }}>
+          Loading your consent sanctuary...
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="profileShell">
+    <div className="profileShell" style={{ maxWidth: "980px" }}>
       <Breadcrumbs
         items={[
           { label: "Devotee Profile", href: "/profile" },
-          { label: "DPDP Consent Center", current: true },
+          { label: "Consent Sanctuary (DPDP & GDPR)", current: true },
         ]}
       />
 
+      {/* Header */}
       <div style={{ marginBottom: "28px" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+          <Shield size={18} color="var(--ishti-temple-maroon)" aria-hidden="true" />
+          <span
+            style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: "var(--ishti-temple-maroon)",
+            }}
+          >
+            Sovereign Consent Governance
+          </span>
+        </div>
         <h1 className="pillarTitle" style={{ fontSize: "32px", marginBottom: "8px" }}>
-          DPDP Act 2023 Consent Center
+          Global Consent &amp; Preference Sanctuary
         </h1>
-        <p className="pillarDescription" style={{ fontSize: "15px", maxWidth: "780px" }}>
-          In accordance with §6 of the Digital Personal Data Protection Act, 2023 (DPDP Act), ISHTI empowers devotees with granular, unbundled, and purpose-specific consent governance. You maintain absolute sovereignty to grant or withdraw consent at any time without penalty.
+        <p className="pillarDescription" style={{ fontSize: "15px", maxWidth: "800px", lineHeight: 1.6 }}>
+          In accordance with §6 of India&apos;s Digital Personal Data Protection Act, 2023 (DPDP Act) and
+          Articles 6 &amp; 9 of the European Union General Data Protection Regulation (GDPR), ISHTI provides
+          granular, unbundled, and revocable consent controls. You maintain absolute sovereignty to grant or
+          withdraw permissions at any time without punitive service degradation.
         </p>
       </div>
 
-      {/* Guest Notice if not signed in */}
+      {/* Guest Notice */}
       {!user && (
         <div className="authModalSandboxBanner" style={{ marginBottom: "24px" }}>
-          <span className="authSandboxBadge">GUEST NOTICE</span>
+          <span className="authSandboxBadge">GUEST DEVOTEE SESSION</span>
           <p className="authSandboxText">
-            You are currently browsing as a guest. Consents adjusted below are saved in your local session. To bind your immutable consent log to your persistent devotee identity,{" "}
+            You are currently adjusting consents as a guest. Changes are cryptographically hashed and stored
+            in your local browser session cache. To record authoritative statutory consent logs under DPDP Act §6
+            on the server across devices,{" "}
             <button
               type="button"
-              onClick={() => openAuthModal({ message: "Sign in to synchronize your DPDP consent log." })}
-              style={{ background: "none", border: "none", color: "var(--ishti-temple-maroon)", fontWeight: 700, textDecoration: "underline", cursor: "pointer" }}
+              onClick={() => openAuthModal({ message: "Sign in to synchronize your DPDP & GDPR consent log." })}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--ishti-temple-maroon)",
+                fontWeight: 700,
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
             >
               sign in with mobile
             </button>
@@ -150,82 +137,223 @@ export default function ConsentCenterPage() {
             gap: "8px",
           }}
           role="status"
+          aria-live="polite"
         >
-          <Check size={15} strokeWidth={2.2} />
+          <Check size={15} strokeWidth={2.2} aria-hidden="true" />
           <span>{saveMessage}</span>
         </div>
       )}
 
       {/* Consent Cards List */}
-      <div className="consentCardsList">
-        {CONSENT_DEFINITIONS.map((item) => {
-          const isGranted = consents[item.purpose];
-          const timestamp = lastUpdated[item.purpose];
+      <div className="consentCardsList" style={{ gap: "20px" }}>
+        {CONSENT_PURPOSE_DEFINITIONS.map((item) => {
+          const isGranted = !!state.consents[item.id];
+          const record = state.records[item.id];
+          const timestamp = record?.updatedAt || new Date().toISOString();
+          const evidenceHash = record?.evidenceHash || "pending-evidence-generation";
+          const isCopied = copiedHash === evidenceHash;
 
           return (
-            <div key={item.purpose} className="consentCard">
-              <div className="consentCardText">
-                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                  <h2 className="consentCardTitle">{item.title}</h2>
-                  <span className="consentPurposeTag">{item.purpose}</span>
+            <div
+              key={item.id}
+              className="consentCard"
+              style={{
+                flexDirection: "column",
+                gap: "14px",
+                borderLeft: isGranted
+                  ? "4px solid var(--ishti-temple-maroon)"
+                  : "4px solid #D1D5DB",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: "20px",
+                  width: "100%",
+                }}
+              >
+                <div className="consentCardText" style={{ maxWidth: "700px" }}>
+                  <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "4px" }}>
+                    <h2 className="consentCardTitle" style={{ fontSize: "17px" }}>
+                      {item.title}
+                    </h2>
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        padding: "2px 8px",
+                        borderRadius: "4px",
+                        backgroundColor: "rgba(113, 27, 22, 0.08)",
+                        color: "var(--ishti-temple-maroon)",
+                      }}
+                    >
+                      {item.categoryName}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        backgroundColor: "#F2EFE9",
+                        color: "var(--ishti-temple-charcoal)",
+                      }}
+                    >
+                      Legal Basis: <code>{item.legalBasis}</code>
+                    </span>
+                  </div>
+
+                  <p className="consentCardDesc" style={{ fontSize: "13px", lineHeight: 1.5, margin: "6px 0 10px" }}>
+                    {item.description}
+                  </p>
+
+                  <div style={{ fontSize: "11px", color: "var(--ishti-warm-bronze)" }}>
+                    Status: <strong style={{ color: isGranted ? "#15803D" : "#B91C1C" }}>{isGranted ? "GRANTED" : "WITHDRAWN"}</strong> &bull; Version:{" "}
+                    <code>{item.version}</code> &bull; Last Modified:{" "}
+                    {new Date(timestamp).toLocaleDateString("en-IN", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
                 </div>
-                <p className="consentCardDesc">{item.description}</p>
-                <div style={{ fontSize: "11px", color: "var(--ishti-warm-bronze)", marginTop: "4px" }}>
-                  Status: <strong>{isGranted ? "Granted" : "Withdrawn"}</strong> &bull; Version:{" "}
-                  <code>v2026.1</code> &bull; Last Modified:{" "}
-                  {new Date(timestamp).toLocaleDateString("en-IN", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
+
+                {/* Accessible Switch */}
+                <label
+                  className="consentSwitch"
+                  aria-label={`Toggle consent for ${item.title}`}
+                  style={{ flexShrink: 0, marginTop: "4px" }}
+                >
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    checked={isGranted}
+                    onChange={() => handleToggle(item.id)}
+                    className="consentSwitchInput"
+                    aria-checked={isGranted}
+                  />
+                  <span className="consentSwitchSlider" />
+                </label>
               </div>
 
-              {/* Accessible Switch */}
-              <label className="consentSwitch" aria-label={`Toggle consent for ${item.title}`}>
-                <input
-                  type="checkbox"
-                  role="switch"
-                  checked={isGranted}
-                  onChange={() => handleToggle(item.purpose)}
-                  className="consentSwitchInput"
-                  aria-checked={isGranted}
-                />
-                <span className="consentSwitchSlider" />
-              </label>
+              {/* Cryptographic Evidence Trail Strip */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "10px",
+                  paddingTop: "10px",
+                  borderTop: "1px dashed var(--border-subtle)",
+                  fontSize: "11px",
+                  color: "var(--ishti-warm-bronze)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: "monospace" }}>
+                  <Key size={12} aria-hidden="true" />
+                  <span>Local Session Checksum (SHA-256):</span>
+                  <span title={evidenceHash} style={{ color: "var(--ishti-temple-charcoal)" }}>
+                    {evidenceHash.slice(0, 16)}...{evidenceHash.slice(-8)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleCopyHash(evidenceHash)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    background: "none",
+                    border: "none",
+                    color: "var(--ishti-temple-maroon)",
+                    cursor: "pointer",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                  }}
+                  title="Copy local SHA-256 session checksum to clipboard"
+                >
+                  {isCopied ? (
+                    <>
+                      <CheckCircle2 size={12} color="#15803D" aria-hidden="true" />
+                      <span style={{ color: "#15803D" }}>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={12} aria-hidden="true" />
+                      <span>Copy Session Checksum</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* DPDP Act 2023 Statutory Rights Banner */}
-      <div className="dpdpStatutoryBanner">
+      {/* Local Cache vs Statutory Server Record Notice */}
+      <div
+        style={{
+          marginTop: "20px",
+          padding: "12px 16px",
+          borderRadius: "8px",
+          backgroundColor: "#FAF7F2",
+          border: "1px solid var(--border-card)",
+          fontSize: "12px",
+          color: "var(--ishti-warm-bronze)",
+          lineHeight: 1.5,
+        }}
+      >
+        <strong>Architectural Note:</strong> Browser storage reflects local device preferences and session state.
+        Authoritative legal consent logs with statutory evidentiary proof under DPDP Act §6 are maintained server-side
+        upon devotee authentication.
+      </div>
+
+      {/* Statutory Rights Information */}
+      <div className="dpdpStatutoryBanner" style={{ marginTop: "36px" }}>
         <h3 className="dpdpStatutoryTitle">
-          Your Statutory Rights under the Digital Personal Data Protection Act, 2023
+          Your Statutory Data Principal Rights (DPDP Act 2023 &amp; GDPR)
         </h3>
         <p className="dpdpStatutoryText">
-          As a Data Principal under Indian law, you are entitled to unambiguous statutory protections:
+          As a devotee and data principal under Indian and international privacy laws, you possess inviolable rights:
         </p>
         <ul style={{ margin: "12px 0 0 20px", padding: 0, fontSize: "13px", color: "var(--ishti-warm-bronze)", lineHeight: 1.7 }}>
           <li>
-            <strong>Right to Withdraw Consent (§6(4)):</strong> You may withdraw consent at any time with the same ease as granting it. Withdrawing consent does not affect processing conducted prior to revocation.
+            <strong>Right to Withdraw Consent (DPDP §6(4) / GDPR Art. 7(3)):</strong> You may revoke consent at
+            any time with the same ease as granting it. Revocation does not affect lawful processing conducted prior
+            to withdrawal.
           </li>
           <li>
-            <strong>Right to Access Information (§11):</strong> You may request a summary of your personal data processed, identities of all data fiduciaries shared with, and relevant details.
+            <strong>Server-Side Envelope Encryption (DPDP §8(5)):</strong> Astrological birth coordinates and timestamps
+            are encrypted via server-side AES-256-GCM authenticated envelope encryption with tenant-bound authentication
+            tags before persistence.
           </li>
           <li>
-            <strong>Right to Correction & Erasure (§12):</strong> You may correct inaccurate or misleading personal data or request total erasure of personal data that is no longer necessary.
+            <strong>Right to Access &amp; Portability (DPDP §11 / GDPR Art. 15 &amp; 20):</strong> You may download a
+            complete machine-readable JSON archive of your personal and devotional records in the{" "}
+            <Link href="/profile/privacy" style={{ color: "var(--ishti-temple-maroon)", fontWeight: 600, textDecoration: "underline" }}>
+              Privacy Sanctuary Hub
+            </Link>
+            .
           </li>
           <li>
-            <strong>Right of Grievance Redressal (§13):</strong> You may submit complaints to ISHTI&apos;s designated Data Protection Officer with responses mandated within statutory timeframes.
+            <strong>Right to Erasure &amp; Rectification (DPDP §12 / GDPR Art. 16 &amp; 17):</strong> You may request complete
+            erasure of your profile and devotional records, executed via ISHTI&apos;s 7-stage deletion orchestrator.
+          </li>
+          <li>
+            <strong>Right of Grievance Redressal (DPDP §13 / IT Rules 2021 Rule 3(2)):</strong> You may register an official
+            complaint with our Statutory Grievance Officer, with mandatory 24-hour acknowledgement and 7-day resolution.
           </li>
         </ul>
       </div>
 
-      {/* Bottom Actions */}
-      <div style={{ marginTop: "32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      {/* Bottom Navigation */}
+      <div style={{ marginTop: "32px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
         <Link
           href="/profile"
           className="btnExploreModule"
@@ -237,12 +365,18 @@ export default function ConsentCenterPage() {
             gap: "8px",
           }}
         >
-          <ArrowLeft size={14} strokeWidth={1.8} />
+          <ArrowLeft size={14} strokeWidth={1.8} aria-hidden="true" />
           <span>Back to Profile</span>
         </Link>
-        <span style={{ fontSize: "12px", color: "var(--ishti-warm-bronze)" }}>
-          Legal Notice: DPDP Compliance Governance v1.0
-        </span>
+        <div style={{ display: "flex", gap: "16px", fontSize: "12px" }}>
+          <Link href="/legal/data-deletion" style={{ color: "var(--ishti-temple-maroon)", textDecoration: "underline" }}>
+            Data Subject Rights &amp; Erasure Guide
+          </Link>
+          <span style={{ color: "var(--border-card)" }}>&bull;</span>
+          <Link href="/legal/privacy" style={{ color: "var(--ishti-temple-maroon)", textDecoration: "underline" }}>
+            Global Privacy Notice
+          </Link>
+        </div>
       </div>
     </div>
   );

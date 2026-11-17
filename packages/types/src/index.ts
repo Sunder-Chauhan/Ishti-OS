@@ -16,3 +16,8 @@ export * from "./canonical";
 export * from "./astro";
 export * from "./booking";
 export * from "./subscriber";
+export * from "./policy";
+export * from "./consent";
+export * from "./privacy";
+export * from "./commerce";
+export * from "./compliance";

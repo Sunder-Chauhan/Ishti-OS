@@ -11,6 +11,7 @@ import { AuthModal } from "../auth/AuthModal";
 import { AccessibilityModal } from "../a11y/AccessibilityModal";
 import { AccessibilityLauncher } from "../a11y/AccessibilityLauncher";
 import { FirstTimeLanguageBanner } from "../i18n/FirstTimeLanguageBanner";
+import { CookieBanner } from "../consent/CookieBanner";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -48,6 +49,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* Floating Accessible Inclusion Controls Launcher */}
             <AccessibilityLauncher />
+
+            {/* Privacy & Cookie Sanctuary Banner */}
+            <CookieBanner />
           </div>
         </A11yProvider>
       </I18nProvider>
