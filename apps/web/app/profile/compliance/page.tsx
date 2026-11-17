@@ -13,21 +13,12 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-import { useAuth } from "../../../lib/auth/auth-context";
 import { Breadcrumbs } from "../../components/layout/Breadcrumbs";
-import {
-  getAuditLedger,
-  verifyLedgerIntegrity,
-} from "../../../lib/compliance/audit-trail";
-import {
-  triageSecurityIncident,
-} from "../../../lib/compliance/security-governance";
 import type { AuditLogEntry, SecurityIncidentTriage, IncidentSeverity } from "@spiritual-os/types";
 
 export default function ComplianceOperationsPage() {
-  const { user, isLoading } = useAuth();
-  const isAuthorized = user?.role === "platform_admin";
-
+  const [serverAuthorized, setServerAuthorized] = useState<boolean | null>(null);
+  const [serverAuthError, setServerAuthError] = useState<string>("");
   const [ledger, setLedger] = useState<AuditLogEntry[]>([]);
   const [isIntegrityValid, setIsIntegrityValid] = useState(true);
 
@@ -36,40 +27,91 @@ export default function ComplianceOperationsPage() {
   const [personalDataExposed, setPersonalDataExposed] = useState(true);
   const [systemic, setSystemic] = useState(false);
   const [triageOutput, setTriageOutput] = useState<SecurityIncidentTriage | null>(null);
+  const [isTriaging, setIsTriaging] = useState(false);
 
   useEffect(() => {
-    async function loadLedger() {
-      const data = getAuditLedger();
-      setLedger(data);
-      const valid = await verifyLedgerIntegrity(data);
-      setIsIntegrityValid(valid);
+    let isMounted = true;
+
+    async function fetchComplianceData() {
+      try {
+        const res = await fetch("/api/compliance/audit");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setLedger(data.ledger || []);
+            setIsIntegrityValid(Boolean(data.isValid));
+            setServerAuthorized(true);
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          if (isMounted) {
+            setServerAuthorized(false);
+            setServerAuthError(
+              errData.error ||
+                (res.status === 401
+                  ? "UNAUTHENTICATED: Administrative server session required."
+                  : res.status === 403
+                  ? "FORBIDDEN: Verified platform_admin role required in database."
+                  : "BACKEND_AUTH_UNAVAILABLE: Server-side cryptographic session verification requires active Supabase Auth infrastructure (M06 dependency). Administrative access is disabled.")
+            );
+          }
+        }
+      } catch (err: unknown) {
+        if (isMounted) {
+          setServerAuthorized(false);
+          setServerAuthError("Network failure contacting server compliance endpoint.");
+        }
+      }
     }
-    loadLedger();
+
+    fetchComplianceData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const handleSimulateTriage = () => {
-    const result = triageSecurityIncident({
-      incidentType: "UNAUTHORIZED_ACCESS_ATTEMPT",
-      affectedSystems: ["auth_cluster", "kundli_encryption_vault"],
-      severity,
-      isPersonalDataExposed: personalDataExposed,
-      isRansomwareOrSystemic: systemic,
-      summary: "Simulated security triage assessment for operational readiness evaluation.",
-    });
-    setTriageOutput(result);
+  const handleSimulateTriage = async () => {
+    setIsTriaging(true);
+    try {
+      const res = await fetch("/api/compliance/triage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          incidentType: "UNAUTHORIZED_ACCESS_ATTEMPT",
+          affectedSystems: ["auth_cluster", "kundli_encryption_vault"],
+          severity,
+          isPersonalDataExposed: personalDataExposed,
+          isRansomwareOrSystemic: systemic,
+          summary: "Simulated security triage assessment for operational readiness evaluation.",
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTriageOutput(data.triage);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(`Triage request rejected by server: ${errData.error || res.statusText}`);
+      }
+    } catch {
+      alert("Network failure contacting server triage endpoint.");
+    } finally {
+      setIsTriaging(false);
+    }
   };
 
-  if (isLoading) {
+  if (serverAuthorized === null) {
     return (
       <div className="profileShell">
-        <div style={{ padding: "40px", textAlign: "center" }}>
-          Verifying administrative authorization...
+        <div style={{ padding: "40px", textAlign: "center", color: "var(--ishti-warm-bronze)" }}>
+          Contacting server compliance endpoint and verifying administrative session...
         </div>
       </div>
     );
   }
 
-  if (!isAuthorized) {
+  if (!serverAuthorized) {
     return (
       <div className="profileShell" style={{ maxWidth: "800px" }}>
         <Breadcrumbs
@@ -106,9 +148,8 @@ export default function ComplianceOperationsPage() {
             Restricted Administrative Console
           </h1>
           <p style={{ fontSize: "14px", color: "var(--ishti-warm-bronze)", lineHeight: 1.6, maxWidth: "560px", margin: "0 auto 24px" }}>
-            In accordance with Section 8 of the DPDP Act, 2023 and ISO/IEC 27001 Access Control (A.9) standards,
-            the Compliance Operations &amp; Audit Console is strictly restricted to designated Platform Administrators
-            (<code>role: &quot;platform_admin&quot;</code>). Unauthorized access attempts are denied and logged.
+            {serverAuthError ||
+              "In accordance with Section 8 of the DPDP Act, 2023 and ISO/IEC 27001 Access Control (A.9) standards, the Compliance Operations & Audit Console is strictly restricted to designated Platform Administrators (role: 'platform_admin'). Access rejected by server authorization guard."}
           </p>
 
           <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>

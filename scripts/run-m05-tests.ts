@@ -39,8 +39,9 @@ import {
   getAllGrievances,
 } from "../apps/web/lib/compliance/grievance-service";
 import {
-  verifyServerAdminAuthorization,
-} from "../apps/web/lib/compliance/compliance-auth";
+  verifyAdminSession,
+  type SessionVerificationProvider,
+} from "../apps/web/lib/compliance/compliance-session-verifier";
 import {
   triageSecurityIncident,
   RECOGNIZED_SECURITY_POSTURE,
@@ -313,62 +314,162 @@ async function runM05Tests() {
   // --------------------------------------------------------------------------
   console.log("\n--- GATE 5: Compliance Operations, Grievances & Security SLAs ---");
 
-  // 1. Compliance Admin Server-Side Authorization Tests
-  const authUnauthenticated = verifyServerAdminAuthorization(null);
-  assert(
-    authUnauthenticated.authorized === false && authUnauthenticated.statusCode === 401,
-    "G5",
-    "Server admin check rejects unauthenticated (null) session with 401"
-  );
+  // 1. Compliance Admin Server-Side Session Authorization Tests
+  interface MockSessionRecord {
+    token: string;
+    expired?: boolean;
+    userId: string;
+    role: "devotee" | "expert_pandit" | "content_scholar" | "platform_admin";
+  }
 
-  const baseDevoteeUser: UserProfile = {
-    id: "usr-devotee-108",
-    role: "devotee",
-    email: "devotee@ishti.in",
-    fullName: "Bhakta Devotee",
-    phone: "+91-9876543210",
-    country: "IN",
-    timezone: "Asia/Kolkata",
-    preferredLanguage: "en",
-    createdAt: "2026-11-17T00:00:00Z",
-    updatedAt: "2026-11-17T00:00:00Z",
+  const mockSessions: Record<string, MockSessionRecord> = {
+    "token-devotee-108": {
+      token: "token-devotee-108",
+      userId: "usr-devotee-108",
+      role: "devotee",
+    },
+    "token-pandit-108": {
+      token: "token-pandit-108",
+      userId: "usr-pandit-108",
+      role: "expert_pandit",
+    },
+    "token-scholar-108": {
+      token: "token-scholar-108",
+      userId: "usr-scholar-108",
+      role: "content_scholar",
+    },
+    "token-admin-108": {
+      token: "token-admin-108",
+      userId: "usr-admin-108",
+      role: "platform_admin",
+    },
+    "token-expired-999": {
+      token: "token-expired-999",
+      expired: true,
+      userId: "usr-expired-999",
+      role: "platform_admin",
+    },
   };
 
-  const authDevotee = verifyServerAdminAuthorization(baseDevoteeUser);
+  const testAuthProvider: SessionVerificationProvider = {
+    isBackendConfigured: () => true,
+    async verifyToken(token: string) {
+      const session = mockSessions[token];
+      if (!session) {
+        return { valid: false, error: "Invalid signature / token not found in auth service" };
+      }
+      if (session.expired) {
+        return { valid: false, expired: true, error: "Token expired" };
+      }
+      return { valid: true, userId: session.userId };
+    },
+    async getUserRole(userId: string) {
+      const session = Object.values(mockSessions).find((s) => s.userId === userId);
+      return { role: session?.role || null };
+    },
+  };
+
+  // Case A: No session token provided -> 401 Unauthorized
+  const authNoSession = await verifyAdminSession(null, testAuthProvider);
+  assert(
+    authNoSession.authorized === false && authNoSession.statusCode === 401,
+    "G5",
+    "Server admin check: No session token returns 401 Unauthorized"
+  );
+
+  // Case B: Expired session token -> 401 Unauthorized
+  const authExpired = await verifyAdminSession("token-expired-999", testAuthProvider);
+  assert(
+    authExpired.authorized === false && authExpired.statusCode === 401,
+    "G5",
+    "Server admin check: Expired session token returns 401 Unauthorized"
+  );
+
+  // Case C: Invalid / forged session token -> 401 Unauthorized
+  const authInvalid = await verifyAdminSession("forged-token-xyz-000", testAuthProvider);
+  assert(
+    authInvalid.authorized === false && authInvalid.statusCode === 401,
+    "G5",
+    "Server admin check: Invalid session token signature returns 401 Unauthorized"
+  );
+
+  // Case D: Authenticated devotee role -> 403 Forbidden
+  const authDevotee = await verifyAdminSession("token-devotee-108", testAuthProvider);
   assert(
     authDevotee.authorized === false && authDevotee.statusCode === 403,
     "G5",
-    "Server admin check rejects devotee role with 403 Forbidden"
+    "Server admin check: Authenticated devotee session returns 403 Forbidden"
   );
 
-  const authPandit = verifyServerAdminAuthorization({
-    ...baseDevoteeUser,
-    role: "expert_pandit" as any,
-  });
+  // Case E: Expert and scholar roles -> 403 Forbidden
+  const authPandit = await verifyAdminSession("token-pandit-108", testAuthProvider);
   assert(
     authPandit.authorized === false && authPandit.statusCode === 403,
     "G5",
-    "Server admin check rejects expert_pandit role with 403 Forbidden"
+    "Server admin check: Authenticated expert_pandit session returns 403 Forbidden"
   );
 
-  const authScholar = verifyServerAdminAuthorization({
-    ...baseDevoteeUser,
-    role: "content_scholar" as any,
-  });
+  const authScholar = await verifyAdminSession("token-scholar-108", testAuthProvider);
   assert(
     authScholar.authorized === false && authScholar.statusCode === 403,
     "G5",
-    "Server admin check rejects content_scholar role with 403 Forbidden"
+    "Server admin check: Authenticated content_scholar session returns 403 Forbidden"
   );
 
-  const authAdmin = verifyServerAdminAuthorization({
-    ...baseDevoteeUser,
-    role: "platform_admin",
-  });
+  // Case F: Verified platform administrator -> 200 Allowed
+  const authAdmin = await verifyAdminSession("token-admin-108", testAuthProvider);
   assert(
     authAdmin.authorized === true && authAdmin.statusCode === 200,
     "G5",
-    "Server admin check authorizes verified platform_admin user with 200 OK"
+    "Server admin check: Verified platform_admin session returns 200 Authorized"
+  );
+
+  // Case G: Direct API requests without a valid session -> 401 Rejected
+  const authDirectApiNoSession = await verifyAdminSession(undefined, testAuthProvider);
+  assert(
+    authDirectApiNoSession.authorized === false && authDirectApiNoSession.statusCode === 401,
+    "G5",
+    "Direct API request without session token is strictly rejected with 401"
+  );
+
+  // Case H: Client-supplied role manipulation (headers/body overrides) -> Rejected
+  const clientManipulationHeaders = {
+    "x-user-role": "platform_admin",
+    "x-ishti-role": "platform_admin",
+    "authorization": "role=platform_admin",
+  };
+  const authDevoteeWithForgedRole = await verifyAdminSession(
+    "token-devotee-108",
+    testAuthProvider,
+    clientManipulationHeaders
+  );
+  assert(
+    authDevoteeWithForgedRole.authorized === false && authDevoteeWithForgedRole.statusCode === 403,
+    "G5",
+    "Client-supplied role manipulation: devotee sending x-user-role='platform_admin' is rejected with 403"
+  );
+
+  const authUnauthWithForgedRole = await verifyAdminSession(
+    null,
+    testAuthProvider,
+    clientManipulationHeaders
+  );
+  assert(
+    authUnauthWithForgedRole.authorized === false && authUnauthWithForgedRole.statusCode === 401,
+    "G5",
+    "Client-supplied role manipulation: unauthenticated caller sending x-user-role='platform_admin' is rejected with 401"
+  );
+
+  // Case I: Unconfigured or offline backend authentication -> 503 Disabled
+  const offlineAuthProvider: SessionVerificationProvider = {
+    ...testAuthProvider,
+    isBackendConfigured: () => false,
+  };
+  const authOfflineBackend = await verifyAdminSession("token-admin-108", offlineAuthProvider);
+  assert(
+    authOfflineBackend.authorized === false && authOfflineBackend.statusCode === 503,
+    "G5",
+    "Unconfigured backend authentication disables administrative access with 503 (M06 dependency)"
   );
 
   // 2. Grievance Portal & SLAs (Zero Fake Seeds & Prototype Flagging)

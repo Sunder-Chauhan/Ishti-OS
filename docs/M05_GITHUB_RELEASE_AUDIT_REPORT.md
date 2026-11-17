@@ -20,7 +20,7 @@ Milestone M05 establishes ISHTI's comprehensive **Global Legal, Privacy & Trust 
 - **Gate G4 (Commerce Trust):** Fair refund and cancellation calculator with integer minor-unit arithmetic, proposed 0% default gateway fee deduction, Pandit no-show reliability guarantee, EU CRD Art. 16(m) digital content waivers, and 6-currency formatting.
 - **Gate G5 (Compliance Operations):** Statutory grievance redressal portal complying with IT Rules 2021 (as amended Feb 2026: 24h acknowledgement, 7d resolution), two-factor privacy-preserving ticket tracking, CERT-In 6-hour incident triage, append-only SHA-256 evidence hash chain, and administrative RBAC gating.
 
-All source code has been implemented, audited, remediated of pre-release defects, verified through 66 automated M05 tests, 110 security regression tests, full TypeScript compilation, and production Next.js build. The code is committed to a dedicated feature branch and pushed to GitHub for review via a Draft Pull Request.
+All source code has been implemented, audited, remediated of pre-release defects, verified through 88 automated M05 tests, 110 security regression tests, full TypeScript compilation, and production Next.js build. The code is committed to a dedicated feature branch and pushed to GitHub for review via a Draft Pull Request.
 
 ---
 
@@ -81,12 +81,13 @@ Implements ISHTI Milestone M05 (Global Legal, Privacy & Trust Foundation) across
 - Removed client-side compliance admin simulation bypass; enforced strict server-only `platform_admin` authorization (FIND-M05-06).
 - Replaced false deletion completion certificates with `DeletionPlanResult` (`overallStatus: "NOT_IMPLEMENTED"`); labeled SAR as `DEMONSTRATION_PREVIEW_ONLY` without fake user data; scrubbed seeded fake complaints (FIND-M05-07).
 - Re-implemented SHA-256 audit hash chain verification with block data recomputation, monotonic timestamp checks, index continuity, and verified across all 7 tampering scenarios (FIND-M05-08).
+- Implemented genuine server-only session token authorization (`compliance-session-verifier.ts`, `compliance-server.ts`) and protected Next.js API endpoints (`/api/compliance/audit`, `/api/compliance/triage`), moving security boundary entirely off the client browser. Formally designated live operational admin access as `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY` pending M06 live auth (FIND-M05-09).
 
 ## Verification Evidence
-- M05 Test Suite (`scripts/run-m05-tests.ts`): 82/82 PASSED
+- M05 Test Suite (`scripts/run-m05-tests.ts`): 88/88 PASSED
 - Security Regression Suite (`npm run test:security`): 110/110 PASSED
 - TypeScript Compilation (`npm run typecheck`): 0 ERRORS
-- Next.js Production Build (`npm run build:web`): 29/29 ROUTES PRERENDERED
+- Next.js Production Build (`npm run build:web`): 31/31 ROUTES PRERENDERED
 - Zero database mutations; staging and production Supabase remained strictly quarantined.
 ```
 
@@ -133,6 +134,7 @@ Implements ISHTI Milestone M05 (Global Legal, Privacy & Trust Foundation) across
 | **FIND-M05-06** | `compliance/page.tsx`, `compliance-server.ts` | Critical | Client-side simulation override allowed bypassing administrative access control. | Removed `devAdminOverride` and the preview button; extracted server-only authorization guard rejecting non-admin users. | Verified in unit tests: 401 unauth, 403 non-admin, 200 platform_admin. |
 | **FIND-M05-07** | `deletion-orchestrator.ts`, `grievance-service.ts` | High | False deletion completion certificates, unproven backup claims & seeded fake complaints. | Returned `DeletionPlanResult` (`overallStatus: "NOT_IMPLEMENTED"`); labeled SAR as `DEMONSTRATION_PREVIEW_ONLY`; scrubbed fake seed complaints. | Verified in tests: deletion NOT_IMPLEMENTED, SAR DEMONSTRATION_PREVIEW_ONLY, 0 initial grievances. |
 | **FIND-M05-08** | `audit-trail.ts` | High | Verification only checked link pointer without recomputing block hashes; dummy genesis hash. | Re-implemented `verifyLedgerIntegrity` to recompute block data hashes for all entries; enforced genesis link and monotonic timestamps. | Verified across all 7 tamper scenarios in test runner. |
+| **FIND-M05-09** | `compliance-server.ts`, `compliance-session-verifier.ts`, `/api/compliance/*` | Critical | Client-side authorization boundary (`useAuth`, `UserProfile` check) allowed client bypass; no protected server endpoints existed. | Implemented genuine server-only session verification with signature/expiration checks, authoritative database role retrieval, fail-safe 503 shutdown when backend is offline, and protected `/api/compliance/audit` and `/api/compliance/triage` endpoints. | Verified via 11 server authorization tests in `scripts/run-m05-tests.ts`: 401 unauth, 401 expired, 401 bad sig, 403 non-admin roles, 200 platform_admin, direct API rejected, role manipulation rejected, 503 unconfigured backend. |
 
 ---
 
@@ -152,8 +154,9 @@ All M05 deliverables are categorized according to their actual implementation st
 | **Cancellation Calculator (`cancellation-calculator.ts`)** | *Implemented and tested locally* | Minor-unit arithmetic, 0% proposed fee, and multi-currency formatting fully tested. |
 | **Commercial Refund Terms** | *Requires Legal Review* | Proposed cancellation tiers and digital content waivers require commercial operator approval. |
 | **Refund Processing Integration** | *Not implemented* | No payment provider APIs (Razorpay/Stripe) are connected; live refunds require M06 integration. |
-| **Compliance Admin Guard (`compliance-auth.ts`)** | *Implemented and tested locally* | Zero-trust role checks (`platform_admin`) tested; unauthenticated and non-admin callers strictly rejected. |
-| **Compliance Admin Server Isolation (`compliance-server.ts`)** | *Requires Security Review* | Uses `"server-only"` boundary; requires formal security review during application pentest. |
+| **Compliance Admin Guard (`compliance-session-verifier.ts`, `compliance-auth.ts`)** | *Implemented and tested locally* | Zero-trust session token validation, signature/expiry checks, and role resolution tested locally; client headers rejected. |
+| **Compliance Admin Server Endpoints (`/api/compliance/audit`, `/api/compliance/triage`)** | *Implemented locally / Blocked by backend auth dependency (live)* | Protected server route handlers enforce `platform_admin` session check; returns 503 until M06 live auth. |
+| **Compliance Admin Client Console (`/profile/compliance`)** | *Prototype or client demo* | Presentation-only client component; fetches server endpoints; displays restricted access card upon 401/403/503. |
 | **Statutory Grievance Portal (`/legal/grievance`)** | *Prototype or client demo* | Workflow demonstration UI and 2-factor lookup implemented; formal filing requires M06 backend. |
 | **Tamper-Evident Audit Hash Chain (`audit-trail.ts`)** | *Prototype or client demo* | SHA-256 cryptographic chaining and full verification recomputation implemented for browser sessions. |
 | **Authoritative Compliance Audit Ledger (WORM)** | *Requires Backend Persistence* | Immutable Write-Once-Read-Many storage (Cloud Storage Bucket Lock) requires M06 deployment. |
@@ -372,6 +375,7 @@ Following formal legal sign-off and PR merge, Milestone M06 will implement:
 2. **Server-Side Consent Synchronization:** Server-side endpoints to persist authenticated devotee consent records directly to `public.user_consents`.
 3. **Automated Deletion Worker:** Background worker implementing transactional execution of the 7-stage deletion sequence against active database tables.
 4. **Payment Gateway Webhook Verification:** Live webhook handlers for payment capture, dispute escalation, and automated refund settlement.
+5. **Live Backend Authentication & Role Sync:** Supabase Auth integration to issue cryptographically signed JWT sessions and resolve `platform_admin` roles, unblocking live operational access to `/profile/compliance` and administrative API endpoints (resolving `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY`).
 
 ---
 

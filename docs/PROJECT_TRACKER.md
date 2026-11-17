@@ -274,5 +274,12 @@ Scope & Gates:
   - [x] SAR export labeled `DEMONSTRATION_PREVIEW_ONLY` without fake user data
   - [x] Production grievance store scrubbed of fake complaints; created tickets flagged as local prototypes
   - [x] Cryptographic audit hash chain verified via block data recomputation across all 7 tampering scenarios
-  - [x] Test suite expanded to 82/82 passing tests; 110/110 security regression tests passed; 0 typecheck errors; Next.js 29/29 routes built
+- [x] Milestone M05 Final Authorization Boundary Correction Pass 3 (FIND-M05-09):
+  - [x] Enforced genuine server-only session token authorization (`compliance-session-verifier.ts`, `compliance-server.ts`)
+  - [x] Created protected Next.js App Router API route handlers (`/api/compliance/audit`, `/api/compliance/triage`)
+  - [x] Refactored `/profile/compliance/page.tsx` so the browser UI is presentation-only and no longer the security boundary
+  - [x] Fail-safe shutdown: returns 503 (`BACKEND_AUTH_UNAVAILABLE`) when backend auth is unconfigured or offline
+  - [x] Formally designated live operational administrative console access as `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY` pending M06 live auth
+  - [x] Test suite expanded to 88/88 passing tests; 110/110 security regression tests passed; 0 typecheck errors; Next.js 31/31 routes built
+  - [x] Decision log updated (ADR-026 in `docs/DECISION_LOG.md`)
   - [x] Feature branch `feature/m05-trust-governance` prepared for Draft PR review

@@ -1,42 +1,11 @@
-import type { UserProfile } from "@spiritual-os/types";
-
 /**
- * Server-Side Compliance & Administrative Authorization Guard
- *
- * Security Invariants:
- * - Enforces zero-trust role verification: requires verified 'platform_admin' role.
- * - Ordinary authenticated devotees ('devotee'), content scholars, and expert pandits are strictly denied.
- * - Anonymous and unauthenticated callers are strictly denied.
- * - Client-side state overrides are completely prohibited.
+ * Re-exports compliance session verification engine.
+ * Notice: Authorization requires a verified server-side session token.
+ * Client-provided UserProfiles or roles are NEVER trusted.
  */
-
-export interface AuthorizationCheckResult {
-  authorized: boolean;
-  statusCode: 200 | 401 | 403;
-  reason?: string;
-}
-
-export function verifyServerAdminAuthorization(
-  user: UserProfile | null
-): AuthorizationCheckResult {
-  if (!user || !user.id) {
-    return {
-      authorized: false,
-      statusCode: 401,
-      reason: "UNAUTHENTICATED: Valid session required for administrative operations.",
-    };
-  }
-
-  if (user.role !== "platform_admin") {
-    return {
-      authorized: false,
-      statusCode: 403,
-      reason: `FORBIDDEN: User role '${user.role}' lacks administrative privilege. Required: 'platform_admin'.`,
-    };
-  }
-
-  return {
-    authorized: true,
-    statusCode: 200,
-  };
-}
+export {
+  verifyAdminSession,
+  type AdminSessionCheckResult,
+  type SessionVerificationProvider,
+  defaultSupabaseProvider,
+} from "./compliance-session-verifier";

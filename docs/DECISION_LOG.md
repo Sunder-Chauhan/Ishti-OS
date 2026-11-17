@@ -500,3 +500,36 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Next.js Production Build (`npm run build:web`): **29/29 ROUTES PRERENDERED** successfully.
   - Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and uncontacted.
 - **Decision:** **READY FOR DRAFT PR REVIEW**. Feature branch `feature/m05-trust-governance` is audited, verified, and ready for operator review.
+
+---
+
+## 2026-11-17 — ADR-026: M05 Final Authorization Boundary Correction — Server-Only Endpoint Enforcement and Backend Auth Dependency Quarantine
+
+- **Context:** Following the initial remediation pass, detailed code inspection revealed that `compliance-auth.ts` only evaluated a client-provided `UserProfile` object without server session verification; `compliance-server.ts` merely re-exported that check; and `/profile/compliance/page.tsx` was a client component using `useAuth()` and `user?.role === "platform_admin"` as the security gate. This did not constitute genuine server-side authorization. Direct HTTP requests to read compliance data or mutate triage state had no server endpoints protecting them.
+- **Decision:**
+  1. **Zero-Trust Session Verifier Engine (`compliance-session-verifier.ts`):**
+     - Never trusts client-supplied roles, headers (`x-user-role`, `x-ishti-role`), request bodies, or React state.
+     - Extracts session token from cookies or `Authorization: Bearer` header.
+     - Decodes and verifies token structure, claims, and expiration.
+     - Authoritatively resolves user role from backend database records (`getUserRole`).
+     - Fail-safe shutdown: If the backend authentication service is unconfigured or offline (`!isBackendConfigured()`), administrative access is disabled with status `503 BACKEND_AUTH_UNAVAILABLE` rather than allowing a bypass or simulated session.
+  2. **Server-Only Enforcement (`compliance-server.ts`):**
+     - Declared with Next.js `import "server-only";` package boundary.
+     - Integrates Next.js 15 `cookies()` and headers from `next/headers` (`verifyServerAdminSession`).
+  3. **Protected Server Route Handlers:**
+     - `GET /api/compliance/audit`: Server-only endpoint returning audit ledger data only after successful session verification; `POST` returns 501 disabled pending M06 WORM storage.
+     - `POST /api/compliance/triage`: Server-only endpoint performing incident triage only after successful session verification.
+  4. **Presentation-Only Client Page (`/profile/compliance/page.tsx`):**
+     - Security boundary shifted completely away from the browser.
+     - The page requests `/api/compliance/audit` and displays a restricted-access card whenever the server returns 401, 403, or 503.
+     - Audit data is never held in client state unless the server approves the session.
+     - Triage actions dispatch to `/api/compliance/triage`.
+  5. **Live Operational Status:**
+     - Formally categorized as **`BLOCKED — BACKEND AUTHENTICATION DEPENDENCY`** for live operational environments: Live cryptographic session issuance and verification requires the Milestone M06 Supabase Auth backend.
+- **Verification Results:**
+  - Automated M05 Suite (`scripts/run-m05-tests.ts`): **88/88 PASSED** (0 failures; 11 dedicated server authorization checks).
+  - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+  - TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all workspaces.
+  - Next.js Production Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** successfully (including dynamic endpoints `/api/compliance/audit` and `/api/compliance/triage`).
+  - Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and uncontacted.
+- **Status:** `REMEDIATED & VERIFIED`. Feature branch `feature/m05-trust-governance` is audited, verified, and ready for operator review.
