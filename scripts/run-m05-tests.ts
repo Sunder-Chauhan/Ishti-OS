@@ -36,7 +36,11 @@ import { formatCurrency, SUPPORTED_CURRENCIES } from "../apps/web/lib/commerce/m
 import {
   createGrievanceTicket,
   getGrievanceByTicketNumber,
+  getAllGrievances,
 } from "../apps/web/lib/compliance/grievance-service";
+import {
+  verifyServerAdminAuthorization,
+} from "../apps/web/lib/compliance/compliance-auth";
 import {
   triageSecurityIncident,
   RECOGNIZED_SECURITY_POSTURE,
@@ -44,9 +48,10 @@ import {
 import {
   appendAuditLogEntry,
   verifyLedgerIntegrity,
+  computeEntryHash,
   GENESIS_HASH,
 } from "../apps/web/lib/compliance/audit-trail";
-import type { AuditLogEntry, CurrencyCode } from "@spiritual-os/types";
+import type { AuditLogEntry, CurrencyCode, UserProfile } from "@spiritual-os/types";
 
 interface TestResult {
   gate: string;
@@ -148,40 +153,57 @@ async function runM05Tests() {
     email: "arjuna@ishti.in",
   });
   assert(sarPackage.metadata.userId === "devotee-108", "G3", "SAR package metadata matches devotee identity");
-  assert(sarPackage.metadata.dataFingerprintSha256.length === 64, "G3", "SAR package includes cryptographic SHA-256 fingerprint");
   assert(
-    sarPackage.kundliSummary.encryptionStandard.includes("AES-256-GCM"),
+    sarPackage.metadata.fulfillmentStatus === "DEMONSTRATION_PREVIEW_ONLY",
+    "G3",
+    "SAR fulfillmentStatus is explicitly DEMONSTRATION_PREVIEW_ONLY"
+  );
+  assert(
+    sarPackage.metadata.notice.includes("DEMONSTRATION PREVIEW"),
+    "G3",
+    "SAR package is explicitly labeled as demonstration preview"
+  );
+  assert(
+    sarPackage.metadata.templateFingerprintSha256.length === 64,
+    "G3",
+    "SAR package includes cryptographic SHA-256 fingerprint"
+  );
+  assert(
+    sarPackage.astrologicalDataSchema.encryptionStandard.includes("AES-256-GCM"),
     "G3",
     "SAR package acknowledges server-side AES-256-GCM envelope encryption standard"
   );
   assert(
-    sarPackage.statutoryRetentionNotice.includes("Income-tax Act, 2025"),
+    sarPackage.statutoryRetentionScheduleNotice.includes("Income-tax Act, 2025"),
     "G3",
     "SAR package discloses statutory tax retention under Income-tax Act, 2025"
   );
 
-  // 7-Stage Deletion Sequence
+  // 7-Stage Deletion Sequence (Plan Specification with NOT_IMPLEMENTED Status)
   const deletionResult = await executeSevenStageDeletion("devotee-108");
-  assert(deletionResult.stagesCompleted.length === 7, "G3", "Deletion sequence executes exactly 7 stages", `Found ${deletionResult.stagesCompleted.length}`);
+  assert(deletionResult.overallStatus === "NOT_IMPLEMENTED", "G3", "Overall deletion status is explicitly NOT_IMPLEMENTED pending backend worker");
+  assert(deletionResult.stages.length === 7, "G3", "Deletion sequence defines exactly 7 planned stages", `Found ${deletionResult.stages.length}`);
+  const allStagesNotImplemented = deletionResult.stages.every((s) => s.status === "NOT_IMPLEMENTED");
+  assert(allStagesNotImplemented, "G3", "Every deletion plan stage is marked NOT_IMPLEMENTED");
   assert(
-    deletionResult.certificate.stagesCompleted.includes("ASTRO_KEY_SHREDDING"),
+    deletionResult.stages.some((s) => s.stage === "ASTRO_KEY_SHREDDING"),
     "G3",
-    "Deletion sequence executes ASTRO_KEY_SHREDDING stage"
+    "Deletion specification includes ASTRO_KEY_SHREDDING stage"
   );
   assert(
-    deletionResult.certificate.pseudonymizedIdentity === "ANON-USER-DELETED",
+    deletionResult.planFingerprintSha256.length === 64,
     "G3",
-    "Deletion certificate pseudonymizes identity to 'ANON-USER-DELETED'"
+    "Deletion plan includes 64-char SHA-256 fingerprint"
   );
   assert(
-    deletionResult.certificate.retainedStatutoryRecords.some((r) => r.includes("Disaster recovery database backups")),
+    deletionResult.disclaimer.includes("No database records were modified or deleted"),
     "G3",
-    "Deletion certificate discloses rolling disaster recovery backup limitation (30 days)"
+    "Deletion plan disclaimer explicitly confirms no database mutation occurred"
   );
   assert(
-    deletionResult.certificate.certificateHashSha256.length === 64,
+    deletionResult.missingBackendDependency.includes("Requires M06 server-side deletion worker"),
     "G3",
-    "Deletion certificate contains valid SHA-256 proof hash"
+    "Deletion plan explicitly identifies missing M06 backend dependency"
   );
 
   // Statutory retention rules
@@ -291,7 +313,73 @@ async function runM05Tests() {
   // --------------------------------------------------------------------------
   console.log("\n--- GATE 5: Compliance Operations, Grievances & Security SLAs ---");
 
-  // Grievance SLA calculation
+  // 1. Compliance Admin Server-Side Authorization Tests
+  const authUnauthenticated = verifyServerAdminAuthorization(null);
+  assert(
+    authUnauthenticated.authorized === false && authUnauthenticated.statusCode === 401,
+    "G5",
+    "Server admin check rejects unauthenticated (null) session with 401"
+  );
+
+  const baseDevoteeUser: UserProfile = {
+    id: "usr-devotee-108",
+    role: "devotee",
+    email: "devotee@ishti.in",
+    fullName: "Bhakta Devotee",
+    phone: "+91-9876543210",
+    country: "IN",
+    timezone: "Asia/Kolkata",
+    preferredLanguage: "en",
+    createdAt: "2026-11-17T00:00:00Z",
+    updatedAt: "2026-11-17T00:00:00Z",
+  };
+
+  const authDevotee = verifyServerAdminAuthorization(baseDevoteeUser);
+  assert(
+    authDevotee.authorized === false && authDevotee.statusCode === 403,
+    "G5",
+    "Server admin check rejects devotee role with 403 Forbidden"
+  );
+
+  const authPandit = verifyServerAdminAuthorization({
+    ...baseDevoteeUser,
+    role: "expert_pandit" as any,
+  });
+  assert(
+    authPandit.authorized === false && authPandit.statusCode === 403,
+    "G5",
+    "Server admin check rejects expert_pandit role with 403 Forbidden"
+  );
+
+  const authScholar = verifyServerAdminAuthorization({
+    ...baseDevoteeUser,
+    role: "content_scholar" as any,
+  });
+  assert(
+    authScholar.authorized === false && authScholar.statusCode === 403,
+    "G5",
+    "Server admin check rejects content_scholar role with 403 Forbidden"
+  );
+
+  const authAdmin = verifyServerAdminAuthorization({
+    ...baseDevoteeUser,
+    role: "platform_admin",
+  });
+  assert(
+    authAdmin.authorized === true && authAdmin.statusCode === 200,
+    "G5",
+    "Server admin check authorizes verified platform_admin user with 200 OK"
+  );
+
+  // 2. Grievance Portal & SLAs (Zero Fake Seeds & Prototype Flagging)
+  const initialGrievances = getAllGrievances();
+  assert(
+    initialGrievances.length === 0,
+    "G5",
+    "Production grievance store contains zero pre-seeded fake complaints",
+    `Count: ${initialGrievances.length}`
+  );
+
   const ticketIntermediary = createGrievanceTicket({
     category: "intermediary_complaint",
     complainantName: "Bhakt Shishya",
@@ -300,7 +388,8 @@ async function runM05Tests() {
     description: "Comment on Satsang thread violates platform sacred decorum.",
   });
   assert(ticketIntermediary.ticketNumber.startsWith("ISHTI-GRV-"), "G5", "Grievance ticket number formatted with ISHTI-GRV- prefix");
-  assert(ticketIntermediary.status === "ACKNOWLEDGED", "G5", "Grievance is immediately assigned ACKNOWLEDGED status");
+  assert(ticketIntermediary.status === "ACKNOWLEDGED", "G5", "Grievance is assigned ACKNOWLEDGED status");
+  assert(ticketIntermediary.isPrototype === true, "G5", "Grievance ticket is explicitly flagged as prototype preview");
   assert(ticketIntermediary.gacAppealEligible === true, "G5", "Grievance ticket designates GAC appeal eligibility under IT Rules 2021 Rule 3A");
   assert(
     ticketIntermediary.officerDesignation.includes("Statutory Grievance Officer"),
@@ -323,7 +412,7 @@ async function runM05Tests() {
     "Grievance lookup matches complainantEmail for identity verification"
   );
 
-  // Security Incident Triage (CERT-In 6-Hour SLA vs DPDP §8(6))
+  // 3. Security Incident Triage (CERT-In 6-Hour SLA vs DPDP §8(6))
   const criticalTriage = triageSecurityIncident({
     incidentType: "UNAUTHORIZED_DB_ACCESS",
     affectedSystems: ["kundli_vault", "profiles_db"],
@@ -352,51 +441,136 @@ async function runM05Tests() {
   assert(lowTriage.certInNotificationRequired === false, "G5", "LOW non-systemic incident does NOT trigger CERT-In emergency notification");
   assert(lowTriage.dpdpBreachNoticeRequired === false, "G5", "Non-personal incident does NOT trigger DPDP §8(6) notice");
 
-  // Tamper-Evident SHA-256 Hash Chain
-  const mockGenesis: AuditLogEntry = {
+  // 4. Tamper-Evident SHA-256 Hash Chain (All 7 Verification Scenarios)
+  const genesisPayloadHash = await sha256Hex(JSON.stringify({ init: true }));
+  const genesisEntryHash = await computeEntryHash(
+    0,
+    "2026-11-17T00:00:00Z",
+    "PLATFORM_INITIALIZATION",
+    "SYSTEM",
+    genesisPayloadHash,
+    GENESIS_HASH
+  );
+  const testGenesis: AuditLogEntry = {
     index: 0,
     timestamp: "2026-11-17T00:00:00Z",
     eventType: "PLATFORM_INITIALIZATION",
     actor: "SYSTEM",
-    payloadHash: await sha256Hex(JSON.stringify({ init: true })),
+    payloadHash: genesisPayloadHash,
     previousHash: GENESIS_HASH,
-    entryHash: await sha256Hex(`0:2026-11-17T00:00:00Z:PLATFORM_INITIALIZATION:SYSTEM:hash:${GENESIS_HASH}`),
+    entryHash: genesisEntryHash,
   };
 
   const block1PayloadHash = await sha256Hex(JSON.stringify({ action: "USER_CONSENT_GRANTED" }));
-  const block1Hash = await sha256Hex(`1:2026-11-17T00:05:00Z:CONSENT_CHANGE:USER:${block1PayloadHash}:${mockGenesis.entryHash}`);
-  const mockBlock1: AuditLogEntry = {
+  const block1Hash = await computeEntryHash(
+    1,
+    "2026-11-17T00:05:00Z",
+    "CONSENT_CHANGE",
+    "USER",
+    block1PayloadHash,
+    testGenesis.entryHash
+  );
+  const testBlock1: AuditLogEntry = {
     index: 1,
     timestamp: "2026-11-17T00:05:00Z",
     eventType: "CONSENT_CHANGE",
     actor: "USER",
     payloadHash: block1PayloadHash,
-    previousHash: mockGenesis.entryHash,
+    previousHash: testGenesis.entryHash,
     entryHash: block1Hash,
   };
 
   const block2PayloadHash = await sha256Hex(JSON.stringify({ action: "GRIEVANCE_FILED" }));
-  const block2Hash = await sha256Hex(`2:2026-11-17T00:10:00Z:GRIEVANCE_FILED:USER:${block2PayloadHash}:${mockBlock1.entryHash}`);
-  const mockBlock2: AuditLogEntry = {
+  const block2Hash = await computeEntryHash(
+    2,
+    "2026-11-17T00:10:00Z",
+    "GRIEVANCE_FILED",
+    "USER",
+    block2PayloadHash,
+    testBlock1.entryHash
+  );
+  const testBlock2: AuditLogEntry = {
     index: 2,
     timestamp: "2026-11-17T00:10:00Z",
     eventType: "GRIEVANCE_FILED",
     actor: "USER",
     payloadHash: block2PayloadHash,
-    previousHash: mockBlock1.entryHash,
+    previousHash: testBlock1.entryHash,
     entryHash: block2Hash,
   };
 
-  const validChain = [mockGenesis, mockBlock1, mockBlock2];
-  assert(verifyLedgerIntegrity(validChain) === true, "G5", "Audit ledger hash chain verified intact for unaltered blocks");
+  const validChain = [testGenesis, testBlock1, testBlock2];
 
-  // Tamper detection test
-  const tamperedChain: AuditLogEntry[] = [
-    mockGenesis,
-    { ...mockBlock1, entryHash: "tampered-hash-00000000000000000000000000000000000000000000000000000" },
-    mockBlock2,
+  // Tamper Scenario 1: Valid unaltered chain passes
+  assert(
+    (await verifyLedgerIntegrity(validChain)) === true,
+    "G5",
+    "Audit ledger: Valid unaltered hash chain passes integrity verification"
+  );
+
+  // Tamper Scenario 2: Tampered genesis block fails
+  const tamperedGenesisChain = [
+    { ...testGenesis, previousHash: "1111111111111111111111111111111111111111111111111111111111111111" },
+    testBlock1,
+    testBlock2,
   ];
-  assert(verifyLedgerIntegrity(tamperedChain) === false, "G5", "Audit ledger detects broken hash chain when block hash is tampered");
+  assert(
+    (await verifyLedgerIntegrity(tamperedGenesisChain)) === false,
+    "G5",
+    "Audit ledger: Tampered genesis previousHash fails verification"
+  );
+
+  // Tamper Scenario 3: Modified payload hash fails
+  const tamperedPayloadChain = [
+    testGenesis,
+    { ...testBlock1, payloadHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
+    testBlock2,
+  ];
+  assert(
+    (await verifyLedgerIntegrity(tamperedPayloadChain)) === false,
+    "G5",
+    "Audit ledger: Tampered payload hash fails verification"
+  );
+
+  // Tamper Scenario 4: Out-of-order timestamp fails
+  const tamperedTimestampChain = [
+    testGenesis,
+    { ...testBlock1, timestamp: "2026-11-16T23:59:59Z" }, // earlier than genesis
+    testBlock2,
+  ];
+  assert(
+    (await verifyLedgerIntegrity(tamperedTimestampChain)) === false,
+    "G5",
+    "Audit ledger: Non-monotonic out-of-order timestamp fails verification"
+  );
+
+  // Tamper Scenario 5: Deleted block (index gap) fails
+  const deletedBlockChain = [testGenesis, testBlock2]; // missing index 1
+  assert(
+    (await verifyLedgerIntegrity(deletedBlockChain)) === false,
+    "G5",
+    "Audit ledger: Deleted block / index continuity gap fails verification"
+  );
+
+  // Tamper Scenario 6: Reordered blocks fail
+  const reorderedChain = [testGenesis, testBlock2, testBlock1];
+  assert(
+    (await verifyLedgerIntegrity(reorderedChain)) === false,
+    "G5",
+    "Audit ledger: Reordered blocks fail verification"
+  );
+
+  // Tamper Scenario 7: Forged entryHash fails
+  const forgedHashChain = [
+    testGenesis,
+    { ...testBlock1, entryHash: "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd" },
+    { ...testBlock2, previousHash: "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd" },
+  ];
+  assert(
+    (await verifyLedgerIntegrity(forgedHashChain)) === false,
+    "G5",
+    "Audit ledger: Forged entryHash fails recomputed cryptographic check"
+  );
 
   // --------------------------------------------------------------------------
   // Summary

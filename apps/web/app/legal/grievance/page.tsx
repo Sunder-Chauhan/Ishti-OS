@@ -116,6 +116,30 @@ export default function GrievancePortalPage() {
         ]}
       />
 
+      {/* Prototype Preview Notice Banner */}
+      <div
+        style={{
+          padding: "16px 20px",
+          borderRadius: "8px",
+          backgroundColor: "#FFFBEB",
+          border: "1px solid #F59E0B",
+          marginBottom: "28px",
+          display: "flex",
+          gap: "12px",
+          alignItems: "flex-start",
+        }}
+      >
+        <AlertCircle size={20} color="#B45309" style={{ flexShrink: 0, marginTop: "2px" }} />
+        <div style={{ fontSize: "13px", lineHeight: 1.5, color: "#92400E" }}>
+          <strong>STATUTORY GRIEVANCE REDRESSAL PORTAL (PROTOTYPE PREVIEW):</strong> This interface
+          demonstrates ISHTI&apos;s compliance workflow under Rule 3(2) of the Information Technology
+          (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021 (as amended February 2026) and §13 of
+          the Digital Personal Data Protection Act, 2023. The backend ticket processing service is currently
+          pending deployment (Milestone M06). Submissions made here are local browser demonstrations only and do
+          not constitute formal legal service on a statutory officer.
+        </div>
+      </div>
+
       {/* Header */}
       <div style={{ marginBottom: "32px" }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
@@ -402,16 +426,17 @@ export default function GrievancePortalPage() {
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                 <CheckCircle2 size={18} color="#15803D" aria-hidden="true" />
                 <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--ishti-temple-charcoal)" }}>
-                  Grievance Acknowledged (Ticket ID: {activeTicket.ticketNumber})
+                  Prototype Ticket Staged (Demonstration Only: {activeTicket.ticketNumber})
                 </h3>
               </div>
               <p style={{ fontSize: "12px", color: "var(--ishti-warm-bronze)", lineHeight: 1.5, margin: "0 0 10px" }}>
-                In accordance with Rule 3(2) of the IT Rules 2021, your complaint has been assigned to our
-                Statutory Grievance Officer. A full investigation is underway.
+                This ticket has been generated in your local browser session for workflow demonstration purposes.
+                No transmission to a statutory officer or backend database has occurred. Official grievance redressal
+                will activate upon Milestone M06 backend deployment.
               </p>
               <div style={{ fontSize: "11px", color: "var(--ishti-temple-charcoal)" }}>
                 <div>
-                  <strong>Mandatory Resolution SLA:</strong> Within 7 days (by{" "}
+                  <strong>Simulated Resolution SLA:</strong> 7 days under Rule 3(2) (target:{" "}
                   {new Date(activeTicket.resolutionDeadline).toLocaleDateString("en-IN", {
                     year: "numeric",
                     month: "long",
@@ -420,7 +445,7 @@ export default function GrievancePortalPage() {
                   ).
                 </div>
                 <div style={{ marginTop: "4px" }}>
-                  <strong>Officer:</strong> {activeTicket.officerDesignation}
+                  <strong>Officer Placeholder:</strong> {activeTicket.officerDesignation}
                 </div>
               </div>
             </div>
@@ -478,10 +503,10 @@ export default function GrievancePortalPage() {
           {/* Ticket Status Lookup Box */}
           <div className="profileCard" style={{ margin: 0 }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "10px", color: "var(--ishti-temple-charcoal)" }}>
-              Track Existing Grievance Ticket
+              Track Existing Grievance Ticket (Prototype)
             </h2>
             <p style={{ fontSize: "12px", color: "var(--ishti-warm-bronze)", marginBottom: "12px" }}>
-              Enter your ticket number and registration email address to securely view status and resolution details.
+              Ticket Tracking Prototype: Queries local demonstration tickets staged in your current browser session only.
             </p>
 
             <form onSubmit={handleLookup} style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>

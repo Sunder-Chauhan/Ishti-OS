@@ -60,6 +60,8 @@ export interface RefundRequestRecord {
   calculation: RefundCalculation;
   disputeNotes?: string;
   estimatedSettlementDays: string;
+  isSimulation?: boolean;
+  simulationDisclaimer?: string;
 }
 
 export interface CurrencyConfig {

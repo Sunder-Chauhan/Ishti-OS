@@ -78,9 +78,12 @@ Implements ISHTI Milestone M05 (Global Legal, Privacy & Trust Foundation) across
 - Enforced session authentication for SAR export and clarified shared encryption key retention / 30-day backup rolling overwrite (FIND-M05-03).
 - Implemented integer minor-unit arithmetic and defaulted gateway fee deduction to 0% pending aggregator agreements (FIND-M05-04).
 - Added two-factor grievance lookup (Ticket # + Email) and administrative RBAC gating for compliance console (FIND-M05-05).
+- Removed client-side compliance admin simulation bypass; enforced strict server-only `platform_admin` authorization (FIND-M05-06).
+- Replaced false deletion completion certificates with `DeletionPlanResult` (`overallStatus: "NOT_IMPLEMENTED"`); labeled SAR as `DEMONSTRATION_PREVIEW_ONLY` without fake user data; scrubbed seeded fake complaints (FIND-M05-07).
+- Re-implemented SHA-256 audit hash chain verification with block data recomputation, monotonic timestamp checks, index continuity, and verified across all 7 tampering scenarios (FIND-M05-08).
 
 ## Verification Evidence
-- M05 Test Suite (`scripts/run-m05-tests.ts`): 66/66 PASSED
+- M05 Test Suite (`scripts/run-m05-tests.ts`): 82/82 PASSED
 - Security Regression Suite (`npm run test:security`): 110/110 PASSED
 - TypeScript Compilation (`npm run typecheck`): 0 ERRORS
 - Next.js Production Build (`npm run build:web`): 29/29 ROUTES PRERENDERED
@@ -98,22 +101,22 @@ Implements ISHTI Milestone M05 (Global Legal, Privacy & Trust Foundation) across
 
 ### Gate G2: Sovereign Consent Governance
 - **Deliverables:** `consent-registry.ts`, `consent-service.ts`, `evidence-hasher.ts`, `CookieBanner.tsx`, `/profile/consent`, and `M05_G2_COMPLETION_REPORT.md`.
-- **Key Invariants:** 6 unbundled purposes with explicit legal bases (DPDP Act §6, GDPR Art. 6 & 9). Deterministic SHA-256 evidence hashing. Clear disclosure of local browser preference cache vs authoritative server-side consent logging.
+- **Key Invariants:** 6 unbundled purposes with explicit legal bases (DPDP Act §6, GDPR Art. 6 & 9). Deterministic SHA-256 evidence hashing. Clear separation of local browser preference cache (`LocalConsentPreferences`) vs authoritative server-side consent logging (`AuthoritativeConsentRecord`).
 - **Status:** **VERIFIED**
 
 ### Gate G3: Privacy Rights & Deletion Sanctuary
 - **Deliverables:** `export-service.ts`, `deletion-orchestrator.ts`, `retention-matrix.ts`, `/profile/privacy`, and `M05_G3_COMPLETION_REPORT.md`.
-- **Key Invariants:** Self-service SAR JSON download requiring authentication. 7-stage deletion sequence with pseudonymization to `ANON-USER-DELETED`. Clear disclosure that devotee ciphertext is shredded without destroying shared server master keys, and disaster recovery backups are rolling snapshots overwritten within 30 days. Statutory retention matrix grounded in Income-tax Act, 2025 §62 / Rule 46 (7 years) and Companies Act, 2013 §128 (8 years).
+- **Key Invariants:** Self-service SAR JSON download requiring authentication, labeled `DEMONSTRATION_PREVIEW_ONLY` without fake user data. 7-stage deletion sequence plan with overall status explicitly `NOT_IMPLEMENTED`. Removal of unverified deletion certificates and unproven 30-day backup overwrite claims. Statutory retention matrix grounded in Income-tax Act, 2025 §62 / Rule 46 (7 years) and Companies Act, 2013 §128 (8 years).
 - **Status:** **VERIFIED**
 
 ### Gate G4: Commerce Trust & Fair Refunds
 - **Deliverables:** `cancellation-calculator.ts`, `multi-currency.ts`, `refund-service.ts`, `/profile/refunds`, and `M05_G4_COMPLETION_REPORT.md`.
-- **Key Invariants:** Integer minor-unit arithmetic (paise/cents: `Math.round(amount * 100)`) preventing floating-point rounding errors. Default gateway fee deduction of 0% marked as proposed policy pending aggregator contracts. Pandit no-show 100% full refund guarantee. EU CRD Art. 16(m) digital content waiver.
+- **Key Invariants:** Integer minor-unit arithmetic (paise/cents: `Math.round(amount * 100)`) preventing floating-point rounding errors. Default gateway fee deduction of 0% marked as proposed policy pending aggregator contracts. Pandit no-show 100% full refund guarantee. EU CRD Art. 16(m) digital content waiver. Refund requests clearly labeled as simulated calculations without claiming submission to payment aggregators.
 - **Status:** **VERIFIED**
 
 ### Gate G5: Compliance Operations & Security Governance
-- **Deliverables:** `grievance-service.ts`, `security-governance.ts`, `audit-trail.ts`, `/legal/grievance`, `/profile/compliance`, and `M05_G5_COMPLETION_REPORT.md`.
-- **Key Invariants:** Grievance SLA engine adhering to amended IT Rules 2021 (Feb 2026: 24h ack, 7d resolve). Two-factor ticket lookup requiring ticket number and complainant email. CERT-In 6-hour incident triage for qualifying cybersecurity incidents. Append-only SHA-256 evidence hash chain with tamper detection. Administrative RBAC gating restricting `/profile/compliance` to `platform_admin`.
+- **Deliverables:** `grievance-service.ts`, `security-governance.ts`, `audit-trail.ts`, `compliance-auth.ts`, `compliance-server.ts`, `/legal/grievance`, `/profile/compliance`, and `M05_G5_COMPLETION_REPORT.md`.
+- **Key Invariants:** Grievance SLA engine adhering to amended IT Rules 2021 (Feb 2026: 24h ack, 7d resolve). Zero seeded fake complaints in production stores. Two-factor ticket lookup requiring ticket number and complainant email. CERT-In 6-hour incident triage for qualifying cybersecurity incidents. Tamper-evident SHA-256 hash chain with cryptographic verification recomputation across all blocks and all 7 tampering scenarios. Administrative server-only authorization guard (`verifyServerAdminAuthorization`) with zero client-side bypass.
 - **Status:** **VERIFIED**
 
 ---
@@ -127,6 +130,33 @@ Implements ISHTI Milestone M05 (Global Legal, Privacy & Trust Foundation) across
 | **FIND-M05-03** | `privacy/page.tsx`, `deletion-orchestrator.ts` | High | Unauthenticated guests could trigger SAR export; deletion claimed to shred encryption keys without disclosing rolling backup limitations. | Added authentication check (`useAuth`) gating SAR exports; updated Stage 3 description; added 30-day backup rolling overwrite notice. | Verified in SAR export tests and deletion sequence execution. |
 | **FIND-M05-04** | `cancellation-calculator.ts` | Medium | Hardcoded 2.5% gateway fee deduction as active policy; floating-point math risked precision drift. | Defaulted gateway fee deduction to 0%; converted all calculations to integer minor units (paise/cents). | Verified via minor-unit precision tests (e.g. $19.99 @ 50% = $10.00). |
 | **FIND-M05-05** | `grievance/page.tsx`, `compliance/page.tsx` | High | Grievance ticket tracking required only ticket number; compliance console lacked role checks. | Required both Ticket # and Complainant Email for tracking; added RBAC restriction (`platform_admin`) to compliance console. | Verified in grievance lookup tests and RBAC rendering. |
+| **FIND-M05-06** | `compliance/page.tsx`, `compliance-server.ts` | Critical | Client-side simulation override allowed bypassing administrative access control. | Removed `devAdminOverride` and the preview button; extracted server-only authorization guard rejecting non-admin users. | Verified in unit tests: 401 unauth, 403 non-admin, 200 platform_admin. |
+| **FIND-M05-07** | `deletion-orchestrator.ts`, `grievance-service.ts` | High | False deletion completion certificates, unproven backup claims & seeded fake complaints. | Returned `DeletionPlanResult` (`overallStatus: "NOT_IMPLEMENTED"`); labeled SAR as `DEMONSTRATION_PREVIEW_ONLY`; scrubbed fake seed complaints. | Verified in tests: deletion NOT_IMPLEMENTED, SAR DEMONSTRATION_PREVIEW_ONLY, 0 initial grievances. |
+| **FIND-M05-08** | `audit-trail.ts` | High | Verification only checked link pointer without recomputing block hashes; dummy genesis hash. | Re-implemented `verifyLedgerIntegrity` to recompute block data hashes for all entries; enforced genesis link and monotonic timestamps. | Verified across all 7 tamper scenarios in test runner. |
+
+---
+
+## 7. Component Status Categorization
+
+All M05 deliverables are categorized according to their actual implementation status:
+
+| Component | Status Category | Operational Reality / Next Milestone Requirement |
+| :--- | :--- | :--- |
+| **Policy Registry (`policy-registry.ts`)** | *Requires Legal Review* | 10 draft policies authored; requires corporate legal counsel sign-off before effective date. |
+| **Policy Routing & Search (`/legal`, `/legal/[slug]`)** | *Implemented and tested locally* | Next.js routes, schedule tabs, and draft filtering verified with 100% test coverage. |
+| **Consent Registry (`consent-registry.ts`)** | *Requires Legal Review* | 6 unbundled purposes defined; recommended toggle defaults require DPO confirmation. |
+| **Local Consent Service (`consent-service.ts`)** | *Prototype or client demo* | Local device preference caching and SHA-256 integrity checksums implemented. |
+| **Authoritative Consent Records** | *Requires Backend Persistence* | Requires server-side `public.user_consents` table, RPC persistence, and KMS audit signatures (M06). |
+| **Privacy SAR Export (`export-service.ts`)** | *Prototype or client demo* | Schema structure preview and demonstration export implemented. Real user data extraction requires M06 backend pipeline. |
+| **7-Stage Deletion Sequence (`deletion-orchestrator.ts`)** | *Not implemented* | Architecture specification complete with 7 stages defined; workflow status explicitly `NOT_IMPLEMENTED`. |
+| **Cancellation Calculator (`cancellation-calculator.ts`)** | *Implemented and tested locally* | Minor-unit arithmetic, 0% proposed fee, and multi-currency formatting fully tested. |
+| **Commercial Refund Terms** | *Requires Legal Review* | Proposed cancellation tiers and digital content waivers require commercial operator approval. |
+| **Refund Processing Integration** | *Not implemented* | No payment provider APIs (Razorpay/Stripe) are connected; live refunds require M06 integration. |
+| **Compliance Admin Guard (`compliance-auth.ts`)** | *Implemented and tested locally* | Zero-trust role checks (`platform_admin`) tested; unauthenticated and non-admin callers strictly rejected. |
+| **Compliance Admin Server Isolation (`compliance-server.ts`)** | *Requires Security Review* | Uses `"server-only"` boundary; requires formal security review during application pentest. |
+| **Statutory Grievance Portal (`/legal/grievance`)** | *Prototype or client demo* | Workflow demonstration UI and 2-factor lookup implemented; formal filing requires M06 backend. |
+| **Tamper-Evident Audit Hash Chain (`audit-trail.ts`)** | *Prototype or client demo* | SHA-256 cryptographic chaining and full verification recomputation implemented for browser sessions. |
+| **Authoritative Compliance Audit Ledger (WORM)** | *Requires Backend Persistence* | Immutable Write-Once-Read-Many storage (Cloud Storage Bucket Lock) requires M06 deployment. |
 
 ---
 

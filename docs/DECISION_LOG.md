@@ -456,3 +456,47 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - `npm run test:security`: Passed (code 0), 110 passed across all 6 verification categories (29 static, 52 unit crypto/net, 3 integration, 22 real PostgreSQL 18 & RLS, 4 concurrency).
   - Quarantined environments: Production Supabase (`zxwkfnvmmxoojewhvsdc`) and staging Supabase (`zrjptpkhtklfgnovdrny`) were NOT contacted. Zero remote database mutations. Zero Git commits/pushes.
 - **Status:** `M05 GATES G1–G5 COMPLETED & FULLY VERIFIED`. Production project `zxwkfnvmmxoojewhvsdc` strictly quarantined.
+
+---
+
+## 2026-11-17 — ADR-025: M05 Critical Security Remediation, Authorization Boundary Hardening & Accurate Compliance Classification
+
+- **Context:** Following the initial implementation of Milestone M05 (Gates G1–G5), a rigorous second-pass security and compliance audit identified critical discrepancies between technical claims and operational reality. Client-side administration contained a developer simulation toggle (`devAdminOverride`), deletion sequences claimed completed cryptographic certificates without backend execution, SAR exports returned hardcoded mock data, grievance queues held seeded fake complaints, and audit trail verification checked pointer links without recomputing SHA-256 hashes.
+- **Decision:**
+  1. **Compliance Admin Client-Side Bypass Eliminated:**
+     - Completely removed `devAdminOverride` and the simulation toggle button from `apps/web/app/profile/compliance/page.tsx`.
+     - Built server-side authorization guards in `apps/web/lib/compliance/compliance-server.ts` (enforcing the `"server-only"` package boundary) and `apps/web/lib/compliance/compliance-auth.ts`.
+     - Mandated zero-trust role evaluation: only authenticated users with verified `role === "platform_admin"` are permitted to access administrative tools.
+     - Unauthenticated requests are rejected with status 401 (`UNAUTHENTICATED`), and non-admin authenticated users (`devotee`, `expert_pandit`, `content_scholar`) are rejected with status 403 (`FORBIDDEN`).
+     - Non-admin client sessions display an unbypassable access restricted card; administrative mutating operations are disabled with notices that backend persistence requires Milestone M06.
+  2. **Consent Invariants Reconciled:**
+     - Renamed client-side state model to `LocalConsentPreferences` and relabeled UI checksums to "Local Session Checksum (SHA-256)".
+     - Defined the `AuthoritativeConsentRecord` and `ServerConsentPersistenceService` interfaces, documenting the missing backend dependency on `public.user_consents`.
+     - Removed mock user ID fallback (`"guest-devotee"`) to prevent false identity attribution in client sessions.
+  3. **Privacy Invariants Reconciled (No False Completion Certificates):**
+     - Refactored `executeSevenStageDeletion` to return a `DeletionPlanResult` with `overallStatus: "NOT_IMPLEMENTED"`. Every planned stage is explicitly marked `NOT_IMPLEMENTED`.
+     - Completely removed fake deletion certificates claiming data was shredded without backend execution.
+     - Removed unproven claims that disaster recovery database backups are overwritten within 30 days.
+     - Refactored `generateSARDataPackage` to return `SARPackagePreview` with `fulfillmentStatus: "DEMONSTRATION_PREVIEW_ONLY"`. Removed hardcoded fake profile, booking, and account mock data; provided an explicit list of database tables pending extraction.
+  4. **Statutory Grievance Portal Reconciled:**
+     - Completely scrubbed seeded fake complaints (`SEED_GRIEVANCES`) from production-facing code. Production stores initialize with 0 complaints.
+     - Labeled `/legal/grievance` with a prominent prototype banner stating that submissions are local browser demonstrations and do not constitute formal legal service on a statutory officer.
+     - Created tickets are explicitly flagged as `isPrototype: true` with status `ACKNOWLEDGED`.
+  5. **Cryptographic Audit Trail Verification Hardened:**
+     - Re-implemented `verifyLedgerIntegrity` in `apps/web/lib/compliance/audit-trail.ts` to recompute the SHA-256 block hash for genesis and every subsequent entry from canonical block data (`${index}:${timestamp}:${eventType}:${actor}:${payloadHash}:${previousHash}`).
+     - Enforced genesis link to `GENESIS_HASH` ("00000000..."), index continuity (`entry.index === i`), and monotonic timestamp ordering.
+     - Removed all claims that browser storage is immutable, and authored extensive specifications for server-side WORM storage (Cloud Storage Bucket Lock) for Milestone M06.
+     - Tested and verified detection across all 7 tampering scenarios (valid chain, tampered genesis, tampered payload, out-of-order timestamp, deleted block/index gap, reordered blocks, forged entryHash).
+  6. **Commerce Trust Safeguards Preserved:**
+     - Maintained integer minor-unit arithmetic (paise/cents) across all calculations.
+     - Defaulted payment gateway fee deduction to 0% as a proposed policy pending partner contracts.
+     - Labeled refund submissions as prototype simulations (`isSimulation: true`) without claiming financial settlement.
+  7. **Complete 6-Category Status Classification:**
+     - Explicitly separated all M05 deliverables into: (1) Implemented and tested locally, (2) Prototype or client demo, (3) Requires backend persistence, (4) Requires security review, (5) Requires legal review, (6) Not implemented.
+- **Verification Evidence:**
+  - Automated M05 Suite (`scripts/run-m05-tests.ts`): **82/82 PASSED** (0 failures).
+  - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+  - TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all workspaces.
+  - Next.js Production Build (`npm run build:web`): **29/29 ROUTES PRERENDERED** successfully.
+  - Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and uncontacted.
+- **Decision:** **READY FOR DRAFT PR REVIEW**. Feature branch `feature/m05-trust-governance` is audited, verified, and ready for operator review.

@@ -3,9 +3,14 @@ import type { ConsentPurposeDefinition } from "@spiritual-os/types";
 /**
  * ISHTI Unbundled Purpose-Specific Consent Registry
  *
- * Implements §6 of the Digital Personal Data Protection Act, 2023,
- * Article 6 and Article 9 of GDPR (Regulation (EU) 2016/679), and
- * California CPRA granular choice requirements.
+ * Implements purpose specification under §6 of the Digital Personal Data Protection Act, 2023,
+ * and Article 6 / Article 9 of GDPR (Regulation (EU) 2016/679).
+ *
+ * GOVERNANCE INVARIANT:
+ * `defaultGranted: true` represents initial recommended UI toggle positions in client preferences.
+ * In accordance with DPDP Act §6 and GDPR Article 7, pre-ticked boxes or default settings do NOT
+ * constitute legal, freely given consent. Authoritative statutory consent is established only when
+ * an authenticated devotee actively submits an explicit consent action, which is logged server-side (M06).
  */
 export const CONSENT_PURPOSE_DEFINITIONS: ConsentPurposeDefinition[] = [
   {

@@ -40,6 +40,8 @@ export interface GrievanceTicket {
   resolutionSummary?: string;
   officerDesignation: string; // [LEGAL_REVIEW_REQUIRED: Statutory Grievance Officer]
   gacAppealEligible: boolean;
+  isPrototype?: boolean;
+  prototypeNotice?: string;
 }
 
 export type IncidentSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";

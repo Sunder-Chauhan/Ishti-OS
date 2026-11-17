@@ -33,7 +33,7 @@ export default function ConsentCenterPage() {
     const { state: nextState } = await updateLocalConsent(
       purposeId,
       nextVal,
-      user?.id || "guest-devotee"
+      user?.id
     );
 
     setState(nextState);
@@ -85,46 +85,38 @@ export default function ConsentCenterPage() {
               color: "var(--ishti-temple-maroon)",
             }}
           >
-            Sovereign Consent Governance
+            Local Preference Governance
           </span>
         </div>
         <h1 className="pillarTitle" style={{ fontSize: "32px", marginBottom: "8px" }}>
-          Global Consent &amp; Preference Sanctuary
+          Consent &amp; Privacy Preferences
         </h1>
         <p className="pillarDescription" style={{ fontSize: "15px", maxWidth: "800px", lineHeight: 1.6 }}>
-          In accordance with §6 of India&apos;s Digital Personal Data Protection Act, 2023 (DPDP Act) and
-          Articles 6 &amp; 9 of the European Union General Data Protection Regulation (GDPR), ISHTI provides
-          granular, unbundled, and revocable consent controls. You maintain absolute sovereignty to grant or
-          withdraw permissions at any time without punitive service degradation.
+          Configure granular, unbundled privacy choices for this device. In accordance with §6 of India&apos;s
+          Digital Personal Data Protection Act, 2023 (DPDP Act) and Articles 6 &amp; 9 of the European Union General
+          Data Protection Regulation (GDPR), you maintain absolute sovereignty to grant or withdraw permissions.
         </p>
       </div>
 
-      {/* Guest Notice */}
-      {!user && (
-        <div className="authModalSandboxBanner" style={{ marginBottom: "24px" }}>
-          <span className="authSandboxBadge">GUEST DEVOTEE SESSION</span>
-          <p className="authSandboxText">
-            You are currently adjusting consents as a guest. Changes are cryptographically hashed and stored
-            in your local browser session cache. To record authoritative statutory consent logs under DPDP Act §6
-            on the server across devices,{" "}
-            <button
-              type="button"
-              onClick={() => openAuthModal({ message: "Sign in to synchronize your DPDP & GDPR consent log." })}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--ishti-temple-maroon)",
-                fontWeight: 700,
-                textDecoration: "underline",
-                cursor: "pointer",
-              }}
-            >
-              sign in with mobile
-            </button>
-            .
-          </p>
-        </div>
-      )}
+      {/* Local Preferences Notice Banner */}
+      <div
+        style={{
+          marginBottom: "24px",
+          padding: "14px 18px",
+          borderRadius: "8px",
+          backgroundColor: "#FAF7F2",
+          border: "1px solid var(--border-card)",
+          fontSize: "12px",
+          color: "var(--ishti-warm-bronze)",
+          lineHeight: 1.6,
+        }}
+      >
+        <strong>LOCAL BROWSER PREFERENCES ONLY:</strong> The controls below manage local interface preferences
+        stored in your browser cache on this device. Under DPDP Act §6 and GDPR Art. 7, legally binding statutory
+        consent logs require an authenticated devotee session and server-side cryptographic audit persistence, which
+        is pending backend service deployment (Milestone M06). Adjusting settings here changes local behavior but does
+        not constitute an authoritative legal consent record on ISHTI servers.
+      </div>
 
       {/* Save Notification Toast */}
       {saveMessage && (
@@ -150,7 +142,8 @@ export default function ConsentCenterPage() {
           const isGranted = !!state.consents[item.id];
           const record = state.records[item.id];
           const timestamp = record?.updatedAt || new Date().toISOString();
-          const evidenceHash = record?.evidenceHash || "pending-evidence-generation";
+          const evidenceHash =
+            (record as any)?.integrityChecksum || (record as any)?.evidenceHash || "pending-checksum";
           const isCopied = copiedHash === evidenceHash;
 
           return (

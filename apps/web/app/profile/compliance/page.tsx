@@ -8,7 +8,6 @@ import {
   Database,
   Clock,
   ArrowLeft,
-  CheckCircle2,
   AlertTriangle,
   FileCheck,
   RefreshCw,
@@ -18,19 +17,16 @@ import { useAuth } from "../../../lib/auth/auth-context";
 import { Breadcrumbs } from "../../components/layout/Breadcrumbs";
 import {
   getAuditLedger,
-  appendAuditLogEntry,
   verifyLedgerIntegrity,
 } from "../../../lib/compliance/audit-trail";
 import {
   triageSecurityIncident,
-  RECOGNIZED_SECURITY_POSTURE,
 } from "../../../lib/compliance/security-governance";
 import type { AuditLogEntry, SecurityIncidentTriage, IncidentSeverity } from "@spiritual-os/types";
 
 export default function ComplianceOperationsPage() {
-  const { user } = useAuth();
-  const [devAdminOverride, setDevAdminOverride] = useState(false);
-  const isAuthorized = user?.role === "platform_admin" || devAdminOverride;
+  const { user, isLoading } = useAuth();
+  const isAuthorized = user?.role === "platform_admin";
 
   const [ledger, setLedger] = useState<AuditLogEntry[]>([]);
   const [isIntegrityValid, setIsIntegrityValid] = useState(true);
@@ -42,9 +38,13 @@ export default function ComplianceOperationsPage() {
   const [triageOutput, setTriageOutput] = useState<SecurityIncidentTriage | null>(null);
 
   useEffect(() => {
-    const data = getAuditLedger();
-    setLedger(data);
-    setIsIntegrityValid(verifyLedgerIntegrity(data));
+    async function loadLedger() {
+      const data = getAuditLedger();
+      setLedger(data);
+      const valid = await verifyLedgerIntegrity(data);
+      setIsIntegrityValid(valid);
+    }
+    loadLedger();
   }, []);
 
   const handleSimulateTriage = () => {
@@ -59,16 +59,15 @@ export default function ComplianceOperationsPage() {
     setTriageOutput(result);
   };
 
-  const handleAppendAuditEntry = async () => {
-    const entry = await appendAuditLogEntry("MANUAL_COMPLIANCE_HEALTH_CHECK", "COMPLIANCE_OFFICER", {
-      status: "PASS",
-      verifiedSystems: ["kundli_envelope_v1", "rls_policies", "grievance_sla_engine"],
-      timestamp: new Date().toISOString(),
-    });
-    const updated = [...ledger, entry];
-    setLedger(updated);
-    setIsIntegrityValid(verifyLedgerIntegrity(updated));
-  };
+  if (isLoading) {
+    return (
+      <div className="profileShell">
+        <div style={{ padding: "40px", textAlign: "center" }}>
+          Verifying administrative authorization...
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthorized) {
     return (
@@ -84,14 +83,14 @@ export default function ComplianceOperationsPage() {
           style={{
             marginTop: "24px",
             border: "1px solid var(--border-card)",
-            padding: "32px",
+            padding: "36px",
             textAlign: "center",
           }}
         >
           <div
             style={{
-              width: "48px",
-              height: "48px",
+              width: "52px",
+              height: "52px",
               borderRadius: "50%",
               backgroundColor: "rgba(185, 28, 28, 0.1)",
               display: "inline-flex",
@@ -101,7 +100,7 @@ export default function ComplianceOperationsPage() {
               marginBottom: "16px",
             }}
           >
-            <ShieldAlert size={24} aria-hidden="true" />
+            <ShieldAlert size={28} aria-hidden="true" />
           </div>
           <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--ishti-temple-charcoal)", marginBottom: "8px" }}>
             Restricted Administrative Console
@@ -109,10 +108,10 @@ export default function ComplianceOperationsPage() {
           <p style={{ fontSize: "14px", color: "var(--ishti-warm-bronze)", lineHeight: 1.6, maxWidth: "560px", margin: "0 auto 24px" }}>
             In accordance with Section 8 of the DPDP Act, 2023 and ISO/IEC 27001 Access Control (A.9) standards,
             the Compliance Operations &amp; Audit Console is strictly restricted to designated Platform Administrators
-            and Statutory Compliance Officers.
+            (<code>role: &quot;platform_admin&quot;</code>). Unauthorized access attempts are denied and logged.
           </p>
 
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap", marginBottom: "28px" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
             <Link
               href="/profile"
               className="btnExploreModule"
@@ -144,28 +143,6 @@ export default function ComplianceOperationsPage() {
               <span>Consent Sanctuary</span>
             </Link>
           </div>
-
-          <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: "20px" }}>
-            <p style={{ fontSize: "11px", color: "var(--ishti-warm-bronze)", marginBottom: "8px" }}>
-              DEVELOPER &amp; ARCHITECTURAL AUDIT SIMULATION
-            </p>
-            <button
-              type="button"
-              onClick={() => setDevAdminOverride(true)}
-              style={{
-                fontSize: "12px",
-                padding: "6px 14px",
-                borderRadius: "6px",
-                border: "1px dashed var(--ishti-temple-maroon)",
-                backgroundColor: "rgba(113, 27, 22, 0.04)",
-                color: "var(--ishti-temple-maroon)",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              Preview Console in Developer Audit Mode
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -180,7 +157,7 @@ export default function ComplianceOperationsPage() {
         ]}
       />
 
-      {/* Client-Side Hash Chain Demonstration Notice */}
+      {/* Administrative Operations Disabled Notice */}
       <div
         style={{
           marginTop: "16px",
@@ -194,9 +171,9 @@ export default function ComplianceOperationsPage() {
           lineHeight: 1.5,
         }}
       >
-        <strong>Client-Side Hash Chain Demonstration:</strong> The evidence ledger displayed below demonstrates
-        tamper-evident SHA-256 hash chaining in browser session storage. In production, authoritative compliance
-        audit logs are written to write-once server-side append-only storage (WORM) under DPDP §8.
+        <strong>Administrative Operations Restricted:</strong> Authoritative audit logging and live CERT-In incident
+        reporting require server-side database infrastructure and KMS signing (M06). Client-side administrative write
+        operations are disabled to maintain governance integrity. The view below is a read-only architecture demonstration.
       </div>
 
       {/* Header */}
@@ -275,12 +252,12 @@ export default function ComplianceOperationsPage() {
         </div>
       </div>
 
-      {/* Incident Triage Readiness Simulator */}
+      {/* Incident Triage Readiness Reference */}
       <div className="profileCard" style={{ marginBottom: "32px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
           <AlertTriangle size={20} color="var(--ishti-temple-maroon)" aria-hidden="true" />
           <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)" }}>
-            Security Incident Assessment &amp; Statutory Triage Simulator
+            Statutory Incident Notification Assessment (Reference Model)
           </h2>
         </div>
         <p style={{ fontSize: "13px", color: "var(--ishti-warm-bronze)", lineHeight: 1.5, marginBottom: "16px" }}>
@@ -307,7 +284,7 @@ export default function ComplianceOperationsPage() {
                 htmlFor="severitySelect"
                 style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}
               >
-                Incident Severity Assessment:
+                Incident Severity Classification:
               </label>
               <select
                 id="severitySelect"
@@ -369,7 +346,7 @@ export default function ComplianceOperationsPage() {
               }}
             >
               <RefreshCw size={13} aria-hidden="true" />
-              <span>Evaluate Statutory Reporting Obligations</span>
+              <span>Compute Statutory Notification Deadlines</span>
             </button>
           </div>
 
@@ -387,7 +364,7 @@ export default function ComplianceOperationsPage() {
             }}
           >
             <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "var(--ishti-temple-maroon)" }}>
-              Regulatory Triage Results:
+              Regulatory Threshold Output:
             </div>
             {triageOutput ? (
               <>
@@ -410,19 +387,19 @@ export default function ComplianceOperationsPage() {
               </>
             ) : (
               <div style={{ color: "var(--ishti-warm-bronze)" }}>
-                Click &quot;Evaluate Statutory Reporting Obligations&quot; to compute regulatory deadlines.
+                Click &quot;Compute Statutory Notification Deadlines&quot; to evaluate reporting requirements.
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Append-Only Cryptographic Evidence Ledger */}
+      {/* Evidence Audit Ledger Demonstration */}
       <div className="profileCard" style={{ marginBottom: "32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
           <div>
             <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)" }}>
-              Append-Only Evidence Audit Ledger (SHA-256 Hash Chain)
+              Cryptographic Hash Chain Demonstration (Client-Side)
             </h2>
             <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
               <span
@@ -435,33 +412,25 @@ export default function ComplianceOperationsPage() {
                   color: isIntegrityValid ? "#15803D" : "#B91C1C",
                 }}
               >
-                {isIntegrityValid ? "HASH CHAIN INTACT (100% VERIFIED)" : "INTEGRITY TAMPERING DETECTED"}
+                {isIntegrityValid ? "HASH CHAIN VALIDATED" : "INTEGRITY TAMPERING DETECTED"}
               </span>
               <span style={{ fontSize: "11px", color: "var(--ishti-warm-bronze)" }}>
-                &bull; Total Blocks: {ledger.length}
+                &bull; Verified Blocks: {ledger.length}
               </span>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleAppendAuditEntry}
+          <div
             style={{
-              padding: "8px 14px",
-              fontSize: "12px",
-              fontWeight: 600,
+              padding: "6px 12px",
               borderRadius: "6px",
-              border: "1px solid var(--border-card)",
-              backgroundColor: "#FAF7F2",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
+              backgroundColor: "rgba(113, 27, 22, 0.06)",
+              fontSize: "11px",
+              color: "var(--ishti-warm-bronze)",
             }}
           >
-            <Shield size={13} aria-hidden="true" />
-            <span>Record Compliance Health Block</span>
-          </button>
+            Append Operations: Requires M06 Server Audit Service
+          </div>
         </div>
 
         <div style={{ overflowX: "auto" }}>

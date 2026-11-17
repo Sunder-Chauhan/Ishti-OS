@@ -273,7 +273,7 @@ export default function RefundsSimulatorPage() {
               }}
             >
               <RotateCcw size={15} aria-hidden="true" />
-              <span>Submit Refund Request</span>
+              <span>Simulate Refund Request</span>
             </button>
           </form>
         </div>
@@ -420,12 +420,13 @@ export default function RefundsSimulatorPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
             <Receipt size={22} color="var(--ishti-temple-maroon)" aria-hidden="true" />
             <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--ishti-temple-charcoal)" }}>
-              Refund Request Submitted Successfully
+              Refund Request Staged (Simulation Preview)
             </h3>
           </div>
           <p style={{ fontSize: "13px", color: "var(--ishti-warm-bronze)", lineHeight: 1.5, marginBottom: "14px" }}>
-            Your refund request has been logged in ISHTI&apos;s Commerce Trust queue. In accordance with statutory
-            timelines, credit will reflect in your account within the stated processing window.
+            This refund calculation has been staged in your local session as a demonstration under ISHTI&apos;s
+            proposed commercial policy. In this development preview, no transaction has been submitted to payment
+            aggregators or banking gateways. Live financial processing will be enabled upon M06 payment gateway integration.
           </p>
 
           <div

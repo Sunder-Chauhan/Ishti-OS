@@ -1,78 +1,122 @@
 import { sha256Hex } from "../consent/evidence-hasher";
-import type { DeletionStage, DeletionCertificate } from "@spiritual-os/types";
+import type { DeletionStage } from "@spiritual-os/types";
 
-export interface DeletionResult {
-  certificate: DeletionCertificate;
-  stagesCompleted: { stage: DeletionStage; description: string; timestamp: string }[];
+/**
+ * ISHTI 7-Stage Account & Spiritual Erasure Workflow Specification
+ *
+ * GOVERNANCE & SECURITY INVARIANT:
+ * - This orchestrator defines the architectural contract for devotee erasure requests.
+ * - Current Status: NOT_IMPLEMENTED (Workflow specification & contract preview).
+ * - Under NO circumstances does this function issue a certificate of completed erasure
+ *   without verified backend execution by an authoritative database worker.
+ * - Missing Backend Dependency: Milestone M06 transactional erasure worker with row-level purging.
+ */
+
+export type DeletionWorkflowStatus =
+  | "NOT_IMPLEMENTED"
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "FAILED";
+
+export interface DeletionStagePlan {
+  stage: DeletionStage;
+  name: string;
+  description: string;
+  status: DeletionWorkflowStatus;
+  targetRecords: string[];
+  executionPreconditions: string[];
+}
+
+export interface DeletionPlanResult {
+  planId: string;
+  userId: string;
+  overallStatus: DeletionWorkflowStatus;
+  plannedAt: string;
+  stages: DeletionStagePlan[];
+  disclaimer: string;
+  missingBackendDependency: string;
+  planFingerprintSha256: string;
 }
 
 export async function executeSevenStageDeletion(
-  userId: string = "guest-devotee"
-): Promise<DeletionResult> {
-  const certificateId = `del-cert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const executionTimestamp = new Date().toISOString();
+  userId: string
+): Promise<DeletionPlanResult> {
+  const planId = `del-plan-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const plannedAt = new Date().toISOString();
 
-  const stages: { stage: DeletionStage; description: string; timestamp: string }[] = [
+  const stages: DeletionStagePlan[] = [
     {
       stage: "VERIFICATION",
-      description: "Confirmed devotee authentication session and voluntary erasure declaration under DPDP §12 & GDPR Art. 17.",
-      timestamp: new Date().toISOString(),
+      name: "Identity & Session Verification",
+      description: "Verify authenticated devotee session and voluntary erasure declaration under DPDP §12 & GDPR Art. 17.",
+      status: "NOT_IMPLEMENTED",
+      targetRecords: ["auth.users session token"],
+      executionPreconditions: ["Active authenticated session", "OTP confirmation"],
     },
     {
       stage: "ANTI_CASCADE_UNLINKING",
-      description: "Severed foreign key relationships across scripture reflections and satsang comments; historical notes detached from profile identity.",
-      timestamp: new Date().toISOString(),
+      name: "Social & Community Unlinking",
+      description: "Sever foreign key relationships across scripture reflections and satsang comments; detach historical notes from identity.",
+      status: "NOT_IMPLEMENTED",
+      targetRecords: ["public.satsang_comments", "public.scripture_reflections"],
+      executionPreconditions: ["Database transaction initialized"],
     },
     {
       stage: "ASTRO_KEY_SHREDDING",
-      description: "Cryptographically purged encrypted Kundli astrological records and tenant-bound authentication tags from active databases. (Devotee-specific records are shredded; shared server encryption key remains intact).",
-      timestamp: new Date().toISOString(),
+      name: "Astrological Ciphertext & AAD Purge",
+      description: "Permanently delete encrypted Kundli astrological profiles and tenant-bound authentication tags from active databases. (Devotee-specific records are purged; shared server master key remains intact).",
+      status: "NOT_IMPLEMENTED",
+      targetRecords: ["public.kundli_profiles"],
+      executionPreconditions: ["Row-level purge command with cascade check"],
     },
     {
       stage: "SPIRITUAL_CONTENT_SCRUBBING",
-      description: "Permanently purged sacred Sankalpa intentions, private prayer requests, and personalized deity preferences.",
-      timestamp: new Date().toISOString(),
+      name: "Spiritual Intentions & Prayer Scrubbing",
+      description: "Purge sacred Sankalpa intentions, private prayer requests, and personalized deity preferences.",
+      status: "NOT_IMPLEMENTED",
+      targetRecords: ["public.devotee_sankalpa", "public.devotee_prayers"],
+      executionPreconditions: ["Devotional data classification match"],
     },
     {
       stage: "FINANCIAL_PSEUDONYMIZATION",
-      description: "Severed personal identity from historical invoices; billing records pseudonymized to 'ANON-USER-DELETED' to preserve statutory tax ledgers under Income-tax Act, 2025 §62.",
-      timestamp: new Date().toISOString(),
+      name: "Statutory Accounting Pseudonymization",
+      description: "Sever personal identity from historical invoices; pseudonymize billing records to 'ANON-USER-DELETED' to preserve statutory tax ledgers under Income-tax Act, 2025 §62 and Companies Act, 2013 §128.",
+      status: "NOT_IMPLEMENTED",
+      targetRecords: ["public.booking_requests"],
+      executionPreconditions: ["Tax retention lock active", "Personal identifiers stripped"],
     },
     {
       stage: "CACHE_PURGE",
-      description: "Purged distributed session cache, CSRF tokens, and rate-limiting hash mappings.",
-      timestamp: new Date().toISOString(),
+      name: "Distributed Cache Invalidation",
+      description: "Purge distributed session cache, CSRF tokens, and rate-limiting hash mappings.",
+      status: "NOT_IMPLEMENTED",
+      targetRecords: ["Distributed Redis / Edge KV Cache"],
+      executionPreconditions: ["Cache tag invalidation"],
     },
     {
       stage: "PROOF_RECEIPT",
-      description: "Generated cryptographically verifiable Deletion Certificate with immutable SHA-256 receipt hash.",
-      timestamp: new Date().toISOString(),
+      name: "Cryptographic Receipt Generation",
+      description: "Generate cryptographically verifiable audit record upon verified completion of stages 1 through 6.",
+      status: "NOT_IMPLEMENTED",
+      targetRecords: ["public.audit_event_ledger"],
+      executionPreconditions: ["All preceding stages returned COMPLETED with zero errors"],
     },
   ];
 
-  const payloadForCert = `${certificateId}:${userId}:${executionTimestamp}:ANON-USER-DELETED`;
-  const certificateHashSha256 = await sha256Hex(payloadForCert);
+  const payloadForPlan = `${planId}:${userId}:${plannedAt}:NOT_IMPLEMENTED`;
+  const planFingerprintSha256 = await sha256Hex(payloadForPlan);
 
-  const certificate: DeletionCertificate = {
-    certificateId,
+  return {
+    planId,
     userId,
-    executionTimestamp,
-    stagesCompleted: stages.map((s) => s.stage),
-    recordsShredded: [
-      "public.kundli_profiles (Encrypted birth records & AAD tags)",
-      "public.user_consents (Personal consent history)",
-      "public.devotee_sankalpa (Spiritual intentions)",
-      "public.devotee_prayers (Private prayer notes)",
-      "public.profiles (Personal devotee profile)",
-    ],
-    pseudonymizedIdentity: "ANON-USER-DELETED",
-    retainedStatutoryRecords: [
-      "public.booking_requests (Financial invoices pseudonymized under Income-tax Act, 2025 §62 / Rule 46)",
-      "Disaster recovery database backups (rolling immutable snapshots overwritten within 30 days; active records are purged immediately)",
-    ],
-    statutoryCitation: "Income-tax Act, 2025 §62 / Rule 46; Companies Act, 2013 §128",
-    certificateHashSha256,
+    overallStatus: "NOT_IMPLEMENTED",
+    plannedAt,
+    stages,
+    disclaimer:
+      "WORKFLOW SPECIFICATION ONLY: No database records were modified or deleted. Execution of account erasure requires server-side transactional worker deployment in Milestone M06.",
+    missingBackendDependency:
+      "Requires M06 server-side deletion worker with PostgreSQL transactional rollback and immutable audit logging.",
+    planFingerprintSha256,
   };
-
-  return { certificate, stagesCompleted: stages };
 }

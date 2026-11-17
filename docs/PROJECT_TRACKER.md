@@ -267,3 +267,12 @@ Scope & Gates:
 - [x] Gate G4: Commerce, Refunds & Billing Governance (Multi-currency, consultation tiers, digital CRD waiver, simulator) — [Report](docs/M05_G4_COMPLETION_REPORT.md)
 - [x] Gate G5: Compliance Operations & Security Governance (Statutory IT Rules grievance portal, GAC appeal, CERT-In triage, hash-chained ledger) — [Report](docs/M05_G5_COMPLETION_REPORT.md)
 - [x] Milestone M05 Overarching Autonomous Execution Summary — [Summary](docs/M05_AUTONOMOUS_EXECUTION_SUMMARY.md)
+- [x] Milestone M05 Pre-Release Audit & Security Remediation Pass 1 (FIND-M05-01 through FIND-M05-05 remediated)
+- [x] Milestone M05 Critical Security Remediation Pass 2 (FIND-M05-06 through FIND-M05-08 remediated):
+  - [x] Compliance admin client bypass removed; strict server-only authorization guard enforced (`compliance-server.ts`, `compliance-auth.ts`)
+  - [x] False deletion completion certificates removed; overall status set to `NOT_IMPLEMENTED`; unproven backup claims removed
+  - [x] SAR export labeled `DEMONSTRATION_PREVIEW_ONLY` without fake user data
+  - [x] Production grievance store scrubbed of fake complaints; created tickets flagged as local prototypes
+  - [x] Cryptographic audit hash chain verified via block data recomputation across all 7 tampering scenarios
+  - [x] Test suite expanded to 82/82 passing tests; 110/110 security regression tests passed; 0 typecheck errors; Next.js 29/29 routes built
+  - [x] Feature branch `feature/m05-trust-governance` prepared for Draft PR review

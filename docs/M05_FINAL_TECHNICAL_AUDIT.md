@@ -37,6 +37,9 @@ The audit covers all deliverables across Gates G1 through G5:
 | **FIND-M05-03** | High | Privacy Hub (`privacy/page.tsx`, `deletion-orchestrator.ts`) | Unauthenticated access to SAR export & overstated key shredding / backup claims | **REMEDIATED & VERIFIED** |
 | **FIND-M05-04** | Medium | Commerce Trust (`cancellation-calculator.ts`, `refunds/page.tsx`) | Hardcoded 2.5% gateway fee deduction & floating-point currency calculations | **REMEDIATED & VERIFIED** |
 | **FIND-M05-05** | High | Grievance & Compliance (`grievance/page.tsx`, `compliance/page.tsx`) | Single-factor ticket lookup exposing complainant data & unrestricted admin console access | **REMEDIATED & VERIFIED** |
+| **FIND-M05-06** | Critical | Compliance Admin Console (`compliance/page.tsx`, `compliance-server.ts`) | Client-side simulation override allowed bypassing administrative access control | **REMEDIATED & VERIFIED** |
+| **FIND-M05-07** | High | Privacy & Grievances (`deletion-orchestrator.ts`, `grievance-service.ts`) | False deletion completion certificates, unproven backup claims & seeded fake complaints | **REMEDIATED & VERIFIED** |
+| **FIND-M05-08** | High | Audit Hash Chain (`audit-trail.ts`) | Verification only checked link pointer without recomputing block hashes; dummy genesis hash | **REMEDIATED & VERIFIED** |
 
 ### Detailed Finding Reports
 
@@ -62,8 +65,23 @@ The audit covers all deliverables across Gates G1 through G5:
 
 #### FIND-M05-05: Missing Two-Factor Ticket Verification & Unrestricted Compliance Console
 - **Finding Description:** Grievance ticket lookup on `/legal/grievance` allowed anyone possessing a ticket number to view complaint subject and resolution details. The compliance administrative console on `/profile/compliance` was accessible without role checks.
-- **Remediation:** Upgraded grievance ticket lookup to require **both** `Ticket Number` and `Complainant Email` for identity verification. Added role-based access control (RBAC) to `/profile/compliance` restricting access to `platform_admin` users, with a developer demonstration preview mode. Added in-memory fallback store in `grievance-service.ts` for consistent SSR and testing.
+- **Remediation:** Upgraded grievance ticket lookup to require **both** `Ticket Number` and `Complainant Email` for identity verification. Added role-based access control (RBAC) to `/profile/compliance` restricting access to `platform_admin` users. Added in-memory fallback store in `grievance-service.ts` for consistent SSR and testing.
 - **Verification:** Verified in `scripts/run-m05-tests.ts` that mismatched emails reject ticket inspection, and RBAC restriction renders properly.
+
+#### FIND-M05-06: Compliance Admin Client-Side Bypass & Simulation Override Removed
+- **Finding Description:** `apps/web/app/profile/compliance/page.tsx` included a `devAdminOverride` toggle ("Simulate Platform Admin Role") in the client interface, allowing any unauthorized user to bypass role checks in the browser. Administrative operations were simulated rather than guarded.
+- **Remediation:** Completely removed `devAdminOverride` and the preview button from the client code. Extracted authorization logic to `apps/web/lib/compliance/compliance-server.ts` (with `"server-only"` boundary) and `apps/web/lib/compliance/compliance-auth.ts`. Enforced strict role check (`user?.role === "platform_admin"`). Non-admins and unauthenticated users see an unbypassable restricted access card. Disabled administrative actions with clear notices that backend persistence requires Milestone M06.
+- **Verification:** Automated tests in `scripts/run-m05-tests.ts` verified that unauthenticated users (401) and devotees/pandits/scholars (403) are rejected, while only `platform_admin` is accepted (200).
+
+#### FIND-M05-07: False Deletion Completion & Seeded Complaints Scrubbed
+- **Finding Description:** `deletion-orchestrator.ts` returned a `DeletionCertificate` claiming data was shredded and issued an unverified claim that backups are overwritten in 30 days. `export-service.ts` populated fake hardcoded profile, booking, and account mock data pretending to be real user records. `grievance-service.ts` seeded fake resolved complaints (`grv-seed-001`).
+- **Remediation:** Refactored `executeSevenStageDeletion` to return a `DeletionPlanResult` with `overallStatus: "NOT_IMPLEMENTED"` and each of the 7 stages marked `NOT_IMPLEMENTED`. Removed fake deletion certificates and unproven backup claims. Refactored `generateSARDataPackage` to return a `SARPackagePreview` labeled `DEMONSTRATION_PREVIEW_ONLY` without mock data. Scrubbed `SEED_GRIEVANCES` entirely from production stores, leaving zero fake complaints, and explicitly flagged created tickets as local prototypes.
+- **Verification:** Automated tests in `scripts/run-m05-tests.ts` verified overall deletion status is `NOT_IMPLEMENTED`, SAR returns `DEMONSTRATION_PREVIEW_ONLY`, and initial grievance count is 0.
+
+#### FIND-M05-08: Cryptographic Audit Trail Hash Verification & Tamper Detection
+- **Finding Description:** `audit-trail.ts` only verified `entry.previousHash === ledger[i - 1].entryHash` without recalculating entry hashes from block data, and used dummy hashes for the genesis block. Browser storage was loosely called an audit ledger.
+- **Remediation:** Re-implemented `verifyLedgerIntegrity` to recompute SHA-256 block data hashes for genesis and every subsequent entry, verify genesis link to `GENESIS_HASH`, enforce index continuity (`entry.index === i`), and enforce monotonic timestamp ordering. Documented that client browser storage does NOT guarantee immutability, and detailed server-side WORM storage requirements for Milestone M06.
+- **Verification:** Automated tests verified all 7 tamper scenarios in `scripts/run-m05-tests.ts` (valid chain passes; tampered genesis, tampered payload, out-of-order timestamp, deleted block/index gap, reordered blocks, and forged entryHash all fail).
 
 ---
 
@@ -82,19 +100,44 @@ The audit covers all deliverables across Gates G1 through G5:
 
 ---
 
-## 5. Verification & Test Execution Results
+## 5. Implementation Status Categorization
+
+To ensure complete transparency prior to draft PR review, all M05 deliverables are explicitly classified into six architectural categories:
+
+| Component | Architecture Category | Description / Outstanding Requirement |
+| :--- | :--- | :--- |
+| **Policy Registry (`policy-registry.ts`)** | *Requires Legal Review* | 10 draft policies authored; requires corporate legal counsel sign-off before effective date. |
+| **Policy Routing & Search (`/legal`, `/legal/[slug]`)** | *Implemented and tested locally* | Next.js routes, schedule tabs, and draft filtering verified with 100% test coverage. |
+| **Consent Registry (`consent-registry.ts`)** | *Requires Legal Review* | 6 unbundled purposes defined; recommended toggle defaults require DPO and legal confirmation. |
+| **Local Consent Service (`consent-service.ts`)** | *Prototype or client demo* | Local device preference caching and SHA-256 integrity checksums implemented. |
+| **Authoritative Consent Records** | *Requires Backend Persistence* | Requires server-side `public.user_consents` table, RPC persistence, and KMS audit signatures (M06). |
+| **Privacy SAR Export (`export-service.ts`)** | *Prototype or client demo* | Schema structure preview and demonstration export implemented. Real user data extraction requires M06 backend pipeline. |
+| **7-Stage Deletion Sequence (`deletion-orchestrator.ts`)** | *Not implemented* | Architecture specification complete with 7 stages defined; workflow status explicitly `NOT_IMPLEMENTED`. |
+| **Cancellation Calculator (`cancellation-calculator.ts`)** | *Implemented and tested locally* | Minor-unit arithmetic, 0% proposed fee, and multi-currency formatting fully tested. |
+| **Commercial Refund Terms** | *Requires Legal Review* | Proposed cancellation tiers and digital content waivers require commercial operator approval. |
+| **Refund Processing Integration** | *Not implemented* | No payment provider APIs (Razorpay/Stripe) are connected; live refunds require M06 integration. |
+| **Compliance Admin Guard (`compliance-auth.ts`)** | *Implemented and tested locally* | Zero-trust role checks (`platform_admin`) tested; unauthenticated and non-admin callers strictly rejected. |
+| **Compliance Admin Server Isolation (`compliance-server.ts`)** | *Requires Security Review* | Uses `"server-only"` boundary; requires formal security review during application pentest. |
+| **Statutory Grievance Portal (`/legal/grievance`)** | *Prototype or client demo* | Workflow demonstration UI and 2-factor lookup implemented; formal filing requires M06 backend. |
+| **Tamper-Evident Audit Hash Chain (`audit-trail.ts`)** | *Prototype or client demo* | SHA-256 cryptographic chaining and full verification recomputation implemented for browser sessions. |
+| **Authoritative Compliance Audit Ledger (WORM)** | *Requires Backend Persistence* | Immutable Write-Once-Read-Many storage (Cloud Storage Bucket Lock) requires M06 deployment. |
+
+---
+
+## 6. Verification & Test Execution Results
 
 | Test Suite | Command | Executed | Passed | Failed | Exit Code | Result |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **M05 Technical & Governance Suite** | `npx tsx scripts/run-m05-tests.ts` | 66 | 66 | 0 | 0 | **PASSED** |
+| **M05 Technical & Governance Suite** | `npx tsx scripts/run-m05-tests.ts` | 82 | 82 | 0 | 0 | **PASSED** |
 | **Security & Cryptography Suite** | `npm run test:security` | 110 | 110 | 0 | 0 | **PASSED** |
 | **TypeScript Typecheck** | `npm run typecheck` | 2 packages | 2 | 0 | 0 | **PASSED** |
 | **Next.js Production Build** | `npm run build:web` | 29 routes | 29 | 0 | 0 | **PASSED** |
 
 ---
 
-## 6. Audit Conclusion & Gate Acceptance
+## 7. Audit Conclusion & Gate Acceptance
 
 All technical, security, and governance requirements for ISHTI Milestone M05 (Gates G1 through G5) have been thoroughly audited, remediated, and verified.
 
-The codebase is clean, reproducible, and ready for feature branch staging and pull request preparation.
+**DECISION: READY FOR DRAFT PR REVIEW**  
+The branch `feature/m05-trust-governance` is verified, cleanly builds, passes 192 tests across all verification suites, strictly protects production and staging environments, and accurately separates implemented local features from prototypes and future backend requirements.
