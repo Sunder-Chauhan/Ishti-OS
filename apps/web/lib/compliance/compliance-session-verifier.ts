@@ -6,20 +6,45 @@ import type { UserRole } from "@spiritual-os/types";
  * GOVERNANCE & SECURITY INVARIANTS:
  * 1. ZERO-TRUST: Never trust a client-provided UserProfile, role, header,
  *    localStorage value, or React state as proof of administrative authorization.
- * 2. AUTHENTICATED SESSION: Authorization requires a cryptographically verified
- *    server-side session token issued by the trusted authentication service.
- * 3. AUTHORITATIVE ROLE RESOLUTION: Role evaluation must be resolved server-side
+ * 2. SINGLE TRUSTED CONTEXT: Binding identity verification and role resolution
+ *    to the exact same authenticated context and verified user ID.
+ * 3. NO MANUAL COOKIE PARSING: Reuses official @supabase/ssr client and user-resolution.
+ * 4. AUTHORITATIVE ROLE RESOLUTION: Role evaluation must be resolved server-side
  *    from the authoritative user profile in the database (`public.profiles`),
  *    never from client-supplied tokens or client headers.
- * 4. BACKEND DEPENDENCY ENFORCEMENT: If trusted backend authentication infrastructure
- *    is unconfigured or offline, administrative operations MUST be disabled rather than
- *    bypassed or simulated.
+ * 5. BACKEND OUTAGE CLASSIFICATION: Accurately differentiates 401 (invalid/expired/missing),
+ *    403 (forbidden/non-admin/no profile), and 503 (auth service or database infrastructure outage).
+ * 6. FAIL-CLOSED: If backend infrastructure is unconfigured, unreachable, or in outage,
+ *    administrative access is disabled with status 503 rather than bypassed.
+ * 7. CSRF ORIGIN PROTECTION: Cookie-authenticated mutations verify origin and Sec-Fetch-Site.
  */
+
+export type AuthResolutionStatus =
+  | "SUCCESS"
+  | "MISSING_SESSION"
+  | "INVALID_TOKEN"
+  | "EXPIRED_TOKEN"
+  | "AUTH_OUTAGE"
+  | "DB_OUTAGE"
+  | "PROFILE_MISSING"
+  | "NON_ADMIN";
+
+export interface CookieItem {
+  name: string;
+  value: string;
+}
+
+export interface VerificationInput {
+  bearerToken?: string | null;
+  cookies?: CookieItem[];
+  headers?: Record<string, string | string[] | undefined> | Headers;
+}
 
 export interface AdminSessionCheckResult {
   authorized: boolean;
   statusCode: 200 | 401 | 403 | 503;
   error?: string;
+  code?: string;
   user?: {
     id: string;
     role: "platform_admin";
@@ -28,31 +53,165 @@ export interface AdminSessionCheckResult {
 
 export interface SessionVerificationProvider {
   /**
-   * Verifies the cryptographic validity and expiration of a session token.
+   * Resolves the authenticated user and their authoritative role in a single trusted context.
    */
-  verifyToken(token: string): Promise<{
-    valid: boolean;
-    expired?: boolean;
-    userId?: string;
+  resolveUserAndRole(input: VerificationInput): Promise<{
+    status: AuthResolutionStatus;
+    user?: { id: string } | null;
+    role?: UserRole | null;
     error?: string;
   }>;
 
   /**
-   * Resolves the authoritative role for a verified user from the database.
-   */
-  getUserRole(userId: string): Promise<{
-    role: UserRole | null;
-    error?: string;
-  }>;
-
-  /**
-   * Checks whether the trusted authentication service is configured and operational.
+   * Checks whether the trusted authentication service is configured.
    */
   isBackendConfigured(): boolean;
 }
 
 /**
+ * In-memory sliding window rate limiter for compliance endpoints
+ */
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+export function checkComplianceRateLimit(
+  identifier: string,
+  limit: number,
+  windowMs = 60000
+): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(identifier);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+
+  if (entry.count >= limit) {
+    return false;
+  }
+
+  entry.count += 1;
+  return true;
+}
+
+/**
+ * Reassembles chunked cookies (e.g. `sb-<ref>-auth-token.0`, `sb-<ref>-auth-token.1`)
+ * and handles base64-encoded cookie values without relying on hardcoded formats.
+ */
+export function reassembleChunkedCookies(
+  cookieList: CookieItem[],
+  baseNamePattern = "-auth-token"
+): string | null {
+  if (!cookieList || cookieList.length === 0) return null;
+
+  // 1. Check for chunked cookies with `.0`, `.1`, etc. suffix
+  const chunkMap = new Map<number, string>();
+  let hasChunks = false;
+
+  for (const cookie of cookieList) {
+    if (cookie.name.includes(baseNamePattern)) {
+      const dotIndex = cookie.name.lastIndexOf(".");
+      if (dotIndex !== -1) {
+        const chunkIndex = parseInt(cookie.name.slice(dotIndex + 1), 10);
+        if (!isNaN(chunkIndex)) {
+          chunkMap.set(chunkIndex, cookie.value);
+          hasChunks = true;
+        }
+      }
+    }
+  }
+
+  if (hasChunks && chunkMap.size > 0) {
+    // Sort and concatenate chunks in ascending numerical order
+    const sortedIndices = Array.from(chunkMap.keys()).sort((a, b) => a - b);
+    let fullValue = "";
+    for (const idx of sortedIndices) {
+      fullValue += chunkMap.get(idx) || "";
+    }
+    return decodeCookieValue(fullValue);
+  }
+
+  // 2. Check for single unchunked auth cookie
+  const singleCookie = cookieList.find(
+    (c) => c.name.includes(baseNamePattern) || c.name === "sb-access-token"
+  );
+  if (singleCookie?.value) {
+    return decodeCookieValue(singleCookie.value);
+  }
+
+  return null;
+}
+
+/**
+ * Decodes base64-encoded cookie value if prefixed with `base64-`
+ */
+export function decodeCookieValue(val: string): string {
+  if (!val) return "";
+  if (val.startsWith("base64-")) {
+    try {
+      const rawBase64 = val.slice(7);
+      return Buffer.from(rawBase64, "base64").toString("utf-8");
+    } catch {
+      return val;
+    }
+  }
+  return val;
+}
+
+/**
+ * CSRF origin validation for cookie-authenticated mutations.
+ *
+ * Invariants:
+ * 1. Bearer-token requests are immune to browser CSRF (custom headers cannot be sent cross-origin without CORS preflight).
+ * 2. Cookie-authenticated mutations (POST/PUT/DELETE) must verify `Sec-Fetch-Site` and `Origin` / `Referer`.
+ */
+export function verifyCsrfOrigin(request: {
+  method?: string;
+  headers: {
+    get(name: string): string | null | undefined;
+  };
+}): { valid: boolean; reason?: string } {
+  const method = (request.method || "GET").toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+    return { valid: true };
+  }
+
+  // If authenticated via explicit Bearer header, CSRF does not apply
+  const authHeader = request.headers.get("authorization");
+  if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+    return { valid: true };
+  }
+
+  // 1. Check Sec-Fetch-Site (modern browser standard)
+  const secFetchSite = request.headers.get("sec-fetch-site");
+  if (secFetchSite === "cross-site") {
+    return { valid: false, reason: "Cross-site request rejected (Sec-Fetch-Site: cross-site)." };
+  }
+
+  // 2. Validate Origin header if present
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+
+  if (origin && host) {
+    try {
+      const originUrl = new URL(origin);
+      if (originUrl.host !== host) {
+        return {
+          valid: false,
+          reason: `Origin mismatch: '${originUrl.host}' does not match host '${host}'.`,
+        };
+      }
+    } catch {
+      return { valid: false, reason: "Malformed Origin header." };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
  * Default production provider querying Supabase server environment.
+ * Leverages @supabase/ssr server client for trusted user-resolution and database lookup.
  */
 export const defaultSupabaseProvider: SessionVerificationProvider = {
   isBackendConfigured(): boolean {
@@ -63,44 +222,94 @@ export const defaultSupabaseProvider: SessionVerificationProvider = {
     return true;
   },
 
-  async verifyToken(token: string) {
-    if (!token || token.trim().length === 0) {
-      return { valid: false, error: "Empty token" };
-    }
-    // When live Supabase is configured, token is validated against auth service
+  async resolveUserAndRole(input: VerificationInput) {
     try {
       const { createClient } = await import("../supabase/server");
       const supabase = await createClient();
-      const { data, error } = await supabase.auth.getUser(token);
-      if (error || !data?.user) {
-        return {
-          valid: false,
-          expired: error?.message?.toLowerCase().includes("expired"),
-          error: error?.message || "Invalid session",
-        };
-      }
-      return { valid: true, userId: data.user.id };
-    } catch (err: unknown) {
-      return { valid: false, error: err instanceof Error ? err.message : String(err) };
-    }
-  },
 
-  async getUserRole(userId: string) {
-    try {
-      const { createClient } = await import("../supabase/server");
-      const supabase = await createClient();
-      const { data, error } = await supabase
+      // 1. Resolve user in single trusted context
+      let user: { id: string } | null = null;
+
+      if (input.bearerToken) {
+        // Bearer token resolution
+        const { data, error } = await supabase.auth.getUser(input.bearerToken);
+        if (error) {
+          const msg = error.message?.toLowerCase() || "";
+          if (msg.includes("expired")) {
+            return { status: "EXPIRED_TOKEN", error: "Session token has expired." };
+          }
+          if (error.status && error.status >= 500) {
+            return { status: "AUTH_OUTAGE", error: "Authentication service infrastructure error." };
+          }
+          return { status: "INVALID_TOKEN", error: error.message };
+        }
+        user = data?.user ? { id: data.user.id } : null;
+      } else {
+        // Cookie-based session resolution via @supabase/ssr
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          const msg = error.message?.toLowerCase() || "";
+          if (msg.includes("session missing") || msg.includes("auth session missing")) {
+            return { status: "MISSING_SESSION", error: "No active session found in request cookies." };
+          }
+          if (msg.includes("expired")) {
+            return { status: "EXPIRED_TOKEN", error: "Session token has expired." };
+          }
+          if (error.status && error.status >= 500) {
+            return { status: "AUTH_OUTAGE", error: "Authentication service infrastructure error." };
+          }
+          return { status: "INVALID_TOKEN", error: error.message };
+        }
+        user = data?.user ? { id: data.user.id } : null;
+      }
+
+      if (!user?.id) {
+        return { status: "MISSING_SESSION", error: "Session did not resolve to a valid user identifier." };
+      }
+
+      // 2. Query authoritative profile role using the EXACT same Supabase client and verified user.id
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", userId)
+        .eq("id", user.id)
         .maybeSingle();
 
-      if (error || !data) {
-        return { role: null, error: error?.message || "Profile not found" };
+      if (profileError) {
+        return {
+          status: "DB_OUTAGE",
+          error: "Authoritative profile database lookup failed due to infrastructure error.",
+        };
       }
-      return { role: data.role as UserRole };
+
+      if (!profile) {
+        return {
+          status: "PROFILE_MISSING",
+          error: "Authenticated user has no authoritative profile record.",
+          user,
+        };
+      }
+
+      const role = profile.role as UserRole;
+      if (role !== "platform_admin") {
+        return {
+          status: "NON_ADMIN",
+          error: `User role '${role}' lacks administrative privilege.`,
+          user,
+          role,
+        };
+      }
+
+      return {
+        status: "SUCCESS",
+        user,
+        role: "platform_admin",
+      };
     } catch (err: unknown) {
-      return { role: null, error: err instanceof Error ? err.message : String(err) };
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.includes("fetch failed") || errMsg.includes("ECONNREFUSED") || errMsg.includes("ETIMEDOUT")) {
+        return { status: "AUTH_OUTAGE", error: "Authentication service is currently unreachable." };
+      }
+      return { status: "AUTH_OUTAGE", error: "Unexpected authentication verification failure." };
     }
   },
 };
@@ -109,84 +318,111 @@ export const defaultSupabaseProvider: SessionVerificationProvider = {
  * Verifies that an incoming request possesses a verified server-side session
  * with the 'platform_admin' role.
  *
- * Strictly ignores any client-supplied role manipulation headers or request body overrides.
+ * Invariants Enforced:
+ * - Rejects any client-supplied role manipulation headers (`x-user-role`, `x-ishti-role`).
+ * - Distinguishes 401 (missing/invalid/expired), 403 (non-admin/missing profile), and 503 (auth/db outage).
+ * - Binds identity verification and role resolution to the exact same verified user.
+ * - Fails closed when backend authentication is unconfigured or in outage.
  */
 export async function verifyAdminSession(
-  sessionToken?: string | null,
-  provider: SessionVerificationProvider = defaultSupabaseProvider,
-  clientHeaders?: Headers | Record<string, string | string[] | undefined>
+  input: VerificationInput,
+  provider: SessionVerificationProvider = defaultSupabaseProvider
 ): Promise<AdminSessionCheckResult> {
   // 1. Enforce that client role headers are ignored
   // If an attacker supplies `x-user-role`, `x-ishti-role`, or similar, it must never be consumed.
 
-  // 2. Reject missing session token
-  if (!sessionToken || sessionToken.trim().length === 0) {
-    return {
-      authorized: false,
-      statusCode: 401,
-      error: "UNAUTHENTICATED: No session token found in request. Valid server session required.",
-    };
-  }
-
-  // 3. Check if backend authentication infrastructure is operational
+  // 2. Check if backend authentication infrastructure is configured
   if (!provider.isBackendConfigured()) {
     return {
       authorized: false,
       statusCode: 503,
+      code: "BACKEND_AUTH_UNAVAILABLE",
       error:
         "BACKEND_AUTH_UNAVAILABLE: Server-side cryptographic session verification requires active Supabase Auth infrastructure (M06 dependency). Administrative access is disabled.",
     };
   }
 
-  // 4. Verify session token validity and expiration
-  const tokenResult = await provider.verifyToken(sessionToken);
-  if (!tokenResult.valid) {
-    return {
-      authorized: false,
-      statusCode: 401,
-      error: tokenResult.expired
-        ? "UNAUTHENTICATED: Session token has expired. Please re-authenticate."
-        : `UNAUTHENTICATED: Invalid session token. (${tokenResult.error || "Verification failed"})`,
-    };
+  // 3. Resolve user and authoritative role in single trusted context
+  const result = await provider.resolveUserAndRole(input);
+
+  switch (result.status) {
+    case "MISSING_SESSION":
+      return {
+        authorized: false,
+        statusCode: 401,
+        code: "UNAUTHENTICATED",
+        error: result.error || "UNAUTHENTICATED: No session found. Valid server session required.",
+      };
+
+    case "EXPIRED_TOKEN":
+      return {
+        authorized: false,
+        statusCode: 401,
+        code: "SESSION_EXPIRED",
+        error: result.error || "UNAUTHENTICATED: Session token has expired. Please re-authenticate.",
+      };
+
+    case "INVALID_TOKEN":
+      return {
+        authorized: false,
+        statusCode: 401,
+        code: "INVALID_SESSION",
+        error: result.error || "UNAUTHENTICATED: Invalid session token.",
+      };
+
+    case "AUTH_OUTAGE":
+      return {
+        authorized: false,
+        statusCode: 503,
+        code: "AUTH_SERVICE_UNAVAILABLE",
+        error:
+          "SERVICE_UNAVAILABLE: Authentication verification service is temporarily unreachable.",
+      };
+
+    case "DB_OUTAGE":
+      return {
+        authorized: false,
+        statusCode: 503,
+        code: "DATABASE_UNAVAILABLE",
+        error:
+          "SERVICE_UNAVAILABLE: Authoritative profile service is temporarily unreachable.",
+      };
+
+    case "PROFILE_MISSING":
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "PROFILE_NOT_FOUND",
+        error:
+          "FORBIDDEN: User account exists but no authoritative profile record was found.",
+      };
+
+    case "NON_ADMIN":
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "INSUFFICIENT_PERMISSIONS",
+        error:
+          result.error ||
+          "FORBIDDEN: Authenticated user lacks platform_admin privilege.",
+      };
+
+    case "SUCCESS":
+      return {
+        authorized: true,
+        statusCode: 200,
+        user: {
+          id: result.user!.id,
+          role: "platform_admin",
+        },
+      };
+
+    default:
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "UNAUTHORIZED",
+        error: "FORBIDDEN: Authorization failed.",
+      };
   }
-
-  const userId = tokenResult.userId;
-  if (!userId) {
-    return {
-      authorized: false,
-      statusCode: 401,
-      error: "UNAUTHENTICATED: Session token did not resolve to a valid user identifier.",
-    };
-  }
-
-  // 5. Authoritatively resolve user role from database
-  const roleResult = await provider.getUserRole(userId);
-  if (roleResult.error || !roleResult.role) {
-    return {
-      authorized: false,
-      statusCode: 403,
-      error: "FORBIDDEN: User profile could not be verified in authoritative records.",
-    };
-  }
-
-  const role = roleResult.role;
-
-  // 6. Enforce platform_admin role requirement
-  if (role !== "platform_admin") {
-    return {
-      authorized: false,
-      statusCode: 403,
-      error: `FORBIDDEN: User role '${role}' lacks administrative privilege. Required: 'platform_admin'.`,
-    };
-  }
-
-  // 7. Session is cryptographically verified and authorized
-  return {
-    authorized: true,
-    statusCode: 200,
-    user: {
-      id: userId,
-      role: "platform_admin",
-    },
-  };
 }

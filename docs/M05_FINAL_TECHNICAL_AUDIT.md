@@ -41,6 +41,7 @@ The audit covers all deliverables across Gates G1 through G5:
 | **FIND-M05-07** | High | Privacy & Grievances (`deletion-orchestrator.ts`, `grievance-service.ts`) | False deletion completion certificates, unproven backup claims & seeded fake complaints | **REMEDIATED & VERIFIED** |
 | **FIND-M05-08** | High | Audit Hash Chain (`audit-trail.ts`) | Verification only checked link pointer without recomputing block hashes; dummy genesis hash | **REMEDIATED & VERIFIED** |
 | **FIND-M05-09** | Critical | Compliance Server Authorization (`compliance-server.ts`, `compliance-session-verifier.ts`, `/api/compliance/*`) | Client-side authorization boundary replaced with genuine server-only session verification & protected API endpoints | **REMEDIATED & VERIFIED (BLOCKED: BACKEND AUTH DEPENDENCY)** |
+| **FIND-M05-10** | Critical | Single-Context Auth & Outage Classification (`compliance-session-verifier.ts`, `compliance-server.ts`, `/api/compliance/*`) | Manual cookie parsing removed; bound identity & role resolution to single trusted context; chunked/base64 cookie handling; accurate 503 outage vs 401/403 classification; CSRF protection | **REMEDIATED & VERIFIED (BLOCKED: BACKEND AUTH DEPENDENCY)** |
 
 ### Detailed Finding Reports
 
@@ -97,6 +98,16 @@ The audit covers all deliverables across Gates G1 through G5:
 - **Verification:** Added 11 automated server authorization tests to `scripts/run-m05-tests.ts`: No token (401), Expired token (401), Invalid signature (401), Devotee session (403), Pandit session (403), Scholar session (403), Platform Admin session (200), Direct API request without token (401), Client-supplied role manipulation by devotee (403), Client-supplied role manipulation by unauthenticated caller (401), and Unconfigured backend authentication (503).
 - **Status & Dependency Note:** **`BLOCKED — BACKEND AUTHENTICATION DEPENDENCY`** for live operational production administrative access: While server endpoints and verification logic are fully implemented and verified locally, live operational administrative access in staging and production requires the Milestone M06 Supabase Auth backend to issue cryptographically signed JWT sessions.
 
+#### FIND-M05-10: Single-Context Authentication, Outage Classification & CSRF Hardening
+- **Finding Description:** Independent code review identified that initial server authorization manually parsed cookies (`sb-access-token`, `sb-*-auth-token`, JSON array parsing) which does not support chunked or encoded Supabase SSR cookies; `verifyToken()` and `getUserRole()` ran in separate contexts creating a split-identity risk; all backend errors were converted into generic 401s masking infrastructure outages; and mutating routes lacked CSRF origin checks and payload bounds.
+- **Remediation:**
+  1. Reused official `@supabase/ssr` server client (`apps/web/lib/supabase/server.ts`) and trusted `supabase.auth.getUser()`.
+  2. Implemented `resolveUserAndRole()` binding identity verification and role query (`public.profiles.role`) to the exact same client and verified `user.id`.
+  3. Implemented chunked cookie reassembly (`.0`, `.1`) and `base64-` decoding.
+  4. Corrected outage classifications: 401 (missing/invalid/expired token), 403 (non-admin/missing profile), and 503 (auth service or database infrastructure outage).
+  5. Implemented CSRF origin validation (`verifyCsrfOrigin`) on mutating endpoints; enforced sliding window rate limiting (30 req/min for audit, 10 req/min for triage); enforced 64KB payload bounds; enforced HTTP method restrictions (`Allow: GET, POST`).
+- **Verification:** Verified via 17 dedicated automated security test cases in `scripts/run-m05-tests.ts` (101/101 passed).
+
 ---
 
 ## 4. Database & Migration Audit
@@ -143,7 +154,7 @@ To ensure complete transparency prior to draft PR review, all M05 deliverables a
 
 | Test Suite | Command | Executed | Passed | Failed | Exit Code | Result |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **M05 Technical & Governance Suite** | `npx tsx scripts/run-m05-tests.ts` | 88 | 88 | 0 | 0 | **PASSED** |
+| **M05 Technical & Governance Suite** | `npx tsx scripts/run-m05-tests.ts` | 101 | 101 | 0 | 0 | **PASSED** |
 | **Security & Cryptography Suite** | `npm run test:security` | 110 | 110 | 0 | 0 | **PASSED** |
 | **TypeScript Typecheck** | `npm run typecheck` | 2 packages | 2 | 0 | 0 | **PASSED** |
 | **Next.js Production Build** | `npm run build:web` | 31 routes | 31 | 0 | 0 | **PASSED** |
@@ -155,4 +166,4 @@ To ensure complete transparency prior to draft PR review, all M05 deliverables a
 All technical, security, and governance requirements for ISHTI Milestone M05 (Gates G1 through G5) have been thoroughly audited, remediated, and verified.
 
 **DECISION: READY FOR DRAFT PR REVIEW**  
-The branch `feature/m05-trust-governance` is verified, cleanly builds, passes 198 tests across all verification suites (88 M05 technical and governance tests, 110 security regression tests), strictly protects production and staging environments, and accurately separates implemented local features from prototypes and future backend requirements. Live operational administrative console access is formally designated as `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY` pending the Milestone M06 Supabase Auth backend.
+The branch `feature/m05-trust-governance` is verified, cleanly builds, passes 211 tests across all verification suites (101 M05 technical and governance tests, 110 security regression tests), strictly protects production and staging environments, and accurately separates implemented local features from prototypes and future backend requirements. Live operational administrative console access is formally designated as `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY` pending the Milestone M06 Supabase Auth backend. Commercial launch gates remain in hard-stop blocked status pending corporate incorporation and formal counsel review.

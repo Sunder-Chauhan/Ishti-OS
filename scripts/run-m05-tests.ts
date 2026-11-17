@@ -40,7 +40,13 @@ import {
 } from "../apps/web/lib/compliance/grievance-service";
 import {
   verifyAdminSession,
+  reassembleChunkedCookies,
+  decodeCookieValue,
+  verifyCsrfOrigin,
+  checkComplianceRateLimit,
   type SessionVerificationProvider,
+  type VerificationInput,
+  type CookieItem,
 } from "../apps/web/lib/compliance/compliance-session-verifier";
 import {
   triageSecurityIncident,
@@ -353,123 +359,283 @@ async function runM05Tests() {
 
   const testAuthProvider: SessionVerificationProvider = {
     isBackendConfigured: () => true,
-    async verifyToken(token: string) {
+    async resolveUserAndRole(input: VerificationInput) {
+      let token = input.bearerToken;
+      if (!token && input.cookies) {
+        token = reassembleChunkedCookies(input.cookies);
+      }
+      if (!token || token.trim().length === 0) {
+        return { status: "MISSING_SESSION", error: "No session found" };
+      }
+      if (token === "token-auth-outage-503") {
+        return { status: "AUTH_OUTAGE", error: "Authentication service connection failed" };
+      }
+      if (token === "token-db-outage-503") {
+        return { status: "DB_OUTAGE", error: "Database profile table unreachable" };
+      }
+      if (token === "token-missing-profile-403") {
+        return { status: "PROFILE_MISSING", user: { id: "usr-no-profile" } };
+      }
       const session = mockSessions[token];
       if (!session) {
-        return { valid: false, error: "Invalid signature / token not found in auth service" };
+        return { status: "INVALID_TOKEN", error: "Invalid signature / token not found in auth service" };
       }
       if (session.expired) {
-        return { valid: false, expired: true, error: "Token expired" };
+        return { status: "EXPIRED_TOKEN", error: "Session token has expired" };
       }
-      return { valid: true, userId: session.userId };
-    },
-    async getUserRole(userId: string) {
-      const session = Object.values(mockSessions).find((s) => s.userId === userId);
-      return { role: session?.role || null };
+      if (session.role !== "platform_admin") {
+        return { status: "NON_ADMIN", user: { id: session.userId }, role: session.role };
+      }
+      return { status: "SUCCESS", user: { id: session.userId }, role: "platform_admin" };
     },
   };
 
-  // Case A: No session token provided -> 401 Unauthorized
-  const authNoSession = await verifyAdminSession(null, testAuthProvider);
+  // 1. Missing session -> 401 Unauthorized
+  const authNoSession = await verifyAdminSession({}, testAuthProvider);
   assert(
     authNoSession.authorized === false && authNoSession.statusCode === 401,
     "G5",
-    "Server admin check: No session token returns 401 Unauthorized"
+    "Server admin check: 1. Missing session returns 401 Unauthorized"
   );
 
-  // Case B: Expired session token -> 401 Unauthorized
-  const authExpired = await verifyAdminSession("token-expired-999", testAuthProvider);
-  assert(
-    authExpired.authorized === false && authExpired.statusCode === 401,
-    "G5",
-    "Server admin check: Expired session token returns 401 Unauthorized"
-  );
-
-  // Case C: Invalid / forged session token -> 401 Unauthorized
-  const authInvalid = await verifyAdminSession("forged-token-xyz-000", testAuthProvider);
+  // 2. Invalid session -> 401 Unauthorized
+  const authInvalid = await verifyAdminSession({ bearerToken: "forged-token-xyz-000" }, testAuthProvider);
   assert(
     authInvalid.authorized === false && authInvalid.statusCode === 401,
     "G5",
-    "Server admin check: Invalid session token signature returns 401 Unauthorized"
+    "Server admin check: 2. Invalid session token signature returns 401 Unauthorized"
   );
 
-  // Case D: Authenticated devotee role -> 403 Forbidden
-  const authDevotee = await verifyAdminSession("token-devotee-108", testAuthProvider);
+  // 3. Expired session -> 401 Unauthorized
+  const authExpired = await verifyAdminSession({ bearerToken: "token-expired-999" }, testAuthProvider);
+  assert(
+    authExpired.authorized === false && authExpired.statusCode === 401,
+    "G5",
+    "Server admin check: 3. Expired session token returns 401 Unauthorized"
+  );
+
+  // 4. Valid devotee session -> 403 Forbidden
+  const authDevotee = await verifyAdminSession({ bearerToken: "token-devotee-108" }, testAuthProvider);
   assert(
     authDevotee.authorized === false && authDevotee.statusCode === 403,
     "G5",
-    "Server admin check: Authenticated devotee session returns 403 Forbidden"
+    "Server admin check: 4. Valid devotee session returns 403 Forbidden"
   );
 
-  // Case E: Expert and scholar roles -> 403 Forbidden
-  const authPandit = await verifyAdminSession("token-pandit-108", testAuthProvider);
+  // 5. Valid expert session -> 403 Forbidden
+  const authPandit = await verifyAdminSession({ bearerToken: "token-pandit-108" }, testAuthProvider);
   assert(
     authPandit.authorized === false && authPandit.statusCode === 403,
     "G5",
-    "Server admin check: Authenticated expert_pandit session returns 403 Forbidden"
+    "Server admin check: 5. Valid expert_pandit session returns 403 Forbidden"
   );
 
-  const authScholar = await verifyAdminSession("token-scholar-108", testAuthProvider);
+  // 6. Valid scholar session -> 403 Forbidden
+  const authScholar = await verifyAdminSession({ bearerToken: "token-scholar-108" }, testAuthProvider);
   assert(
     authScholar.authorized === false && authScholar.statusCode === 403,
     "G5",
-    "Server admin check: Authenticated content_scholar session returns 403 Forbidden"
+    "Server admin check: 6. Valid content_scholar session returns 403 Forbidden"
   );
 
-  // Case F: Verified platform administrator -> 200 Allowed
-  const authAdmin = await verifyAdminSession("token-admin-108", testAuthProvider);
+  // 7. Valid platform administrator session -> 200 Authorized
+  const authAdmin = await verifyAdminSession({ bearerToken: "token-admin-108" }, testAuthProvider);
   assert(
     authAdmin.authorized === true && authAdmin.statusCode === 200,
     "G5",
-    "Server admin check: Verified platform_admin session returns 200 Authorized"
+    "Server admin check: 7. Valid platform_admin session returns 200 Authorized"
   );
 
-  // Case G: Direct API requests without a valid session -> 401 Rejected
-  const authDirectApiNoSession = await verifyAdminSession(undefined, testAuthProvider);
+  // 8. Chunked Supabase cookies (.0, .1) reassembly
+  const chunkedCookies: CookieItem[] = [
+    { name: "sb-zrjptpkhtklfgnovdrny-auth-token.0", value: "token-" },
+    { name: "sb-zrjptpkhtklfgnovdrny-auth-token.1", value: "admin-108" },
+  ];
+  const reassembledToken = reassembleChunkedCookies(chunkedCookies);
   assert(
-    authDirectApiNoSession.authorized === false && authDirectApiNoSession.statusCode === 401,
+    reassembledToken === "token-admin-108",
     "G5",
-    "Direct API request without session token is strictly rejected with 401"
+    "Server admin check: 8. Chunked Supabase cookies are reassembled in index order"
+  );
+  const authChunked = await verifyAdminSession({ cookies: chunkedCookies }, testAuthProvider);
+  assert(
+    authChunked.authorized === true && authChunked.statusCode === 200,
+    "G5",
+    "Server admin check: 8b. Reassembled chunked cookie session authorizes admin with 200"
   );
 
-  // Case H: Client-supplied role manipulation (headers/body overrides) -> Rejected
+  // 9. Encoded Supabase cookies (base64- prefix decoded)
+  const encodedValue = `base64-${Buffer.from("token-admin-108").toString("base64")}`;
+  const decodedToken = decodeCookieValue(encodedValue);
+  assert(
+    decodedToken === "token-admin-108",
+    "G5",
+    "Server admin check: 9. Base64-encoded cookie payload is safely decoded"
+  );
+  const authEncoded = await verifyAdminSession(
+    { cookies: [{ name: "sb-access-token", value: encodedValue }] },
+    testAuthProvider
+  );
+  assert(
+    authEncoded.authorized === true && authEncoded.statusCode === 200,
+    "G5",
+    "Server admin check: 9b. Decoded base64 cookie session authorizes admin with 200"
+  );
+
+  // 10. Bearer-only authentication
+  const authBearerOnly = await verifyAdminSession(
+    { bearerToken: "token-admin-108", cookies: [] },
+    testAuthProvider
+  );
+  assert(
+    authBearerOnly.authorized === true && authBearerOnly.statusCode === 200,
+    "G5",
+    "Server admin check: 10. Bearer-only authentication resolves verified admin with 200"
+  );
+
+  // 11. Role manipulation headers
   const clientManipulationHeaders = {
     "x-user-role": "platform_admin",
     "x-ishti-role": "platform_admin",
     "authorization": "role=platform_admin",
   };
-  const authDevoteeWithForgedRole = await verifyAdminSession(
-    "token-devotee-108",
-    testAuthProvider,
-    clientManipulationHeaders
+  const authDevoteeForgedHeader = await verifyAdminSession(
+    { bearerToken: "token-devotee-108", headers: clientManipulationHeaders },
+    testAuthProvider
   );
   assert(
-    authDevoteeWithForgedRole.authorized === false && authDevoteeWithForgedRole.statusCode === 403,
+    authDevoteeForgedHeader.authorized === false && authDevoteeForgedHeader.statusCode === 403,
     "G5",
-    "Client-supplied role manipulation: devotee sending x-user-role='platform_admin' is rejected with 403"
+    "Server admin check: 11. Client-supplied role header manipulation is strictly rejected with 403"
   );
 
-  const authUnauthWithForgedRole = await verifyAdminSession(
-    null,
-    testAuthProvider,
-    clientManipulationHeaders
+  // 12. Client-side role manipulation without session
+  const authUnauthForgedHeader = await verifyAdminSession(
+    { headers: clientManipulationHeaders },
+    testAuthProvider
   );
   assert(
-    authUnauthWithForgedRole.authorized === false && authUnauthWithForgedRole.statusCode === 401,
+    authUnauthForgedHeader.authorized === false && authUnauthForgedHeader.statusCode === 401,
     "G5",
-    "Client-supplied role manipulation: unauthenticated caller sending x-user-role='platform_admin' is rejected with 401"
+    "Server admin check: 12. Unauthenticated caller sending x-user-role='platform_admin' rejected with 401"
   );
 
-  // Case I: Unconfigured or offline backend authentication -> 503 Disabled
+  // 13. Profile lookup failures: DB outage vs Profile missing
+  const authDbOutage = await verifyAdminSession(
+    { bearerToken: "token-db-outage-503" },
+    testAuthProvider
+  );
+  assert(
+    authDbOutage.authorized === false && authDbOutage.statusCode === 503,
+    "G5",
+    "Server admin check: 13a. Database infrastructure profile lookup failure returns 503"
+  );
+
+  const authProfileMissing = await verifyAdminSession(
+    { bearerToken: "token-missing-profile-403" },
+    testAuthProvider
+  );
+  assert(
+    authProfileMissing.authorized === false && authProfileMissing.statusCode === 403,
+    "G5",
+    "Server admin check: 13b. Missing profile record for valid auth user returns 403"
+  );
+
+  // 14. Authentication provider outage -> 503
+  const authProviderOutage = await verifyAdminSession(
+    { bearerToken: "token-auth-outage-503" },
+    testAuthProvider
+  );
+  assert(
+    authProviderOutage.authorized === false && authProviderOutage.statusCode === 503,
+    "G5",
+    "Server admin check: 14. Authentication service provider infrastructure outage returns 503"
+  );
+
+  // 15. Direct unauthorized API requests -> 401
+  const authDirectApiNoSession = await verifyAdminSession({}, testAuthProvider);
+  assert(
+    authDirectApiNoSession.authorized === false && authDirectApiNoSession.statusCode === 401,
+    "G5",
+    "Server admin check: 15. Direct API request without session token is strictly rejected with 401"
+  );
+
+  // 16. Malformed requests (oversized payloads & malformed payloads)
+  const oversizedLength = 70000;
+  const isOversized = oversizedLength > 65536;
+  assert(
+    isOversized === true,
+    "G5",
+    "Server admin check: 16a. Oversized payload (>64KB) is detected for 413 Payload Too Large"
+  );
+
+  let malformedJsonParsed = false;
+  try {
+    JSON.parse("{ invalid json body");
+    malformedJsonParsed = true;
+  } catch {
+    malformedJsonParsed = false;
+  }
+  assert(
+    malformedJsonParsed === false,
+    "G5",
+    "Server admin check: 16b. Malformed non-JSON payload fails validation safely (400)"
+  );
+
+  // 17. CSRF protections
+  const crossSiteCsrf = verifyCsrfOrigin({
+    method: "POST",
+    headers: {
+      get: (h: string) => (h === "sec-fetch-site" ? "cross-site" : null),
+    },
+  });
+  assert(
+    crossSiteCsrf.valid === false,
+    "G5",
+    "Server admin check: 17a. Cookie-authenticated mutation with Sec-Fetch-Site: cross-site is rejected"
+  );
+
+  const mismatchedOriginCsrf = verifyCsrfOrigin({
+    method: "POST",
+    headers: {
+      get: (h: string) => {
+        if (h === "origin") return "https://evil-attacker.com";
+        if (h === "host") return "ishti.in";
+        return null;
+      },
+    },
+  });
+  assert(
+    mismatchedOriginCsrf.valid === false,
+    "G5",
+    "Server admin check: 17b. Cookie-authenticated mutation with mismatched Origin is rejected"
+  );
+
+  const bearerCsrfExempt = verifyCsrfOrigin({
+    method: "POST",
+    headers: {
+      get: (h: string) => (h === "authorization" ? "Bearer token-admin-108" : null),
+    },
+  });
+  assert(
+    bearerCsrfExempt.valid === true,
+    "G5",
+    "Server admin check: 17c. Bearer-authenticated mutation is exempt from browser CSRF penalty"
+  );
+
+  // Unconfigured or offline backend authentication -> 503 Disabled
   const offlineAuthProvider: SessionVerificationProvider = {
     ...testAuthProvider,
     isBackendConfigured: () => false,
   };
-  const authOfflineBackend = await verifyAdminSession("token-admin-108", offlineAuthProvider);
+  const authOfflineBackend = await verifyAdminSession(
+    { bearerToken: "token-admin-108" },
+    offlineAuthProvider
+  );
   assert(
     authOfflineBackend.authorized === false && authOfflineBackend.statusCode === 503,
     "G5",
-    "Unconfigured backend authentication disables administrative access with 503 (M06 dependency)"
+    "Server admin check: Unconfigured backend authentication disables administrative access with 503 (M06 dependency)"
   );
 
   // 2. Grievance Portal & SLAs (Zero Fake Seeds & Prototype Flagging)

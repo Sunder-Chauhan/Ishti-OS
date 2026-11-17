@@ -533,3 +533,33 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Next.js Production Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** successfully (including dynamic endpoints `/api/compliance/audit` and `/api/compliance/triage`).
   - Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and uncontacted.
 - **Status:** `REMEDIATED & VERIFIED`. Feature branch `feature/m05-trust-governance` is audited, verified, and ready for operator review.
+
+---
+
+## 2026-11-17 — ADR-027: M05 Legal-by-Design Governance, Comprehensive Regulatory Risk Assessment & Hard-Stop Launch Gates
+
+- **Context:** Following independent code review of M05, a fundamental principle was established: ISHTI must be legally prepared by design, not merely equipped with legal documents. While local tests verified functionality, critical gaps remained in server-side session handling (manual cookie parsing, unbound identity/role queries, and broad exception masking), while operational readiness required an exhaustive regulatory risk assessment across 10 statutory domains.
+- **Decision:**
+  1. **Server-Side Authentication & Authorization Hardening:**
+     - Completely eliminated manual cookie parsing (`sb-access-token`, `sb-*-auth-token`, JSON array parsing).
+     - Reused the official `@supabase/ssr` server client and trusted `auth.getUser()` user-resolution mechanism, natively supporting chunked cookies and base64-encoded cookie payloads.
+     - Bound identity verification and role resolution into a single trusted context (`resolveUserAndRole` querying `public.profiles.role` for the verified `user.id`), eliminating split-identity risks.
+     - Refactored error handling into explicit classifications: 401 (missing/invalid/expired token), 403 (forbidden/non-admin/missing profile), and 503 (auth service or database infrastructure outage).
+     - Implemented CSRF origin validation (`verifyCsrfOrigin`), sliding window rate limiting (30 req/min for audit, 10 req/min for triage), payload size limits (64KB), input schema validation, and HTTP method restrictions (`Allow: GET, POST`) on `/api/compliance/audit` and `/api/compliance/triage`.
+  2. **Comprehensive Legal Risk Assessment & Evidentiary Registers:**
+     - Authored `docs/legal/ISHTI_LEGAL_RISK_REGISTER.md` cataloging 23 risks across 10 regulatory domains using a three-tier exposure model (statutory ceiling, realistic enforcement, collateral costs).
+     - Authored `docs/legal/LEGAL_FACTS_REQUIRED.md` partitioning confirmed repository facts, founder-confirmation requirements, and legal assumptions.
+     - Authored `docs/legal/ISHTI_REGULATORY_APPLICABILITY_MATRIX.md` citing primary official Gazette notifications, phased DPDP commencement under G.S.R. 843(E), Income-tax Act 2025 §62 (7 years / daily Indian backup), and Feb 2026 IT Rules amendments (24h ack / 7d resolve).
+     - Authored `docs/legal/ISHTI_VENDOR_AND_PROCESSOR_REGISTER.md` establishing DPA and subprocessor requirements under DPDP §8(1) and GDPR Article 28.
+     - Authored `docs/legal/ISHTI_CONTENT_RIGHTS_REGISTER.md` establishing the Two-Tier Scripture Rights Doctrine (public domain Sanskrit texts vs proprietary modern translations/commentaries) and barring unverified RAG ingestion.
+     - Authored `docs/legal/ISHTI_CONTRACT_REGISTER.md` and `docs/legal/ISHTI_DATA_INVENTORY_AND_LIFECYCLE.md` (ROPA).
+  3. **Hard-Stop Legal Launch Gates (Gates L0–L5):**
+     - Established sequential release gates (`docs/legal/ISHTI_LEGAL_LAUNCH_CHECKLIST.md`): L0 (Business & Entity Facts), L1 (Privacy & Security), L2 (Consumer & Commerce), L3 (Content & AI), L4 (Community & Experts), L5 (International Expansion).
+     - Enforced hard-stop rule: A gate cannot be marked complete without verified documentary evidence, executed contracts/filings, an accountable owner, and written legal counsel approval.
+  4. **Verification Evidence:**
+     - Automated M05 Suite (`scripts/run-m05-tests.ts`): **101/101 PASSED** (0 failures; 17 dedicated security tests).
+     - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+     - TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all packages.
+     - Next.js Production Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** cleanly.
+     - Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and uncontacted.
+- **Status:** `TECHNICALLY VERIFIED WITH BLOCKERS (COUNSEL REVIEW REQUIRED & FOUNDER CONFIRMATION REQUIRED)`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.

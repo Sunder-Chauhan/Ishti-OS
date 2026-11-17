@@ -5,7 +5,12 @@
  */
 export {
   verifyAdminSession,
+  reassembleChunkedCookies,
+  decodeCookieValue,
   type AdminSessionCheckResult,
   type SessionVerificationProvider,
+  type VerificationInput,
+  type AuthResolutionStatus,
+  type CookieItem,
   defaultSupabaseProvider,
 } from "./compliance-session-verifier";

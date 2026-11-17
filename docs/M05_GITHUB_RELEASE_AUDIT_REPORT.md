@@ -20,7 +20,7 @@ Milestone M05 establishes ISHTI's comprehensive **Global Legal, Privacy & Trust 
 - **Gate G4 (Commerce Trust):** Fair refund and cancellation calculator with integer minor-unit arithmetic, proposed 0% default gateway fee deduction, Pandit no-show reliability guarantee, EU CRD Art. 16(m) digital content waivers, and 6-currency formatting.
 - **Gate G5 (Compliance Operations):** Statutory grievance redressal portal complying with IT Rules 2021 (as amended Feb 2026: 24h acknowledgement, 7d resolution), two-factor privacy-preserving ticket tracking, CERT-In 6-hour incident triage, append-only SHA-256 evidence hash chain, and administrative RBAC gating.
 
-All source code has been implemented, audited, remediated of pre-release defects, verified through 88 automated M05 tests, 110 security regression tests, full TypeScript compilation, and production Next.js build. The code is committed to a dedicated feature branch and pushed to GitHub for review via a Draft Pull Request.
+All source code has been implemented, audited, remediated of pre-release defects, verified through 101 automated M05 tests, 110 security regression tests, full TypeScript compilation, and production Next.js build. The code is committed to a dedicated feature branch and pushed to GitHub for review via a Draft Pull Request.
 
 ---
 
@@ -82,9 +82,11 @@ Implements ISHTI Milestone M05 (Global Legal, Privacy & Trust Foundation) across
 - Replaced false deletion completion certificates with `DeletionPlanResult` (`overallStatus: "NOT_IMPLEMENTED"`); labeled SAR as `DEMONSTRATION_PREVIEW_ONLY` without fake user data; scrubbed seeded fake complaints (FIND-M05-07).
 - Re-implemented SHA-256 audit hash chain verification with block data recomputation, monotonic timestamp checks, index continuity, and verified across all 7 tampering scenarios (FIND-M05-08).
 - Implemented genuine server-only session token authorization (`compliance-session-verifier.ts`, `compliance-server.ts`) and protected Next.js API endpoints (`/api/compliance/audit`, `/api/compliance/triage`), moving security boundary entirely off the client browser. Formally designated live operational admin access as `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY` pending M06 live auth (FIND-M05-09).
+- Hardened server authentication: removed manual cookie parsing, bound user verification and profile role query into single trusted context, added chunked/encoded cookie reassembly, separated 503 outage errors from 401/403, and added CSRF origin validation, rate limiting, and 64KB payload limits (FIND-M05-10).
+- Delivered Comprehensive Legal Risk Prevention Programme in `docs/legal/` (23-item risk ledger, missing facts register, primary statutory applicability matrix, hard-stop launch gates L0–L5, vendor DPA register, two-tier scripture copyright register, contract inventory, and personal data lifecycle ROPA).
 
 ## Verification Evidence
-- M05 Test Suite (`scripts/run-m05-tests.ts`): 88/88 PASSED
+- M05 Test Suite (`scripts/run-m05-tests.ts`): 101/101 PASSED
 - Security Regression Suite (`npm run test:security`): 110/110 PASSED
 - TypeScript Compilation (`npm run typecheck`): 0 ERRORS
 - Next.js Production Build (`npm run build:web`): 31/31 ROUTES PRERENDERED

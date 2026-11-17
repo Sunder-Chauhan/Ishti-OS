@@ -4,71 +4,60 @@ import { cookies } from "next/headers";
 import { type NextRequest } from "next/server";
 import {
   verifyAdminSession,
+  verifyCsrfOrigin,
+  checkComplianceRateLimit,
   type AdminSessionCheckResult,
   type SessionVerificationProvider,
+  type CookieItem,
+  type VerificationInput,
   defaultSupabaseProvider,
 } from "./compliance-session-verifier";
 
-export type { AdminSessionCheckResult, SessionVerificationProvider };
+export { verifyCsrfOrigin, checkComplianceRateLimit };
+export type { AdminSessionCheckResult, SessionVerificationProvider, CookieItem, VerificationInput };
 
 /**
- * Extracts the session token from an incoming Next.js request or server cookie store.
- * Checks:
- * 1. Authorization: Bearer <token>
- * 2. Supabase auth cookies: `sb-access-token`, `sb-<ref>-auth-token`
+ * Extracts session tokens and cookies from an incoming Next.js request or server cookie store.
  */
-async function extractSessionToken(request?: Request | NextRequest): Promise<string | null> {
-  // 1. Check Authorization header if request is provided
+async function extractVerificationInput(request?: Request | NextRequest): Promise<VerificationInput> {
+  let bearerToken: string | null = null;
+  const cookieList: CookieItem[] = [];
+
+  // 1. Check Authorization header
   if (request) {
     const authHeader = request.headers.get("authorization");
     if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
-      const token = authHeader.slice(7).trim();
-      if (token) return token;
+      bearerToken = authHeader.slice(7).trim();
     }
   }
 
   // 2. Check cookies from NextRequest
-  if (request && "cookies" in request && typeof request.cookies?.get === "function") {
+  if (request && "cookies" in request && typeof request.cookies?.getAll === "function") {
     const nextReq = request as NextRequest;
-    const cookie =
-      nextReq.cookies.get("sb-access-token") ||
-      nextReq.cookies.getAll().find((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
-    if (cookie?.value) {
-      // In Supabase SSR, cookie value may be a JSON array string `["<access_token>", "<refresh_token>"]`
-      try {
-        const parsed = JSON.parse(cookie.value);
-        if (Array.isArray(parsed) && typeof parsed[0] === "string") {
-          return parsed[0];
-        }
-      } catch {
-        return cookie.value;
-      }
-      return cookie.value;
+    const all = nextReq.cookies.getAll();
+    for (const c of all) {
+      cookieList.push({ name: c.name, value: c.value });
     }
   }
 
-  // 3. Check server cookies via next/headers
-  try {
-    const cookieStore = await cookies();
-    const cookie =
-      cookieStore.get("sb-access-token") ||
-      cookieStore.getAll().find((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
-    if (cookie?.value) {
-      try {
-        const parsed = JSON.parse(cookie.value);
-        if (Array.isArray(parsed) && typeof parsed[0] === "string") {
-          return parsed[0];
-        }
-      } catch {
-        return cookie.value;
+  // 3. Fallback / supplementary check via next/headers cookies()
+  if (cookieList.length === 0) {
+    try {
+      const cookieStore = await cookies();
+      const all = cookieStore.getAll();
+      for (const c of all) {
+        cookieList.push({ name: c.name, value: c.value });
       }
-      return cookie.value;
+    } catch {
+      // cookies() unavailable outside Next.js request lifecycle
     }
-  } catch {
-    // cookies() unavailable outside Next.js request lifecycle
   }
 
-  return null;
+  return {
+    bearerToken,
+    cookies: cookieList,
+    headers: request?.headers,
+  };
 }
 
 /**
@@ -78,14 +67,14 @@ async function extractSessionToken(request?: Request | NextRequest): Promise<str
  * Invariants:
  * - Does NOT accept a client-provided UserProfile, role, or React state.
  * - Resolves the session strictly from verified cookies / Bearer tokens.
- * - Resolves the role strictly from authoritative database records.
+ * - Resolves the role strictly from authoritative database records in the same context.
  * - When backend auth is unconfigured/offline, disables administrative access (503).
  */
 export async function verifyServerAdminSession(
   request?: Request | NextRequest,
   customProvider?: SessionVerificationProvider
 ): Promise<AdminSessionCheckResult> {
-  const token = await extractSessionToken(request);
+  const input = await extractVerificationInput(request);
   const provider = customProvider || defaultSupabaseProvider;
-  return verifyAdminSession(token, provider, request?.headers);
+  return verifyAdminSession(input, provider);
 }

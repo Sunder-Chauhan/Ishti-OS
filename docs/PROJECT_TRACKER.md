@@ -280,6 +280,18 @@ Scope & Gates:
   - [x] Refactored `/profile/compliance/page.tsx` so the browser UI is presentation-only and no longer the security boundary
   - [x] Fail-safe shutdown: returns 503 (`BACKEND_AUTH_UNAVAILABLE`) when backend auth is unconfigured or offline
   - [x] Formally designated live operational administrative console access as `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY` pending M06 live auth
-  - [x] Test suite expanded to 88/88 passing tests; 110/110 security regression tests passed; 0 typecheck errors; Next.js 31/31 routes built
   - [x] Decision log updated (ADR-026 in `docs/DECISION_LOG.md`)
+- [x] Milestone M05 Final Security Remediation & Legal Risk Prevention Programme Pass 4 (ADR-027):
+  - [x] Removed manual cookie parsing; reused official `@supabase/ssr` server client and `auth.getUser()`
+  - [x] Bound identity verification and role resolution to single trusted context and verified `user.id`
+  - [x] Reassembled chunked Supabase cookies (`.0`, `.1`) and decoded base64-encoded cookie payloads
+  - [x] Corrected outage classifications: 401 (missing/invalid/expired), 403 (non-admin/missing profile), 503 (auth/db outage)
+  - [x] Applied CSRF origin protection (`verifyCsrfOrigin`), rate limiting (30 req/min audit, 10 req/min triage), and 64KB payload limits
+  - [x] Authored comprehensive legal risk register (`docs/legal/ISHTI_LEGAL_RISK_REGISTER.md`) covering 23 risks across 10 domains
+  - [x] Authored missing facts register (`docs/legal/LEGAL_FACTS_REQUIRED.md`)
+  - [x] Authored primary statutory applicability matrix (`docs/legal/ISHTI_REGULATORY_APPLICABILITY_MATRIX.md`)
+  - [x] Established hard-stop launch gates L0–L5 (`docs/legal/ISHTI_LEGAL_LAUNCH_CHECKLIST.md`)
+  - [x] Authored vendor/processor, content rights, contract registers, and personal data lifecycle inventory (ROPA)
+  - [x] Expanded test suite to 101/101 passing tests (17 dedicated security tests); 110/110 security regression tests; Next.js 31/31 routes
+  - [x] Decision log updated (ADR-027 in `docs/DECISION_LOG.md`)
   - [x] Feature branch `feature/m05-trust-governance` prepared for Draft PR review
