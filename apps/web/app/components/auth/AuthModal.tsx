@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "../../../lib/auth/auth-context";
+import { isDevelopmentEnvironment } from "../../../lib/environment/presentation-layer";
 import { IshtiLogo } from "../brand";
 
 export function AuthModal() {
@@ -202,13 +203,12 @@ export function AuthModal() {
           </p>
         </div>
 
-        {/* Sandbox Notice Banner if active */}
-        {isSandboxMode && (
+        {/* Developer Environment Test Notice (Never leaked in production) */}
+        {isDevelopmentEnvironment() && isSandboxMode && (
           <div className="authModalSandboxBanner" role="status">
-            <span className="authSandboxBadge">STAGING SANDBOX</span>
+            <span className="authSandboxBadge">DEVELOPMENT TEST</span>
             <p className="authSandboxText">
-              SMS gateway is in staging sandbox mode. Enter any 10-digit number and use verification code:{" "}
-              <strong>123456</strong>
+              Local testing verification code: <strong>123456</strong>
             </p>
           </div>
         )}

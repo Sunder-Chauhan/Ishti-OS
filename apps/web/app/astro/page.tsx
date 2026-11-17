@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useI18n } from "../../lib/i18n/context";
 
 interface PlanetaryPosition {
   planet: string;
@@ -29,6 +30,8 @@ const SAMPLE_PLANETS: PlanetaryPosition[] = [
 
 export default function AstroPage() {
   const { user, openAuthModal } = useAuth();
+  const { dict } = useI18n();
+  const a = dict.astro;
 
   const [birthDate, setBirthDate] = useState("1995-05-15");
   const [birthTime, setBirthTime] = useState("06:30");
@@ -44,10 +47,10 @@ export default function AstroPage() {
   return (
     <PillarShell
       pillarKey="astro"
-      title="ISHTI Astro"
-      sanskritTagline="ज्योतिषां सूर्यं चक्षुः — Astrology is the eye of the Vedas"
-      description="Mathematical precision meets classical Jyotish. Clear astrological insight without superstition, fear-based warnings, or commercial hype."
-      breadcrumbs={[{ label: "ISHTI Astro", current: true }]}
+      title={a.title}
+      sanskritTagline={a.tagline}
+      description={a.description}
+      breadcrumbs={[{ label: a.title, current: true }]}
       actionSlot={
         <div style={{ display: "flex", gap: "10px" }}>
           <span
@@ -74,7 +77,7 @@ export default function AstroPage() {
               Calculate Vedic Kundli
             </h2>
             <p style={{ fontSize: "13px", color: "var(--ishti-warm-bronze)", lineHeight: 1.5, marginBottom: "20px" }}>
-              All birth data is protected under client-side AES-256-GCM envelope encryption with context-bound authentication tags before hitting persistent storage.
+              Your sacred birth details and astrological calculations are protected with private, confidential sanctuary encryption safeguards.
             </p>
 
             <form onSubmit={handleCalculate} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -143,7 +146,7 @@ export default function AstroPage() {
                     if (!user) {
                       openAuthModal({ message: "Sign in with your mobile number to securely save this Kundli to your account." });
                     } else {
-                      alert("Kundli profile encrypted with AES-256-GCM and saved to your sanctuary account.");
+                      alert("Your Kundli profile has been securely saved to your private sanctuary account.");
                     }
                   }}
                   className="signInButton"

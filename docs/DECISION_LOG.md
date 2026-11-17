@@ -371,3 +371,45 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Security and RLS test suite: 110/110 passing (100%).
      - Next.js production build: Succeeded with 0 errors across all 15 prerendered static routes.
 - **Final Gate Status:** `OFFICIAL ISHTI LOGO FAMILY INTEGRATION VERIFIED`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.
+
+
+## 2026-11-16: ADR-021 — Formal Acceptance and Closure of Milestone M04 at Commit cafc920
+- **Context:** Following the completion of the M04 Application Foundation, UX Shell implementation, and iconography refinement (Lucide icon system replacing all UI emojis), an independent post-implementation acceptance audit was performed at commit `cafc9207b27010d5ddd32662937b758988a75524`.
+- **Decision:**
+  1. **Milestone M04 Formally Accepted:** Milestone M04 Application Foundation & UX Shell is accepted and formally closed at commit `cafc920`.
+  2. **Acceptance Evidence Base:**
+     - Local and remote Git synchronization confirmed (`main` and `origin/main` point to `cafc920`).
+     - Clean working tree verified at audit baseline.
+     - Monorepo TypeScript verification passed (`tsc --noEmit`, 0 errors).
+     - Next.js 15 production build passed cleanly (`next build`, 15/15 static routes).
+     - Comprehensive security test suite passed (110 passed, 0 failed, 3 remote pending deployment).
+     - Zero interface emojis detected (`scripts/audit-ui-icons.mjs`).
+     - Byte-for-byte logo parity across all six approved SVG variants confirmed (`scripts/verify-approved-logos.mjs`).
+     - Desktop and mobile visual acceptance audit completed across all 6 product pillars.
+     - Staging database `zrjptpkhtklfgnovdrny` operational; production project `zxwkfnvmmxoojewhvsdc` strictly quarantined.
+  3. **M04.6 Enhancement Proposal Registered:**
+     - A separate proposed enhancement entry, `M04.6 — Inclusive Experience & Globalisation Foundation`, is created in `PROJECT_TRACKER.md` as PROPOSED / PLANNED.
+     - Scope includes: public/backend technical information separation, human-readable errors, internationalisation architecture (English and Hindi completion, 8-language regional expansion), persistent accessibility preferences, accessibility centre (WCAG 2.2 AAA/AA), senior-friendly interaction patterns, and screen-reader/read-aloud capabilities.
+     - M04.6 remains planned/unimplemented in project tracking until requirements, architecture, and acceptance criteria are separately reviewed and authorized.
+  4. **Governance Invariants:**
+     - Production database remains quarantined with zero access.
+     - Zero production deployments permitted at this phase.
+     - Deep feature implementation for Milestone M05 held pending M04.6 review and authorization.
+- **Final Gate Status:** `MILESTONE M04 ACCEPTED & CLOSED AT cafc920`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.
+
+## 2026-11-17: ADR-022 — Formal Acceptance and Closure of Milestone M04.6 (Universal Accessibility, Internationalisation & Public UX Isolation)
+- **Context:** Following the completion of the M04.6 enhancement scope, independent readiness audit, pre-commit evidence review, and final acceptance reconciliation, the operator formally accepted M04.6 on November 17, 2026, closing the M04 Application Foundation.
+- **Decision:**
+  1. **Milestone M04.6 Formally Accepted & Closed:** M04.6 (Inclusive Experience & Globalisation Foundation) is accepted and closed.
+  2. **Acceptance Evidence Base:**
+     - **Automated Verification:** 110/110 security and RLS tests pass (`npm run test:security`), 0 TypeScript errors across monorepo workspaces (`npm run typecheck`), 15/15 Next.js static pages prerendered cleanly with zero warnings (`npm run build:web`).
+     - **Iconography & Brand Integrity:** 0 UI emojis in application source scope (`scripts/audit-ui-icons.mjs`); 100% byte-for-byte logo parity across all six approved SVG assets in `apps/web/public/brand/` verified against master reference `preview_v2.html` (`scripts/verify-approved-logos.mjs`).
+     - **Web Speech API Privacy:** Audited browser speech engine characteristics; added transparent in-UI vendor processing disclosure in `AccessibilityModal` prior to microphone activation; zero audio recording or server-side transmission by ISHTI; strictly opt-in.
+     - **Multilingual Architecture:** 100% complete English (`en`) and Hindi (`hi`) dictionaries; 8 regional Indian languages scaffolded with safe recursive deep-fallback to English; transparent "Roadmap (English fallback)" badging in language selector; exact canonical preservation of Sanskrit verses and IAST transliterations.
+     - **Universal Accessibility (WCAG 2.2):** Validated keyboard focus traversal starting from high-contrast Skip to Content link (8.2:1 contrast); native HTML5 `<dialog>` focus trapping (`showModal()`) and focus restoration to invoking buttons; $\ge 48\text{px}$ touch targets; flexible text scaling from 100% to 200% with clean reflow; 6 preconfigured accessibility profiles with `localStorage` persistence and one-click reset.
+     - **Public UX Isolation:** Sanitized internal database primary keys to devotee membership references (`ISHTI-XXXXXXXX`); intercepted and mapped Postgres error codes (`42P01`, `PGRST*`, `23505`) to calm, comforting messages; server-side role evaluation (`platform_admin`) for diagnostic access.
+     - **Staging Discrepancy Reconciliation:** Stale M02 informational message in `scripts/run-comprehensive-tests.js` updated to clarify that offline security runner deliberately skips live remote network tests, and that M03 hosted staging (`zrjptpkhtklfgnovdrny`) was reconciled and verified separately in Gate B and Gate C.
+  3. **Governance Invariants Maintained:**
+     - Remote production Supabase (`zxwkfnvmmxoojewhvsdc`) remains strictly isolated and quarantined.
+     - Zero remote migrations executed; zero secrets or credentials leaked in code or commits.
+- **Final Gate Status:** `MILESTONES M04 & M04.6 FORMALLY ACCEPTED & CLOSED`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.

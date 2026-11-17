@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Check, ArrowRight } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
+import { useI18n } from "../../lib/i18n/context";
 
 interface ScriptureWork {
   id: string;
@@ -59,6 +60,8 @@ const CATALOG_SEED: ScriptureWork[] = [
 ];
 
 export default function BhaktiPage() {
+  const { dict } = useI18n();
+  const b = dict.bhakti;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
@@ -75,10 +78,10 @@ export default function BhaktiPage() {
   return (
     <PillarShell
       pillarKey="bhakti"
-      title="ISHTI Bhakti"
-      sanskritTagline="वेदोऽखिलो धर्ममूलम् — The Vedas are the root of all Dharma (Manusmriti 2.6)"
-      description="A serene repository of devotional compositions: aartis, stotras, chalisa, and suktas with lyrical transliteration and canonical explanations."
-      breadcrumbs={[{ label: "ISHTI Bhakti", current: true }]}
+      title={b.title}
+      sanskritTagline={b.tagline}
+      description={b.description}
+      breadcrumbs={[{ label: b.title, current: true }]}
       actionSlot={
         <div style={{ display: "flex", gap: "8px" }}>
           <span className="userRoleBadge" style={{ backgroundColor: "var(--ishti-success-surface)", color: "var(--ishti-success)" }}>
@@ -109,7 +112,7 @@ export default function BhaktiPage() {
             display: "inline-block",
           }}
         >
-          Canonical Shastric Verse of the Day &bull; Rigveda 10.191.2
+          {b.verseOfDayTitle}
         </span>
         <blockquote style={{ margin: 0 }}>
           <p
@@ -229,7 +232,7 @@ export default function BhaktiPage() {
                 type="button"
                 className="btnExploreModule"
                 style={{ marginTop: 0 }}
-                onClick={() => alert(`Opening ${work.title} reader. All verses are authenticated per ADR-006.`)}
+                onClick={() => alert(`Opening ${work.title} reader. All verses are authenticated against canonical Vedic scriptures.`)}
               >
                 <span>Read Canonical Text</span>
                 <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />

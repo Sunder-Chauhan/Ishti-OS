@@ -11,10 +11,14 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "../../lib/auth/auth-context";
+import { formatDevoteePublicReference } from "../../lib/environment/presentation-layer";
 import { Breadcrumbs } from "../components/layout/Breadcrumbs";
+import { useI18n } from "../../lib/i18n/context";
 
 export default function ProfilePage() {
   const { user, openAuthModal, signOut } = useAuth();
+  const { dict } = useI18n();
+  const pr = dict.profile;
 
   if (!user) {
     return (
@@ -35,22 +39,22 @@ export default function ProfilePage() {
             <UserRound size={36} strokeWidth={1.8} />
           </div>
           <h1 className="profileName" style={{ fontSize: "32px", marginBottom: "12px" }}>
-            Devotee Sanctuary Profile
+            {pr.title}
           </h1>
           <p
             className="profileFieldValue"
             style={{ maxWidth: "540px", margin: "0 auto 28px", color: "var(--ishti-warm-bronze)" }}
           >
-            Public browsing for scriptures, panchang, and pandit directories is open to all devotees without registration. To save encrypted Kundli charts, book consultations, and manage DPDP consent preferences, please sign in.
+            {pr.guestNotice}
           </p>
           <div style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
             <button
               type="button"
-              onClick={() => openAuthModal({ message: "Sign in to access your personal sanctuary profile." })}
+              onClick={() => openAuthModal({ message: pr.signInPrompt })}
               className="btnAuthPrimary"
               style={{ maxWidth: "260px" }}
             >
-              Sign In with Mobile
+              {pr.signInPrompt}
             </button>
             <Link
               href="/bhakti"
@@ -122,7 +126,7 @@ export default function ProfilePage() {
               )}
             </div>
             <span style={{ fontSize: "13px", color: "var(--ishti-warm-bronze)" }}>
-              Devotee ID: <code>{user.id}</code>
+              Membership Reference: <code>{formatDevoteePublicReference(user.id)}</code>
             </span>
           </div>
         </div>
@@ -186,7 +190,7 @@ export default function ProfilePage() {
             Encrypted Kundli Sanctuary
           </h2>
           <p style={{ fontSize: "13px", color: "var(--ishti-warm-bronze)", lineHeight: 1.5, marginBottom: "18px" }}>
-            View your birth charts protected under client-side AES-256-GCM envelope encryption.
+            View your personal astrological birth charts protected under devotee privacy safeguards.
           </p>
           <Link href="/astro" className="btnExploreModule" style={{ marginTop: 0 }}>
             <span>Open ISHTI Astro</span>
@@ -220,7 +224,7 @@ export default function ProfilePage() {
           className="signInButton"
           style={{ borderColor: "var(--ishti-error)", color: "var(--ishti-error)" }}
         >
-          Sign Out of ISHTI
+          {pr.signOut}
         </button>
       </div>
     </div>

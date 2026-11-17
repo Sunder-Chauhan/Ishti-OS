@@ -1,15 +1,21 @@
+"use client";
+
 import React from "react";
+import { useI18n } from "../../lib/i18n/context";
 
 export function PhilosophySection() {
+  const { dict } = useI18n();
+  const h = dict.home;
+
   return (
     <section id="philosophy" className="philosophySection" aria-labelledby="philosophyHeading">
       <div className="philosophyHeader">
-        <p className="sectionKicker">Our Purpose & Philosophy</p>
+        <p className="sectionKicker">{h.philosophyKicker}</p>
         <h2 id="philosophyHeading" className="sectionTitle">
-          Rooted in Tradition. Connected to Today.
+          {h.philosophyTitle}
         </h2>
         <p className="sectionSubtitle">
-          Millions of seekers seek authentic connection with their heritage, yet encounter fragmented websites, commercially motivated fear-mongering, and unverified information. ISHTI exists to rebuild that sacred trust.
+          {h.philosophySubtitle}
         </p>
       </div>
 

@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { HeroVisual } from "./components/HeroVisual";
 import { EcosystemCards } from "./components/EcosystemCards";
@@ -5,8 +7,12 @@ import { PhilosophySection } from "./components/PhilosophySection";
 import { TrustSection } from "./components/TrustSection";
 import { ExperiencePreview } from "./components/ExperiencePreview";
 import { CtaSection } from "./components/CtaSection";
+import { useI18n } from "../lib/i18n/context";
 
 export default function Home() {
+  const { dict } = useI18n();
+  const h = dict.home;
+
   return (
     <div className="pageWrapper">
       <div className="mainShell">
@@ -16,25 +22,25 @@ export default function Home() {
             {/* Left Editorial Text Column */}
             <div className="heroTextContent">
               <div className="heroEyebrowGroup">
-                <span className="heroKicker">Modern Spiritual Ecosystem</span>
+                <span className="heroKicker">{h.kicker}</span>
                 <span className="heroKickerDevanagari">सनातन • संस्कृति • साधना</span>
               </div>
 
               <h1 id="heroHeadline" className="heroHeadline">
-                Rooted in Tradition. <br />
-                <span className="headlineHighlight">Connected to Today.</span>
+                {h.headline} <br />
+                <span className="headlineHighlight">{h.headlineHighlight}</span>
               </h1>
 
               <p className="heroLead">
-                ISHTI is being built to make authentic Vedic rituals, deterministic astronomical panchang, verified religious knowledge, and qualified spiritual practitioners accessible through serene, respectful technology.
+                {h.lead}
               </p>
 
               <div className="heroActions">
                 <a href="#ecosystem" className="btnPrimary">
-                  Explore the Ecosystem
+                  {h.exploreBtn}
                 </a>
                 <a href="#philosophy" className="btnSecondary">
-                  Our Philosophy
+                  {h.philosophyBtn}
                 </a>
               </div>
 
@@ -42,15 +48,15 @@ export default function Home() {
               <div className="heroTrustStrip">
                 <div className="trustBadgeItem">
                   <span className="trustDot" />
-                  <span>Architecture: Canonical Sources</span>
+                  <span>{h.trustCanon}</span>
                 </div>
                 <div className="trustBadgeItem">
                   <span className="trustDot" />
-                  <span>Architecture: Grounded AI Safeguards</span>
+                  <span>{h.trustGuidance}</span>
                 </div>
                 <div className="trustBadgeItem">
                   <span className="trustDot" />
-                  <span>Architecture: Vetted Acharyas</span>
+                  <span>{h.trustAcharyas}</span>
                 </div>
               </div>
             </div>

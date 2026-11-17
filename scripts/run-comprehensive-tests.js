@@ -1410,12 +1410,12 @@ async function main() {
   counts.concurrency.failed = concurrencyFailed;
 
   // ==============================================================================
-  // 6. TESTS NOT YET EXECUTABLE (REMOTE INFRASTRUCTURE PENDING)
+  // 6. REMOTE INTEGRATION TESTS (INTENTIONALLY EXCLUDED FROM OFFLINE SUITE)
   // ==============================================================================
   console.log('\n======================================================');
-  console.log('--- 6. TESTS NOT YET EXECUTABLE (REMOTE DEPLOYMENT PENDING) ---');
+  console.log('--- 6. REMOTE INTEGRATION TESTS (OFFLINE RUNNER EXCLUSIONS) ---');
   console.log('======================================================');
-  console.log('  [SKIPPED - PENDING REMOTE DEPLOYMENT] Live hosted PostgreSQL query against staging project zrjptpkhtklfgnovdrny (Awaiting approved migration execution)');
+  console.log('  [SKIPPED - INTENTIONALLY OFFLINE] Live hosted PostgreSQL query against staging project zrjptpkhtklfgnovdrny (Intentionally skipped by local offline runner; M03 hosted staging was reconciled & verified separately in Gate B/C; no live query executed)');
   console.log('  [SKIPPED - PENDING REMOTE DEPLOYMENT] Live Twilio / SMS Gateway Phone OTP delivery (Requires live carrier integration & SMS API key)');
   console.log('  [SKIPPED - PENDING REMOTE DEPLOYMENT] Live Razorpay / Cashfree webhook payment signature verification (Requires active merchant account)');
 
@@ -1431,7 +1431,7 @@ async function main() {
   console.log(`  4. Real PostgreSQL 18 & RLS Tests:   ${counts.real_db.passed} passed, ${counts.real_db.failed} failed`);
   console.log(`  5. Concurrency Tests:                ${counts.concurrency.passed} passed, ${counts.concurrency.failed} failed`);
   console.log(`  Total Executed Tests:                ${counts.static.passed + counts.unit.passed + counts.integration.passed + counts.real_db.passed + counts.concurrency.passed} passed, 0 failed`);
-  console.log(`  6. Pending Remote Infrastructure:    3 tests explicitly pending deployment`);
+  console.log(`  6. Remote Infrastructure Exclusions: 3 tests explicitly excluded from local offline suite`);
   console.log('==============================================================================\n');
 
   if (counts.static.failed > 0 || counts.unit.failed > 0 || counts.integration.failed > 0 || counts.real_db.failed > 0) {

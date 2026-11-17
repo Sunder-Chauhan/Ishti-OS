@@ -7,7 +7,7 @@ export function CtaSection() {
     <section id="early-access" className="ctaSection" aria-labelledby="ctaHeading">
       <div className="ctaContent">
         <Emblem size={52} variant="gold" className="ctaEmblem" />
-        <p className="ctaKicker">Milestone M02 &bull; Early Access</p>
+        <p className="ctaKicker">Devotee Community &bull; Early Access</p>
         <h2 id="ctaHeading" className="ctaHeading">
           Join the Foundation of ISHTI
         </h2>
@@ -18,30 +18,30 @@ export function CtaSection() {
         {/* Real Early Access Registration Form */}
         <EarlyAccessForm />
 
-        {/* Transparent Roadmap Status */}
+        {/* Transparent Devotee Roadmap */}
         <div className="ctaRoadmapBox">
           <div className="roadmapHeader">
             <span className="roadmapDot" />
-            <span className="roadmapStatusText">Platform Roadmap Status</span>
+            <span className="roadmapStatusText">Platform Journey &amp; Milestones</span>
           </div>
 
           <div className="roadmapItems">
             <div className="roadmapItem completedItem">
-              <span className="roadmapBadge">M01 &bull; Complete</span>
-              <h4>Brand & Design Foundation</h4>
-              <p>Visual tokens, WCAG 2.2 accessibility, responsive monorepo scaffold, and verified Vedic citations.</p>
+              <span className="roadmapBadge">Phase 1 &bull; Established</span>
+              <h4>Sacred Brand &amp; Living Design System</h4>
+              <p>Classical Vedic aesthetics, universal accessibility foundation, and authenticated shastric citations.</p>
             </div>
 
             <div className="roadmapItem completedItem">
-              <span className="roadmapBadge">M02 &bull; In Progress</span>
-              <h4>Secure Backend & Early Access</h4>
-              <p>Supabase authentication setup, DPDP Act 2023 compliance contracts, encrypted PII models, and early access registration.</p>
+              <span className="roadmapBadge">Phase 2 &bull; Current</span>
+              <h4>Devotee Sanctuary &amp; Privacy Protection</h4>
+              <p>Indian DPDP Act 2023 consent sovereignty, confidential astrological vault, and verified mobile sign-in.</p>
             </div>
 
             <div className="roadmapItem upcomingItem">
-              <span className="roadmapBadge">M03 &bull; Planned</span>
-              <h4>Canonical Content Ingestion</h4>
-              <p>Vetted Grihya Sutra ritual vidhis, micro-location panchang engine, and vetted acharya network.</p>
+              <span className="roadmapBadge">Phase 3 &bull; Upcoming</span>
+              <h4>Living Traditions &amp; Scholar Network</h4>
+              <p>Vetted Grihya Sutra ritual vidhis, deterministic astronomical panchang, and accredited Acharya consultations.</p>
             </div>
           </div>
 

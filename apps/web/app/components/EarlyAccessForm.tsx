@@ -107,11 +107,11 @@ export function EarlyAccessForm() {
 
           {state && !state.success && (
             <div
-              className={state.code === "MIGRATION_PENDING" ? "statusAlertPending" : "statusAlertError"}
+              className={state.code === "MAINTENANCE_UPDATE" ? "statusAlertPending" : "statusAlertError"}
               role="alert"
             >
               <p>
-                <strong>{state.code === "MIGRATION_PENDING" ? "Setup Notice:" : "Submission Notice:"}</strong>{" "}
+                <strong>{state.code === "MAINTENANCE_UPDATE" ? "Sanctuary Notice:" : "Notice:"}</strong>{" "}
                 {state.message}
               </p>
             </div>

@@ -3,6 +3,7 @@
 import { createClient } from "../../lib/supabase/server";
 import { headers } from "next/headers";
 import { checkRateLimit, hashIdentifier, extractClientIp } from "../../lib/security/rate-limiter";
+import { toHumanReadableError } from "../../lib/errors/human-readable-errors";
 
 export interface EarlyAccessResult {
   success: boolean;
@@ -101,24 +102,24 @@ export async function submitEarlyAccess(
         };
       }
 
-      // Handle unmigrated database table
+      // Handle unmigrated database table without exposing SQL internals to public
       if (
         error.code === "PGRST205" ||
         error.code === "42P01" ||
         error.message?.includes("does not exist") ||
         error.message?.includes("Could not find the table")
       ) {
+        console.error("[INTERNAL_DB_AUDIT] Table early_access_subscribers pending migration:", error);
         return {
           success: false,
-          code: "MIGRATION_PENDING",
-          message:
-            "Database table 'early_access_subscribers' is pending initial migration. Please run the SQL migration script in your Supabase SQL Editor.",
+          code: "MAINTENANCE_UPDATE",
+          message: "Early access registration is temporarily undergoing scheduled maintenance. Please check back shortly.",
         };
       }
 
       return {
         success: false,
-        message: error.message || "Failed to record your request. Please try again.",
+        message: toHumanReadableError(error, "We were unable to record your request. Please try again shortly."),
       };
     }
 
@@ -127,10 +128,10 @@ export async function submitEarlyAccess(
       message: "Dhanyavad! Your early access invitation request has been safely registered.",
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "An unexpected error occurred.";
+    console.error("[INTERNAL_EARLY_ACCESS_ERROR]", err);
     return {
       success: false,
-      message,
+      message: toHumanReadableError(err, "We were unable to complete your registration. Please try again."),
     };
   }
 }

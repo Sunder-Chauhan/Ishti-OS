@@ -30,7 +30,7 @@ body {
 body {
   background-color: var(--ivory);
   color: var(--ink);
-  font-family: var(--font-sans), var(--font-devanagari), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans), var(--font-devanagari), 'Noto Sans Devanagari', 'Noto Sans Bengali', 'Noto Sans Tamil', 'Noto Sans Telugu', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Gurmukhi', 'Noto Sans Gujarati', 'Nirmala UI', system-ui, -apple-system, sans-serif;
   font-size: 16px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
@@ -2765,3 +2765,941 @@ button {
   border-color: var(--ishti-temple-maroon);
   transform: translateY(-1px);
 }
+
+/* ==============================================================================
+   ISHTI UNIVERSAL ACCESSIBILITY & MULTILINGUAL SYSTEM (M04 WCAG 2.2 AAA/AA)
+   ============================================================================== */
+
+/* --- 1. Text Sizing Scaling (100% - 200%) --- */
+html[data-a11y-text-size="115"] {
+  font-size: 115% !important;
+}
+html[data-a11y-text-size="125"] {
+  font-size: 125% !important;
+}
+html[data-a11y-text-size="140"] {
+  font-size: 140% !important;
+}
+html[data-a11y-text-size="150"] {
+  font-size: 150% !important;
+}
+html[data-a11y-text-size="175"] {
+  font-size: 175% !important;
+}
+html[data-a11y-text-size="200"] {
+  font-size: 200% !important;
+}
+
+/* --- 2. Line Height & Letter Spacing --- */
+html[data-a11y-line-height="relaxed"] body,
+html[data-a11y-line-height="relaxed"] p,
+html[data-a11y-line-height="relaxed"] li,
+html[data-a11y-line-height="relaxed"] span {
+  line-height: 1.85 !important;
+}
+
+html[data-a11y-line-height="loose"] body,
+html[data-a11y-line-height="loose"] p,
+html[data-a11y-line-height="loose"] li,
+html[data-a11y-line-height="loose"] span {
+  line-height: 2.1 !important;
+}
+
+html[data-a11y-letter-spacing="wide"] body {
+  letter-spacing: 0.04em !important;
+}
+
+html[data-a11y-letter-spacing="wider"] body {
+  letter-spacing: 0.08em !important;
+}
+
+/* --- 3. Dyslexia Friendly Font --- */
+html[data-a11y-dyslexia="true"] body,
+html[data-a11y-dyslexia="true"] p,
+html[data-a11y-dyslexia="true"] h1,
+html[data-a11y-dyslexia="true"] h2,
+html[data-a11y-dyslexia="true"] h3,
+html[data-a11y-dyslexia="true"] button,
+html[data-a11y-dyslexia="true"] input,
+html[data-a11y-dyslexia="true"] select {
+  font-family: 'OpenDyslexic', 'Comic Sans MS', -apple-system, system-ui, sans-serif !important;
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.12em !important;
+}
+
+/* --- 4. Reduced Motion & Animation Pause --- */
+html[data-a11y-reduced-motion="true"] *,
+html[data-a11y-reduced-motion="true"] *::before,
+html[data-a11y-reduced-motion="true"] *::after,
+html[data-a11y-pause-animations="true"] *,
+html[data-a11y-pause-animations="true"] *::before,
+html[data-a11y-pause-animations="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* --- 5. Highlight Links --- */
+html[data-a11y-highlight-links="true"] a {
+  text-decoration: underline 2px solid var(--ishti-temple-maroon) !important;
+  text-underline-offset: 4px !important;
+  font-weight: 700 !important;
+}
+
+/* --- 6. Large Cursor --- */
+html[data-a11y-big-cursor="true"],
+html[data-a11y-big-cursor="true"] * {
+  cursor: default !important;
+}
+html[data-a11y-big-cursor="true"] a,
+html[data-a11y-big-cursor="true"] button,
+html[data-a11y-big-cursor="true"] [role="button"],
+html[data-a11y-big-cursor="true"] input,
+html[data-a11y-big-cursor="true"] select,
+html[data-a11y-big-cursor="true"] label {
+  cursor: pointer !important;
+}
+
+/* --- 7. Contrast Themes --- */
+/* High Contrast Mode (WCAG AAA 21:1 black on white with thick structural borders) */
+html[data-a11y-contrast="high_contrast"] {
+  --ivory: #FFFFFF !important;
+  --surface-page: #FFFFFF !important;
+  --surface-card: #FFFFFF !important;
+  --surface-card-subtle: #F5F5F5 !important;
+  --ink: #000000 !important;
+  --ishti-temple-charcoal: #000000 !important;
+  --ishti-warm-bronze: #111111 !important;
+  --ishti-muted-gold: #000000 !important;
+  --ishti-temple-maroon: #000000 !important;
+  --ishti-vedic-saffron: #000000 !important;
+  --border-card: #000000 !important;
+  --border-gold: #000000 !important;
+  --border-subtle: #000000 !important;
+}
+
+html[data-a11y-contrast="high_contrast"] body {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+}
+
+html[data-a11y-contrast="high_contrast"] .siteHeader,
+html[data-a11y-contrast="high_contrast"] .siteFooter,
+html[data-a11y-contrast="high_contrast"] .ecosystemCard,
+html[data-a11y-contrast="high_contrast"] .synthesisCard,
+html[data-a11y-contrast="high_contrast"] .trustCard,
+html[data-a11y-contrast="high_contrast"] .previewCard,
+html[data-a11y-contrast="high_contrast"] .ctaInner,
+html[data-a11y-contrast="high_contrast"] .a11yPanelInner,
+html[data-a11y-contrast="high_contrast"] .langPanelInner,
+html[data-a11y-contrast="high_contrast"] .authModalCard {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  box-shadow: none !important;
+}
+
+html[data-a11y-contrast="high_contrast"] button,
+html[data-a11y-contrast="high_contrast"] .btnPrimary,
+html[data-a11y-contrast="high_contrast"] .btnSecondary,
+html[data-a11y-contrast="high_contrast"] .signInButton {
+  border: 2px solid #000000 !important;
+  color: #000000 !important;
+  background: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+html[data-a11y-contrast="high_contrast"] .btnPrimary:hover,
+html[data-a11y-contrast="high_contrast"] .signInButton:hover {
+  background: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+/* Dark Sanctuary Theme */
+html[data-a11y-contrast="dark"] {
+  --ivory: #151719 !important;
+  --surface-page: #151719 !important;
+  --surface-card: #1F2227 !important;
+  --surface-card-subtle: #272B32 !important;
+  --surface-maroon: #251B1A !important;
+  --ink: #F7F4EE !important;
+  --ishti-ivory-paper: #151719 !important;
+  --ishti-ivory-paper-warm: #1F2227 !important;
+  --ishti-temple-charcoal: #F7F4EE !important;
+  --ishti-warm-bronze: #C8B9A6 !important;
+  --ishti-muted-gold: #D7A64A !important;
+  --border-card: rgba(215, 166, 74, 0.22) !important;
+  --border-gold: rgba(215, 166, 74, 0.3) !important;
+  --border-subtle: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-a11y-contrast="dark"] body {
+  background-color: #151719 !important;
+  color: #F7F4EE !important;
+}
+
+html[data-a11y-contrast="dark"] .siteHeader {
+  background-color: rgba(21, 23, 25, 0.94) !important;
+  border-bottom-color: rgba(215, 166, 74, 0.2) !important;
+}
+
+html[data-a11y-contrast="dark"] .siteFooter {
+  background-color: #0E1012 !important;
+  border-top-color: rgba(215, 166, 74, 0.2) !important;
+}
+
+html[data-a11y-contrast="dark"] .ecosystemCard,
+html[data-a11y-contrast="dark"] .synthesisCard,
+html[data-a11y-contrast="dark"] .trustCard,
+html[data-a11y-contrast="dark"] .previewCard,
+html[data-a11y-contrast="dark"] .ctaInner,
+html[data-a11y-contrast="dark"] .a11yPanelInner,
+html[data-a11y-contrast="dark"] .langPanelInner,
+html[data-a11y-contrast="dark"] .authModalCard {
+  background-color: #1F2227 !important;
+  border-color: rgba(215, 166, 74, 0.25) !important;
+  color: #F7F4EE !important;
+}
+
+html[data-a11y-contrast="dark"] .navItemLink {
+  color: #E2DBD0 !important;
+}
+
+html[data-a11y-contrast="dark"] .navItemLink:hover {
+  color: #D7A64A !important;
+}
+
+html[data-a11y-contrast="dark"] .heroKicker {
+  background-color: #272B32 !important;
+  border-color: rgba(215, 166, 74, 0.3) !important;
+  color: #D7A64A !important;
+}
+
+/* --- 8. Header Language & Accessibility Buttons --- */
+.headerLangButton,
+.headerA11yButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  min-height: 44px;
+  background-color: transparent;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--border-radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ishti-temple-charcoal);
+  transition: all 180ms ease;
+}
+
+.headerLangButton:hover,
+.headerA11yButton:hover {
+  background-color: var(--ishti-ivory-paper-warm);
+  border-color: var(--ishti-temple-maroon);
+  color: var(--ishti-temple-maroon);
+}
+
+.headerLangCode {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  background-color: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* --- 9. Floating Accessibility Launcher --- */
+.a11yFloatingLauncherGroup {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.a11yFloatingLauncherGroup > * {
+  pointer-events: auto;
+}
+
+.a11yLauncherBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  min-height: 48px;
+  min-width: 48px;
+  background-color: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+  border: 2px solid var(--ishti-sacred-gold);
+  border-radius: var(--border-radius-full);
+  box-shadow: 0 4px 16px rgba(113, 27, 22, 0.35);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 200ms ease;
+}
+
+.a11yLauncherBtn:hover {
+  background-color: var(--ishti-temple-maroon-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(113, 27, 22, 0.45);
+}
+
+.a11yLauncherIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.a11yFloatingStopBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  min-height: 44px;
+  background-color: var(--ishti-error);
+  color: #FFFFFF;
+  border: 2px solid #FFFFFF;
+  border-radius: var(--border-radius-full);
+  box-shadow: 0 4px 14px rgba(158, 43, 37, 0.4);
+  font-size: 12px;
+  font-weight: 700;
+  animation: pulseStopBtn 1.6s infinite;
+}
+
+@keyframes pulseStopBtn {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+.a11yVoicePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: var(--ishti-success);
+  color: #FFFFFF;
+  border-radius: var(--border-radius-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.a11yVoicePillPulse {
+  animation: voicePulse 1s infinite alternate;
+}
+
+@keyframes voicePulse {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .a11yFloatingLauncherGroup {
+    bottom: 84px;
+    right: 16px;
+  }
+  .a11yLauncherText {
+    display: none;
+  }
+  .a11yLauncherBtn {
+    padding: 12px;
+    border-radius: 50%;
+  }
+}
+
+/* --- 10. Native <dialog> Modal Architecture --- */
+.a11yDialog,
+.langDialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  max-width: 680px;
+  width: 92%;
+  max-height: 90vh;
+  z-index: 10000;
+  overflow: visible;
+}
+
+.a11yDialog::backdrop,
+.langDialog::backdrop {
+  background: rgba(42, 39, 38, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+.a11yPanelInner,
+.langPanelInner {
+  background: var(--ishti-ivory-paper);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--border-radius-xl);
+  box-shadow: 0 16px 48px -8px rgba(113, 27, 22, 0.25);
+  padding: 32px;
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.a11yPanelHeader,
+.langPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.a11yHeaderKicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ishti-temple-maroon);
+  margin-bottom: 4px;
+}
+
+.a11yTitle,
+.langDialogTitle {
+  font-family: var(--font-display), serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ishti-temple-maroon);
+  line-height: 1.25;
+}
+
+.a11ySubtitle,
+.langDialogSubtitle {
+  font-size: 13px;
+  color: var(--ishti-warm-bronze);
+  margin-top: 4px;
+}
+
+.a11yCloseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  color: var(--ishti-warm-bronze);
+  transition: all 180ms ease;
+}
+
+.a11yCloseBtn:hover {
+  background-color: var(--ishti-ivory-paper-warm);
+  color: var(--ishti-temple-maroon);
+  border-color: var(--ishti-temple-maroon);
+}
+
+.a11ySection {
+  margin-bottom: 28px;
+}
+
+.a11ySectionTitle {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ishti-temple-maroon);
+  margin-bottom: 14px;
+}
+
+/* Profiles Grid */
+.a11yProfilesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.a11yProfileCard {
+  background: var(--ishti-ivory-paper-warm);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  padding: 14px 16px;
+  text-align: left;
+  transition: all 180ms ease;
+  min-height: 80px;
+}
+
+.a11yProfileCard:hover {
+  border-color: var(--ishti-sacred-gold);
+  transform: translateY(-1px);
+}
+
+.a11yProfileCardActive {
+  background: #FFF7EB;
+  border: 2px solid var(--ishti-vedic-saffron);
+}
+
+.a11yProfileCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.a11yProfileName {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ishti-temple-maroon);
+}
+
+.a11yActiveCheck {
+  color: var(--ishti-vedic-saffron);
+}
+
+.a11yProfileDesc {
+  font-size: 11px;
+  color: var(--ishti-warm-bronze);
+  line-height: 1.45;
+}
+
+/* Individual Controls */
+.a11yControlRow {
+  margin-bottom: 16px;
+}
+
+.a11yControlLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+  margin-bottom: 8px;
+}
+
+.a11yValueBadge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ishti-temple-maroon);
+  background: rgba(113, 27, 22, 0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.a11yButtonGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.a11yBtnOption {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  min-height: 42px;
+  background: var(--ishti-ivory-paper-warm);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+  transition: all 180ms ease;
+}
+
+.a11yBtnOption:hover {
+  border-color: var(--ishti-temple-maroon);
+}
+
+.a11yBtnOptionActive {
+  background: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+  border-color: var(--ishti-temple-maroon);
+}
+
+.a11yTogglesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.a11yToggleItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  min-height: 48px;
+  background: var(--ishti-ivory-paper-warm);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+}
+
+.a11yCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ishti-temple-maroon);
+  cursor: pointer;
+}
+
+.a11yToggleLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+}
+
+/* Assistive Speech and Voice Cards */
+.a11yAssistiveGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .a11yAssistiveGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.a11yAssistiveCard {
+  background: var(--ishti-ivory-paper-warm);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  padding: 16px;
+}
+
+.a11yAssistiveCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.a11yStatusPill {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ishti-success);
+  background: var(--ishti-success-surface);
+  padding: 2px 8px;
+  border-radius: var(--border-radius-full);
+}
+
+.a11yStatusPillActive {
+  font-size: 10px;
+  font-weight: 700;
+  color: #FFFFFF;
+  background: var(--ishti-success);
+  padding: 2px 8px;
+  border-radius: var(--border-radius-full);
+  animation: voicePulse 1s infinite alternate;
+}
+
+.a11yStatusPillDisabled {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ishti-warm-bronze);
+  background: rgba(0,0,0,0.06);
+  padding: 2px 8px;
+  border-radius: var(--border-radius-full);
+}
+
+.a11yAssistiveDesc {
+  font-size: 11px;
+  color: var(--ishti-warm-bronze);
+  line-height: 1.5;
+}
+
+.a11yLastCommand {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(113, 27, 22, 0.06);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--ishti-temple-maroon);
+}
+
+.a11yActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  min-height: 44px;
+  background: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+  border-radius: var(--border-radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 180ms ease;
+}
+
+.a11yActionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.a11yActionBtnDestructive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  min-height: 44px;
+  background: var(--ishti-error);
+  color: #FFFFFF;
+  border-radius: var(--border-radius-md);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.a11yPanelFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.a11yResetBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ishti-warm-bronze);
+  padding: 8px 12px;
+  min-height: 44px;
+  border-radius: var(--border-radius-md);
+}
+
+.a11yResetBtn:hover {
+  color: var(--ishti-temple-maroon);
+  background: rgba(113, 27, 22, 0.05);
+}
+
+/* --- 11. Language Modal Dialog & Styles --- */
+.langGlobeBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(113, 27, 22, 0.08);
+  border-radius: 50%;
+  color: var(--ishti-temple-maroon);
+}
+
+.langSearchWrapper {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.langSearchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ishti-warm-bronze);
+  pointer-events: none;
+}
+
+.langSearchInput {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  min-height: 48px;
+  background: var(--ishti-ivory-paper-warm);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  font-size: 14px;
+  color: var(--ishti-temple-charcoal);
+}
+
+.langSearchInput:focus {
+  outline: 2px solid var(--ishti-temple-maroon);
+  border-color: var(--ishti-temple-maroon);
+}
+
+.langListGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.langOptionCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  min-height: 58px;
+  background: var(--ishti-ivory-paper-warm);
+  border: 1px solid var(--border-card);
+  border-radius: var(--border-radius-md);
+  text-align: left;
+  transition: all 180ms ease;
+}
+
+.langOptionCard:hover {
+  border-color: var(--ishti-sacred-gold);
+  transform: translateY(-1px);
+}
+
+.langOptionActive {
+  background: #FFF7EB;
+  border: 2px solid var(--ishti-vedic-saffron);
+}
+
+.langNativeTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ishti-temple-maroon);
+}
+
+.langEnglishTitle {
+  font-size: 11px;
+  color: var(--ishti-warm-bronze);
+  margin-top: 2px;
+}
+
+.langCardMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.langBadgeComplete {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ishti-success);
+  background: var(--ishti-success-surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.langBadgeScaffold {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--ishti-warm-bronze);
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.langSelectedIcon {
+  color: var(--ishti-vedic-saffron);
+}
+
+.langFooterNotice {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--ishti-warm-bronze);
+  line-height: 1.5;
+}
+
+/* --- 12. First Time Language Banner --- */
+.firstTimeLangBanner {
+  background: linear-gradient(90deg, #FFF7EB 0%, var(--ishti-ivory-paper-warm) 100%);
+  border-bottom: 1px solid var(--ishti-sacred-gold);
+  padding: 10px 24px;
+  position: relative;
+  z-index: 99;
+}
+
+.firstTimeLangInner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.firstTimeLangLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.firstTimeGlobeIcon {
+  color: var(--ishti-temple-maroon);
+  display: flex;
+  align-items: center;
+}
+
+.firstTimeTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ishti-temple-maroon);
+}
+
+.firstTimeSubtitle {
+  font-size: 12px;
+  color: var(--ishti-warm-bronze);
+}
+
+.firstTimeLangActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.firstTimeLangBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  min-height: 38px;
+  background: #FFFFFF;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--border-radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ishti-temple-charcoal);
+  transition: all 180ms ease;
+}
+
+.firstTimeLangBtn:hover {
+  border-color: var(--ishti-temple-maroon);
+}
+
+.firstTimeLangBtnActive {
+  background: var(--ishti-temple-maroon);
+  color: var(--ishti-ivory-paper);
+  border-color: var(--ishti-temple-maroon);
+}
+
+.firstTimeCloseBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--ishti-warm-bronze);
+  border-radius: 50%;
+}
+
+.firstTimeCloseBtn:hover {
+  background: rgba(113, 27, 22, 0.08);
+  color: var(--ishti-temple-maroon);
+}
+

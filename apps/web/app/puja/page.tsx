@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Clock } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useI18n } from "../../lib/i18n/context";
 
 interface PujaGuide {
   id: string;
@@ -57,18 +58,20 @@ const FEATURED_PUJAS: PujaGuide[] = [
 
 export default function PujaPage() {
   const { openAuthModal } = useAuth();
+  const { dict } = useI18n();
+  const pu = dict.puja;
   const [selectedPuja, setSelectedPuja] = useState<PujaGuide>(FEATURED_PUJAS[0]);
 
   return (
     <PillarShell
       pillarKey="puja"
-      title="ISHTI Puja"
-      sanskritTagline="यज्ञो वै श्रेष्ठतमं कर्म — Yajna is the highest and noble action (Shatapatha Brahmana)"
-      description="Step-by-step ritual guides, verified samagri checklists, and scriptural mantras tailored to your sampradaya, festival, and regional tradition."
-      breadcrumbs={[{ label: "ISHTI Puja", current: true }]}
+      title={pu.title}
+      sanskritTagline={pu.tagline}
+      description={pu.description}
+      breadcrumbs={[{ label: pu.title, current: true }]}
       actionSlot={
         <Link href="/experts" className="signInButton" style={{ padding: "8px 16px" }}>
-          Book an Acharya
+          {pu.bookAcharya}
         </Link>
       }
     >
@@ -77,7 +80,7 @@ export default function PujaPage() {
         {/* Left: Featured Puja Catalog */}
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 600, color: "var(--ishti-temple-charcoal)", marginBottom: "16px" }}>
-            Canonical Ritual Guides
+            {pu.canonicalGuides}
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             {FEATURED_PUJAS.map((puja) => {

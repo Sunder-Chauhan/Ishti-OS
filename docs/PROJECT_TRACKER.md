@@ -170,18 +170,33 @@
 - [x] Brand Guidelines updated to v1.1 ([docs/BRAND_GUIDELINES.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/BRAND_GUIDELINES.md))
 - [x] Full test suite (108/108 tests passed) and Next.js 15 production build verified (0 errors)
 
-## M04 — Application Foundation & User Experience Shell (CLOSED & VERIFIED)
+## M04 — Application Foundation & User Experience Shell (ACCEPTED & CLOSED AT cafc920)
+> **Governance Decision:** M04 Application Foundation & UX Shell is formally **ACCEPTED** and closed at commit `cafc9207b27010d5ddd32662937b758988a75524` based on the M04 Post-Implementation Acceptance Audit.
+> 
+> **Acceptance Evidence:**
+> - Local and remote Git synchronization (`main` and `origin/main` point to `cafc920`).
+> - Clean working tree at acceptance baseline.
+> - Monorepo TypeScript verification passed with 0 errors (`npm run typecheck`).
+> - Next.js production build succeeded with 0 errors across all static routes (`npm run build:web`).
+> - 110/110 automated tests passed across static, unit, crypto, PostgreSQL 18, and concurrency suites (`npm run test:security`).
+> - Zero UI emojis found across application interface scope (`scripts/audit-ui-icons.mjs`).
+> - Byte-for-byte parity verified across all six approved logo SVG assets (`scripts/verify-approved-logos.mjs`).
+> - Visual acceptance audit confirmed across desktop and mobile form factors (`ishti_m04_post_implementation_acceptance_audit.md`).
+> - Production Supabase database strictly quarantined (`zxwkfnvmmxoojewhvsdc`).
+
 - [x] Foundation & Design System Audit deliverable ([docs/M04_FOUNDATION_AND_DESIGN_SYSTEM_AUDIT.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M04_FOUNDATION_AND_DESIGN_SYSTEM_AUDIT.md))
 - [x] Implement Next.js 15 application shell layout and font loading (`AppShell`, `design-tokens.css`, `layout.tsx`)
 - [x] Implement responsive navigation header (desktop) and bottom navigation (mobile) (`DesktopHeader`, `MobileBottomNav`, `Breadcrumbs`)
 - [x] Implement India-first phone OTP authentication modal and session middleware (`AuthModal`, `useAuth`, `auth-context.tsx`)
 - [x] Implement user profile view and DPDP Act 2023 consent center UI (`/profile`, `/profile/consent`)
 - [x] Implement decoupled product module shells (ISHTI Puja, Astro, Bhakti, Panchang, Experts, Community) (`/puja`, `/astro`, `/bhakti`, `/panchang`, `/experts`, `/community`)
-- [x] Decision log updated (ADR-019 in [docs/DECISION_LOG.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/DECISION_LOG.md))
-- [x] Full test suite (110/110 passed), monorepo TypeScript check (0 errors), and Next.js 15 production build verified (13/13 routes)
+- [x] Refine interface iconography: replace emoji icons with unified Lucide icon system across all 6 modules (commit `cafc920`)
+- [x] Decision log updated (ADR-019 & ADR-021 in [docs/DECISION_LOG.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/DECISION_LOG.md))
+- [x] Full test suite (110/110 passed), monorepo TypeScript check (0 errors), and Next.js 15 production build verified (15/15 routes prerendered)
+- [x] Milestone M04 formally accepted and closed at commit `cafc920`
 
 ## Current Gate Status
-- **Status:** `MILESTONE M04 COMPLETE & FULLY VERIFIED`
+- **Status:** `MILESTONES M04 & M04.6 FORMALLY ACCEPTED & CLOSED`
 - **Target Staging Project:** `zrjptpkhtklfgnovdrny` (Region: `ap-south-1`, Mumbai)
 - **Active Recovery Point:** `staging_backup_2026-11-15T18-54-57-175Z.meta.json` (Verified 100% SHA-256 and size parity)
 - **Canonical Migration:** `20261114000000_initial_schema.sql` (SHA-256 `3399a731...` verified)
@@ -191,12 +206,13 @@
   3. **INC-01 (Razorpay Sandbox Key Rotation):** Resolved in merchant dashboard; live tested in Gate C.
   4. **Pre-Gate C Independent Verification:** Complete (72/72 catalog checks passed with zero mutations).
   5. **Gate C (Hosted Application & Payment Sandbox Tests):** Complete (**18/18 integration tests passed**; zero residual pollution in transactional tables; seed records preserved).
-  6. **Milestone M04 (App Foundation & UX Shell):** Complete (**13/13 routes statically prerendered**, 110/110 tests passed, 0 TypeScript errors).
-- **Restrictions:** Production strictly quarantined (`zxwkfnvmmxoojewhvsdc`).
-- **Next Action:** Ready for operator review and roadmap planning for deep feature implementation (M05).
+  6. **Milestone M04 (App Foundation & UX Shell):** **ACCEPTED & CLOSED AT cafc920** (110/110 tests passed, 0 TypeScript errors, 15/15 static routes prerendered, 0 UI emojis, 100% logo parity).
+  7. **Milestone M04.6 (Inclusive Experience & Globalisation Foundation):** **ACCEPTED & CLOSED** (110/110 tests passed, 0 TypeScript errors, 15/15 static routes prerendered, 0 UI emojis, 100% logo parity, WCAG 2.2 accessibility verified, Web Speech API privacy disclosure, deep-fallback i18n, public UX isolation).
+- **Proposed Next Step:** `M05 — Core Platform Domains Implementation` (awaiting separate scoping and authorization).
+- **Restrictions:** Production strictly quarantined (`zxwkfnvmmxoojewhvsdc`). Zero production deployment. No M05 implementation started.
 
 
-## M04.6 — Official ISHTI Digital Logo Family Integration (CLOSED & VERIFIED)
+## M04.5 — Official ISHTI Digital Logo Family Integration (CLOSED & VERIFIED)
 - [x] Immutable Master Vector Reference preserved: `preview_v2.html` (root and `docs/preview_v2.html`)
 - [x] Extraction of 6 official SVG assets with 100% vector parity to `apps/web/public/brand/` (`ishti-primary.svg`, `ishti-secondary.svg`, `ishti-icon.svg`, `ishti-horizontal.svg`, `ishti-monochrome.svg`, `ishti-reversed.svg`)
 - [x] Synchronized legacy aliases (`ishti-logo-*.svg`) maintained for backward compatibility
@@ -208,3 +224,21 @@
 - [x] Verification audit (`scripts/verify-approved-logos.mjs`) passing 100% of checks across all 6 variants
 - [x] Monorepo TypeScript check (0 errors), security/RLS test suite (110/110 passed), and Next.js 15 production build verified (15/15 routes prerendered)
 - [x] Decision log updated (ADR-020 in [docs/DECISION_LOG.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/DECISION_LOG.md))
+
+## M04.6 — Inclusive Experience & Globalisation Foundation (CLOSED & ACCEPTED)
+> **Governance Status:** CLOSED & ACCEPTED — Formally accepted by operator on November 17, 2026. Fully implemented and verified.
+
+Scope & Deliverables:
+- [x] Public/backend technical information separation (presentation layer, devotee ID masking, database error code sanitization)
+- [x] Human-readable errors (calm, dignified error mapping in `toHumanReadableError`)
+- [x] Internationalisation architecture (`I18nProvider`, language modal, cookie/localStorage persistence, deep fallback merge)
+- [x] English and Hindi interface completion (100% dictionary coverage across all 6 modules and home)
+- [x] Regional language expansion foundation (8 regional languages scaffolded with safe English fallback and transparent UI roadmap badging)
+- [x] Persistent accessibility preferences (`A11yProvider`, 6 pre-configured profiles, localStorage persistence, one-click reset)
+- [x] Accessibility centre (WCAG 2.2 AAA/AA tokens, high contrast, dark mode, dyslexia font, text scaling 100-200%, reflow without clipping)
+- [x] Senior-friendly interaction patterns (>=48px touch targets, generous spacing, zero forced registration)
+- [x] Screen-reader and keyboard accessibility (Skip to content link, native dialog focus trapping and restoration, ARIA landmarks and live regions)
+- [x] Read-aloud foundation (Web Speech API text-to-speech with rate control and multi-lingual voice selection)
+- [x] Voice navigation privacy disclosure (in-UI vendor cloud speech recognition disclosure before microphone activation)
+- [x] Decision log updated (ADR-022 in `docs/DECISION_LOG.md`)
+- [x] Final reconciliation deliverable (`docs/M04_6_FINAL_ACCEPTANCE_RECONCILIATION.md`)

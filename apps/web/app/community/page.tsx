@@ -4,6 +4,7 @@ import React from "react";
 import { ArrowRight } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useI18n } from "../../lib/i18n/context";
 
 interface SatsangCircle {
   id: string;
@@ -47,6 +48,8 @@ const CIRCLES: SatsangCircle[] = [
 
 export default function CommunityPage() {
   const { user, openAuthModal } = useAuth();
+  const { dict } = useI18n();
+  const c = dict.community;
 
   const handleJoin = (circleName: string) => {
     if (!user) {
@@ -61,10 +64,10 @@ export default function CommunityPage() {
   return (
     <PillarShell
       pillarKey="community"
-      title="ISHTI Community"
-      sanskritTagline="सङ्गच्छध्वं संवदध्वं सं वो मनांसि जानताम् — Walk together, speak together, let your minds be of one accord (Rigveda 10.191.2)"
-      description="A dignified space for spiritual fellowship. Connect with local temple events, seva opportunities, and philosophical study circles."
-      breadcrumbs={[{ label: "ISHTI Community", current: true }]}
+      title={c.title}
+      sanskritTagline={c.tagline}
+      description={c.description}
+      breadcrumbs={[{ label: c.title, current: true }]}
       actionSlot={
         <span className="userRoleBadge" style={{ backgroundColor: "var(--ishti-success-surface)", color: "var(--ishti-success)" }}>
           Moderated Fellowship

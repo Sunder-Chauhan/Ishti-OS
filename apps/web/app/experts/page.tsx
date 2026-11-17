@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Check } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useI18n } from "../../lib/i18n/context";
 
 interface ExpertProfile {
   id: string;
@@ -59,6 +60,8 @@ const EXPERT_DIRECTORY: ExpertProfile[] = [
 
 export default function ExpertsPage() {
   const { user, openAuthModal } = useAuth();
+  const { dict } = useI18n();
+  const ex = dict.experts;
   const [selectedSpecialization, setSelectedSpecialization] = useState("all");
 
   const handleBook = (expert: ExpertProfile) => {
@@ -74,10 +77,10 @@ export default function ExpertsPage() {
   return (
     <PillarShell
       pillarKey="experts"
-      title="ISHTI Experts"
-      sanskritTagline="आचार्यवान् पुरुषो वेद — He who has an Acharya knows the truth (Chandogya Upanishad 6.14.2)"
-      description="Direct, transparent access to qualified spiritual practitioners. Strict verification of lineage, credentials, and authentic ritual practice."
-      breadcrumbs={[{ label: "ISHTI Experts", current: true }]}
+      title={ex.title}
+      sanskritTagline={ex.tagline}
+      description={ex.description}
+      breadcrumbs={[{ label: ex.title, current: true }]}
       actionSlot={
         <span className="userRoleBadge" style={{ backgroundColor: "var(--ishti-success-surface)", color: "var(--ishti-success)" }}>
           Strict Lineage Verification

@@ -3,29 +3,36 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserRound, X } from "lucide-react";
+import { UserRound, X, Globe, Eye } from "lucide-react";
 import { IshtiLogo } from "../brand";
 import { useAuth } from "../../../lib/auth/auth-context";
+import { useI18n } from "../../../lib/i18n/context";
+import { useA11y } from "../../../lib/a11y/a11y-context";
+import { LanguageModal } from "../i18n/LanguageModal";
 
 interface NavItem {
-  name: string;
+  id: string;
   href: string;
-  description: string;
+  descriptionKey: string;
 }
 
 const MODULE_NAV_ITEMS: NavItem[] = [
-  { name: "Bhakti", href: "/bhakti", description: "Canonical scriptures & chanting" },
-  { name: "Panchang", href: "/panchang", description: "Vedic calendar & muhurtas" },
-  { name: "Puja", href: "/puja", description: "Vedic rituals & temple offerings" },
-  { name: "Astro", href: "/astro", description: "Encrypted Kundli & planetary insights" },
-  { name: "Experts", href: "/experts", description: "Vetted Pandits & Acharyas" },
-  { name: "Community", href: "/community", description: "Satsang & devotional seva" },
+  { id: "bhakti", href: "/bhakti", descriptionKey: "Canonical scriptures & chanting" },
+  { id: "panchang", href: "/panchang", descriptionKey: "Vedic calendar & muhurtas" },
+  { id: "puja", href: "/puja", descriptionKey: "Vedic rituals & temple offerings" },
+  { id: "astro", href: "/astro", descriptionKey: "Encrypted Kundli & planetary insights" },
+  { id: "experts", href: "/experts", descriptionKey: "Vetted Pandits & Acharyas" },
+  { id: "community", href: "/community", descriptionKey: "Satsang & devotional seva" },
 ];
 
 export function DesktopHeader() {
   const pathname = usePathname();
   const { user, openAuthModal, signOut } = useAuth();
+  const { locale, supportedLanguages, dict } = useI18n();
+  const { openA11yModal } = useA11y();
+
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [isLangModalOpen, setIsLangModalOpen] = useState(false);
 
   const toggleDrawer = () => setMobileDrawerOpen((prev) => !prev);
   const closeDrawer = () => setMobileDrawerOpen(false);
@@ -33,6 +40,21 @@ export function DesktopHeader() {
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
+  };
+
+  const currentLangInfo = supportedLanguages.find((l) => l.code === locale);
+  const navDict = dict.nav;
+
+  const getNavLabel = (id: string) => {
+    switch (id) {
+      case "bhakti": return navDict.bhakti;
+      case "panchang": return navDict.panchang;
+      case "puja": return navDict.puja;
+      case "astro": return navDict.astro;
+      case "experts": return navDict.experts;
+      case "community": return navDict.community;
+      default: return id;
+    }
   };
 
   return (
@@ -53,6 +75,7 @@ export function DesktopHeader() {
           <ul className="navLinks">
             {MODULE_NAV_ITEMS.map((item) => {
               const active = isActive(item.href);
+              const label = getNavLabel(item.id);
               return (
                 <li key={item.href}>
                   <Link
@@ -60,7 +83,7 @@ export function DesktopHeader() {
                     className={`navItem ${active ? "navItemActive" : ""}`}
                     aria-current={active ? "page" : undefined}
                   >
-                    {item.name}
+                    {label}
                   </Link>
                 </li>
               );
@@ -68,8 +91,34 @@ export function DesktopHeader() {
           </ul>
         </nav>
 
-        {/* Header Actions (Auth / Profile) */}
+        {/* Header Actions (Language, A11y, Auth / Profile) */}
         <div className="headerActions">
+          {/* Language Selector Button */}
+          <button
+            type="button"
+            onClick={() => setIsLangModalOpen(true)}
+            className="headerLangButton"
+            aria-label={dict.common.selectLanguage}
+            title={dict.common.selectLanguage}
+          >
+            <Globe size={16} strokeWidth={1.8} aria-hidden="true" />
+            <span className="headerLangLabel">
+              {currentLangInfo?.nativeName || "English"}
+            </span>
+          </button>
+
+          {/* Accessibility Centre Launcher Button */}
+          <button
+            type="button"
+            onClick={openA11yModal}
+            className="headerA11yButton"
+            aria-label={dict.common.accessibility}
+            title={dict.common.accessibility}
+          >
+            <Eye size={17} strokeWidth={1.8} aria-hidden="true" />
+            <span className="desktopA11yLabel">{dict.common.accessibility}</span>
+          </button>
+
           {user ? (
             <div className="userProfileMenu">
               <Link
@@ -91,7 +140,7 @@ export function DesktopHeader() {
                 className="btnHeaderSignOut"
                 title="Sign out of your session"
               >
-                Sign Out
+                {dict.common.signOut}
               </button>
             </div>
           ) : (
@@ -99,9 +148,9 @@ export function DesktopHeader() {
               type="button"
               onClick={() => openAuthModal()}
               className="signInButton"
-              aria-label="Devotee Sign In"
+              aria-label={dict.common.signIn}
             >
-              Sign In
+              {dict.common.signIn}
             </button>
           )}
 
@@ -155,8 +204,8 @@ export function DesktopHeader() {
                   onClick={closeDrawer}
                   className={`mobileNavItem ${pathname === "/" ? "mobileNavItemActive" : ""}`}
                 >
-                  Ecosystem Home
-                  <span className="mobileNavDesc">Rooted in Tradition. Connected to Today.</span>
+                  {dict.nav.home}
+                  <span className="mobileNavDesc">{dict.common.brandTagline}</span>
                 </Link>
               </li>
               {MODULE_NAV_ITEMS.map((item) => (
@@ -167,8 +216,8 @@ export function DesktopHeader() {
                     className={`mobileNavItem ${isActive(item.href) ? "mobileNavItemActive" : ""}`}
                     aria-current={isActive(item.href) ? "page" : undefined}
                   >
-                    {item.name}
-                    <span className="mobileNavDesc">{item.description}</span>
+                    {getNavLabel(item.id)}
+                    <span className="mobileNavDesc">{item.descriptionKey}</span>
                   </Link>
                 </li>
               ))}
@@ -178,11 +227,38 @@ export function DesktopHeader() {
                   onClick={closeDrawer}
                   className={`mobileNavItem ${pathname.startsWith("/profile") ? "mobileNavItemActive" : ""}`}
                 >
-                  Devotee Profile & Privacy
-                  <span className="mobileNavDesc">DPDP Act 2023 consent & settings</span>
+                  {dict.nav.profile}
+                  <span className="mobileNavDesc">DPDP Act 2023 consent &amp; settings</span>
                 </Link>
               </li>
             </ul>
+
+            {/* Quick Inclusion Controls in Drawer */}
+            <div className="mobileDrawerInclusionStrip">
+              <button
+                type="button"
+                onClick={() => {
+                  closeDrawer();
+                  setIsLangModalOpen(true);
+                }}
+                className="mobileDrawerActionBtn"
+              >
+                <Globe size={18} strokeWidth={1.8} aria-hidden="true" />
+                <span>{dict.common.selectLanguage}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  closeDrawer();
+                  openA11yModal();
+                }}
+                className="mobileDrawerActionBtn"
+              >
+                <Eye size={18} strokeWidth={1.8} aria-hidden="true" />
+                <span>{dict.common.accessibility}</span>
+              </button>
+            </div>
           </nav>
 
           <div className="mobileDrawerFooter">
@@ -199,7 +275,7 @@ export function DesktopHeader() {
                   }}
                   className="mobileBtnSignOut"
                 >
-                  Sign Out
+                  {dict.common.signOut}
                 </button>
               </div>
             ) : (
@@ -211,16 +287,22 @@ export function DesktopHeader() {
                 }}
                 className="mobileBtnSignIn"
               >
-                Sign In with Mobile
+                {dict.common.signIn}
               </button>
             )}
-            <p className="mobileTagline">Rooted in Tradition. Connected to Today.</p>
+            <p className="mobileTagline">{dict.common.brandTagline}</p>
           </div>
         </div>
       </div>
       {mobileDrawerOpen && (
         <div className="drawerBackdrop" onClick={closeDrawer} aria-hidden="true" />
       )}
+
+      {/* Accessible Language Selector Dialog */}
+      <LanguageModal
+        isOpen={isLangModalOpen}
+        onClose={() => setIsLangModalOpen(false)}
+      />
     </header>
   );
 }

@@ -3,8 +3,11 @@
 import React, { useState } from "react";
 import { Check, AlertTriangle } from "lucide-react";
 import { PillarShell } from "../components/layout/PillarShell";
+import { useI18n } from "../../lib/i18n/context";
 
 export default function PanchangPage() {
+  const { dict } = useI18n();
+  const p = dict.panchang;
   const [selectedCity, setSelectedCity] = useState("Varanasi, UP");
   const [calendarSystem, setCalendarSystem] = useState<"purnimanta" | "amanta">("purnimanta");
 
@@ -18,10 +21,10 @@ export default function PanchangPage() {
   return (
     <PillarShell
       pillarKey="panchang"
-      title="ISHTI Panchang"
-      sanskritTagline="तिथिर्वारश्च नक्षत्रं योगः करणमेव च — Tithi, Vaara, Nakshatra, Yoga, and Karana"
-      description="Precision calculation of the five limbs of Vedic time. Auspicious muhurtas and planetary ephemeris calculated for your exact geographical coordinates."
-      breadcrumbs={[{ label: "ISHTI Panchang", current: true }]}
+      title={p.title}
+      sanskritTagline={p.tagline}
+      description={p.description}
+      breadcrumbs={[{ label: p.title, current: true }]}
       actionSlot={
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <select
