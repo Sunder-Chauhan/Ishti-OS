@@ -100,38 +100,89 @@ export function checkComplianceRateLimit(
 }
 
 /**
- * Extracts client IP address with proxy trustworthiness validation.
+ * Ingress & Client IP Extraction Architecture:
  *
- * In production behind trusted reverse proxies (e.g. Cloudflare / Vercel):
- * - If TRUSTED_PROXY=true (or CF-Connecting-IP present from Cloudflare), inspect trusted headers.
- * - Otherwise, treat x-forwarded-for as untrusted user input to prevent header-injection rate limit evasion.
+ * ARCHITECTURAL NOTICE:
+ * Application code alone cannot cryptographically authenticate the network source of
+ * HTTP request headers. A client connecting directly to an application server can
+ * arbitrarily set headers such as `X-Forwarded-For`, `CF-Connecting-IP`, or `X-Real-IP`.
+ *
+ * Therefore:
+ * 1. An infrastructural trusted ingress (e.g. Cloudflare edge termination, AWS ALB, Nginx reverse proxy)
+ *    is strictly required to strip any untrusted client-supplied forwarded headers and inject
+ *    authoritative values before proxying requests to the application.
+ * 2. In application code, forwarded headers are NEVER trusted merely because they exist in
+ *    the request, nor is proxy trust automatically enabled based solely on `NODE_ENV === "production"`.
+ * 3. Forwarded headers are ONLY evaluated when the deployment environment explicitly declares
+ *    a trusted ingress configuration via:
+ *    - `TRUSTED_PROXY === "true"`, OR
+ *    - `TRUSTED_PROXY_STRATEGY === "cloudflare"` | `"reverse_proxy"`
+ * 4. If trusted ingress is NOT configured, all forwarded headers (`cf-connecting-ip`,
+ *    `x-forwarded-for`, `x-real-ip`) are treated as untrusted user input and ignored,
+ *    returning `"direct-client"` to prevent header-spoofing rate limit evasion.
+ * 5. Even when trusted ingress is enabled, extracted IP values must strictly conform to
+ *    syntactically valid IPv4 or IPv6 address formats.
  */
+
+export function isTrustedProxyConfigured(): boolean {
+  if (process.env.TRUSTED_PROXY === "true") return true;
+  const strategy = process.env.TRUSTED_PROXY_STRATEGY?.toLowerCase().trim();
+  return strategy === "cloudflare" || strategy === "reverse_proxy";
+}
+
+export function isValidIpFormat(ip: string | null | undefined): boolean {
+  if (!ip || typeof ip !== "string") return false;
+  const trimmed = ip.trim();
+  // IPv4: 4 octets 0-255
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$/;
+  if (ipv4Regex.test(trimmed)) return true;
+  // IPv6: standard or compressed hexadecimal notation
+  const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^(([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4})?::(([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4})?$/;
+  return ipv6Regex.test(trimmed);
+}
+
 export function getClientIp(headers?: { get(name: string): string | null | undefined }): string {
   if (!headers) return "direct-client";
 
-  // Check Cloudflare header if deployed behind CF
-  const cfIp = headers.get("cf-connecting-ip");
-  if (cfIp) return cfIp.trim();
+  // Strictly verify whether this deployment has an explicitly configured trusted ingress.
+  // NEVER trust forwarded headers based on NODE_ENV === "production" alone, and NEVER
+  // trust cf-connecting-ip merely because the header exists without trusted proxy configuration.
+  if (!isTrustedProxyConfigured()) {
+    return "direct-client";
+  }
 
-  const isTrustedProxy = process.env.TRUSTED_PROXY === "true" || process.env.NODE_ENV === "production";
-  if (isTrustedProxy) {
-    const xForwardedFor = headers.get("x-forwarded-for");
-    if (xForwardedFor) {
-      // In x-forwarded-for: client, proxy1, proxy2
-      // Behind a trusted reverse proxy, the client IP is the first entry
-      const parts = xForwardedFor.split(",").map((p) => p.trim()).filter(Boolean);
-      if (parts.length > 0) {
-        const firstIp = parts[0];
-        if (/^[a-fA-F0-9:.]+$/.test(firstIp)) {
-          return firstIp;
-        }
+  const strategy = process.env.TRUSTED_PROXY_STRATEGY?.toLowerCase().trim();
+
+  // If Cloudflare strategy or general trusted proxy with cf-connecting-ip present:
+  if (strategy === "cloudflare" || process.env.TRUSTED_PROXY === "true") {
+    const cfIp = headers.get("cf-connecting-ip");
+    if (cfIp) {
+      const trimmed = cfIp.trim();
+      if (isValidIpFormat(trimmed)) {
+        return trimmed;
       }
     }
   }
 
+  // Inspect standard X-Forwarded-For (client is the first hop added by authoritative ingress)
+  const xForwardedFor = headers.get("x-forwarded-for");
+  if (xForwardedFor) {
+    const parts = xForwardedFor.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      const firstIp = parts[0];
+      if (isValidIpFormat(firstIp)) {
+        return firstIp;
+      }
+    }
+  }
+
+  // Inspect X-Real-IP if configured
   const realIp = headers.get("x-real-ip");
-  if (realIp && /^[a-fA-F0-9:.]+$/.test(realIp.trim())) {
-    return realIp.trim();
+  if (realIp) {
+    const trimmed = realIp.trim();
+    if (isValidIpFormat(trimmed)) {
+      return trimmed;
+    }
   }
 
   return "direct-client";

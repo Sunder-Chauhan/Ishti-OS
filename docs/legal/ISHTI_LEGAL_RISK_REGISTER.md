@@ -60,8 +60,8 @@ pie title Risk Distribution by Domain
 #### RISK-DP-01: Processing Personal Data Without Demonstrable Unbundled Consent
 - **Domain:** Data Protection & Privacy
 - **Feature Affected:** User onboarding, Kundli generation, Phone OTP registration (`/profile/consent`, `/astro`)
-- **Legal Source:** Digital Personal Data Protection Act, 2023 (Act No. 22 of 2023), Section 6(1) & 6(2); GDPR (Regulation (EU) 2016/679) Article 7.
-- **Applicability:** Confirmed (India, global diaspora).
+- **Legal Source:** Digital Personal Data Protection Act, 2023 (Act No. 22 of 2023), Section 6(1) & 6(2) [Commencing 13 May 2027 under Gazette Notification G.S.R. 843(E); Section 6(9) commencing 13 Nov 2026]; GDPR (Regulation (EU) 2016/679) Article 7.
+- **Applicability:** Confirmed (India, global diaspora). Note: While statutory enforcement commences on 13 May 2027 under G.S.R. 843(E), ISHTI enforces unbundled consent proactively in M05 as a mandatory pre-launch engineering baseline.
 - **Risk Description:** Bundling consent for distinct processing activities (e.g. bundling basic account creation with AI chat logging, third-party marketing, or expert directory profiling) or pre-ticking consent boxes.
 - **Trigger:** Devotee complaint to Data Protection Board of India (DPBI) or regulatory inquiry following a dispute.
 - **Consequence:** Administrative fine under DPDP Act Schedule (Item 1: failure to take reasonable security safeguards up to ₹250 crore; Item 2: failure to notify breach up to ₹200 crore; Item 4: other non-compliance up to ₹50 crore).
@@ -81,8 +81,8 @@ pie title Risk Distribution by Domain
 #### RISK-DP-02: Failure to Implement Mandatory Verifiable Parental Consent for Children
 - **Domain:** Data Protection & Privacy
 - **Feature Affected:** Kundli birth chart generation for minors/infants, children's naming rituals (`/astro`, `/puja`)
-- **Legal Source:** DPDP Act, 2023, Section 9(1) (mandatory verifiable parental consent) and Section 9(2) (strict bar on tracking/behavioral monitoring of children); COPPA (15 U.S.C. §6501); GDPR Article 8.
-- **Applicability:** Confirmed (Indian minors under 18 years; US minors under 13).
+- **Legal Source:** DPDP Act, 2023, Section 9(1) (mandatory verifiable parental consent) and Section 9(2) (strict bar on tracking/behavioral monitoring of children) [Commencing 13 May 2027 under Gazette Notification G.S.R. 843(E)]; COPPA (15 U.S.C. §6501); GDPR Article 8.
+- **Applicability:** Confirmed (Indian minors under 18 years; US minors under 13). Proactively required prior to public launch as a core trust boundary ahead of 18-month statutory enforcement.
 - **Risk Description:** Parents generating birth charts for newborn children or minors without verified parental consent mechanism, or platform serving behavioral tracking/recommendations based on a child's Kundli.
 - **Trigger:** Processing personal data of an individual under 18 years without verified guardian consent.
 - **Consequence:** Statutory penalty under DPDP Act Schedule (Item 3: non-fulfillment of obligations in respect of children up to ₹200 crore).
@@ -443,9 +443,9 @@ pie title Risk Distribution by Domain
 #### RISK-TAX-02: Failure to Deduct TCS / TDS on Pandit Marketplace Payouts
 - **Domain:** Payments & Taxation
 - **Feature Affected:** Expert consultation billing, payout disbursement (`/experts`, `/profile/refunds`)
-- **Legal Source:** Central Goods and Services Tax (CGST) Act, 2017 Section 52 (Tax Collection at Source by e-commerce operators at **0.5%** — Notification No. 15/2024-Central Tax, effective 10 July 2024); Income-tax Act, 1961 Section 194-O (1% TDS on e-commerce participants) / Section 194J (TDS on professional fees); Income-tax Act, 2025.
+- **Legal Source:** Central Goods and Services Tax (CGST) Act, 2017 Section 52 (Tax Collection at Source by e-commerce operators at **0.5%** — Notification No. 15/2024-Central Tax, effective 10 July 2024); Income-tax Act, 1961 Section 194-O (**0.1% TDS** on e-commerce participants — rate reduced from 1% to 0.1% effective 1 October 2024 by Finance (No. 2) Act, 2024; individual/HUF exemption up to ₹5 lakh under §194-O(2)) / Section 194J (TDS on professional fees); Income-tax Act, 2025 (Section 536 transitional treatment).
 - **Applicability:** Applies strictly when operating as an Electronic Commerce Operator (ECO) facilitating third-party pandit services and collecting consideration. (Principal sales by ISHTI are subject to regular forward charge GST, where TCS does NOT apply).
-- **Risk Description:** Disbursing gross consultation fees to independent pandits without collecting and remitting 0.5% TCS under CGST Act §52 (0.25% CGST + 0.25% SGST, or 0.5% IGST) and deducting 1% TDS under Section 194-O of the Income-tax Act.
+- **Risk Description:** Disbursing gross consultation fees to independent pandits without collecting and remitting 0.5% TCS under CGST Act §52 (0.25% CGST + 0.25% SGST, or 0.5% IGST) and deducting 0.1% TDS under Section 194-O of the Income-tax Act (or Income-tax Act, 2025 equivalent, subject to ₹5L individual/HUF threshold).
 - **Trigger:** GST or Income Tax departmental audit of platform bank statements and payment aggregator escrow accounts.
 - **Consequence:** Recovery of tax from platform promoters, interest under CGST Act §50 (18% p.a.), penalty under CGST Act §122 and Income-tax Act §271C.
 - **Financial Exposure:**
@@ -456,7 +456,7 @@ pie title Risk Distribution by Domain
 - **Prevention Control:**
   1. Classify transactions based on operating model: Principal (regular forward charge GST) vs. Marketplace ECO (0.5% TCS under §52).
   2. Require PAN, GSTIN (where registered), and bank details during pandit onboarding.
-  3. Implement automated settlement calculator deducting 0.5% TCS and 1% TDS before crediting pandit account.
+  3. Implement automated settlement calculator deducting 0.5% TCS and 0.1% TDS (where applicable) before crediting pandit account.
   4. File monthly Form GSTR-8 returns.
 - **Evidence to Retain:** Monthly TCS/TDS deposit challans, GSTR-8 filing receipts, Form 26Q quarterly returns.
 - **Owner:** Finance Lead / Chartered Accountant

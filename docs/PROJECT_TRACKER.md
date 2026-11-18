@@ -307,3 +307,12 @@ Scope & Gates:
   - [x] Test suite expanded to 104/104 M05 tests; 110/110 security regression tests passing (214 tests total, 0 failures)
   - [x] Decision log updated (ADR-028 in `docs/DECISION_LOG.md`)
   - [x] Final release audit report completed with status `READY FOR INDEPENDENT COUNSEL REVIEW`
+- [x] Milestone M05 Pass 6: Final Statutory Accuracy & Proxy Trust Corrections (ADR-029):
+  - [x] DPDP Act & Rules commencement strictly reconciled to Gazette Notification G.S.R. 843(E) dated 13 Nov 2025 across all matrices: Sections 8, 9, 10, and 11–13 reclassified from "Commenced" to 18-Month Commencement (13 May 2027) as pre-launch engineering controls
+  - [x] Tripartite DPDP Act schedule (Immediate: §§18–26, 35, 38–43, 44 part; 12-mo: §6(9), §27(1)(d); 18-mo: §§3–5, 6(1)–(8)&(10), 7–17, 27 except (d), 28–34, 36, 37, 44(2)) and DPDP Rules schedule (Immediate: Rules 1, 2, 17–21; 12-mo: Rule 4; 18-mo: Rules 3, 5–16, 22, 23) mapped to dedicated provision-by-provision tables
+  - [x] Marketplace TDS under former Income-tax Act, 1961 §194-O corrected from 1% to **0.1%** (Finance (No. 2) Act, 2024 effective 1 Oct 2024), mapped to Income-tax Act, 2025 equivalent with Section 536 transitional treatment, documented ₹5L individual/HUF exemption threshold under §194-O(2), and marked CA REVIEW REQUIRED
+  - [x] Proxy trust in compliance-session-verifier.ts hardened: removed automatic trust based solely on NODE_ENV === "production", required explicit deployment configuration (TRUSTED_PROXY === "true" or TRUSTED_PROXY_STRATEGY === "cloudflare" / "reverse_proxy"), removed blind cf-connecting-ip trust, and enforced strict IPv4/IPv6 syntax validation
+  - [x] Test suite expanded to 110/110 M05 tests (adding 8 dedicated proxy-trust and IP spoofing tests); 110/110 security regression tests passing (220 tests total, 0 failures)
+  - [x] Decision log updated (ADR-029 in docs/DECISION_LOG.md)
+  - [x] Final release audit report updated with status READY FOR INDEPENDENT COUNSEL REVIEW
+

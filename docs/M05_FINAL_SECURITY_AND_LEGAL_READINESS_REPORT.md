@@ -24,11 +24,15 @@ This report represents the comprehensive technical, security, regulatory, and ar
 
 ---
 
-## 1. Corrections Completed in Pass 5
+## 1. Corrections Completed Across Audit Passes (Pass 5 & Pass 6)
 
-1. **DPDP Act & Rules Phased Commencement Reconciled:**
+1. **DPDP Act & Rules Phased Commencement Strictly Reconciled (G.S.R. 843(E)):**
    - Reconciled all statutory citations strictly against Gazette of India Notification G.S.R. 843(E) dated 13 November 2025.
-   - Accurately distinguished provisions commencing immediately from those commencing at 12 months (Section 6(9) and Section 27(1)(d), commencing 13 November 2026) and 18 months (Section 16(1) and Section 17(1), commencing 13 May 2027).
+   - Accurately distinguished the tripartite commencement phases:
+     - **Immediate (13 November 2025):** Act Sections 18–26 (Data Protection Board establishment, composition, terms, proceedings), Section 35 (Power to call for information), Sections 38–43 (Good faith protection, bar of jurisdiction, Central Government rulemaking powers), and Section 44 specified parts. DPDP Rules 2025: Rules 1, 2, and 17–21.
+     - **12 Months (13 November 2026):** Act Section 6(9) (Notice for pre-existing personal data) and Section 27(1)(d) (Board inquiry on reference from Central/State Government). DPDP Rules 2025: Rule 4 (Notice form and manner for pre-existing personal data).
+     - **18 Months (13 May 2027):** Act Sections 3–5 (Applicability, Grounds, Notice), Section 6(1)–(8) & (10) (Consent), Sections 7–17 (Legitimate uses, General obligations §8, Children's data §9, SDF obligations §10, Principal rights §§11–13, Nomination §14, Duties §15, Cross-border transfer §16, Exemptions §17), Section 27 (except clause (d)), Sections 28–34 (Penalties, Appeals), Sections 36, 37, and Section 44(2) (Repeal of IT Act §43A). DPDP Rules 2025: Rules 3, 5–16, 22, 23.
+   - Corrected matrix entries for Sections 8, 9, 10, and 11–13: reclassified from "Commenced / In Force" to **Commencing 13 May 2027 (18 Months)**.
    - Removed inaccurate assertions describing future obligations as "current statutory violations"; framed all upcoming mandates as proactive pre-launch engineering controls.
    - Clarified that Data Protection Officers (DPOs) are statutorily mandatory under Section 10 ONLY for notified Significant Data Fiduciaries (SDFs).
 2. **IT Rules Intermediary Deadlines Disaggregated:**
@@ -43,11 +47,20 @@ This report represents the comprehensive technical, security, regulatory, and ar
    - Corrected the TCS rate under CGST Act §52 from 1% to **0.5%** (0.25% CGST + 0.25% SGST, or 0.5% IGST) pursuant to Notification No. 15/2024-Central Tax (effective 10 July 2024).
    - Partitioned platform operating models into:
      - *Principal Supplier Model:* ISHTI sells its own digital content / subscriptions; subject to regular forward-charge GST; TCS does NOT apply.
-     - *Marketplace ECO Model:* ISHTI facilitates third-party pandit services and collects consideration; subject to 0.5% TCS under §52 and 1% TDS under §194-O.
+     - *Marketplace ECO Model:* ISHTI facilitates third-party pandit services and collects consideration; subject to 0.5% TCS under §52 and 0.1% TDS under §194-O (or Income-tax Act, 2025 equivalent; exemption threshold ₹5L for individuals/HUFs under §194-O(2)). [CA REVIEW REQUIRED]
    - Designated GST SAC classification (999799, 998439), registration, TCS, TDS, and invoicing as **CA REVIEW REQUIRED**.
-4. **Income Tax Books of Account Scope Clarified:**
+4. **Marketplace TDS Recalibrated to 0.1% & Section 536 Transitional Treatment:**
+   - Corrected e-commerce marketplace TDS under former Income-tax Act, 1961 Section 194-O from 1% to **0.1%**, as reduced effective 1 October 2024 by Finance (No. 2) Act, 2024.
+   - Mapped corresponding e-commerce provisions under the Income-tax Act, 2025 (effective 1 April 2026), incorporating Section 536 transitional savings and the statutory ₹5,00,000 threshold for individuals/HUFs under §194-O(2).
+   - Marked all TDS applicability, classification, and withholding rules as **CA REVIEW REQUIRED**.
+5. **Ingress & Proxy Trust Architecture Hardened:**
+   - Removed automatic proxy trust based solely on `NODE_ENV === "production"` in `compliance-session-verifier.ts`.
+   - Forwarded headers (`CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`) are now trusted ONLY when the deployment has an explicitly configured trusted ingress (`TRUSTED_PROXY === "true"` or `TRUSTED_PROXY_STRATEGY === "cloudflare"` / `"reverse_proxy"`).
+   - Documented architectural boundary: application code alone cannot cryptographically verify network header origin; infrastructural ingress must strip client-supplied headers and inject authoritative values.
+   - Added 8 automated tests for spoofed `X-Forwarded-For`, spoofed `CF-Connecting-IP`, unconfigured production fallback, and valid configured proxy scenarios (all passing).
+6. **Income Tax Books of Account Scope Clarified:**
    - Clarified that mandatory 7-year retention under Income-tax Act, 2025 §62 / Rule 46 (and 6-year retention under 1961 Act §44AA / Rule 6F) applies specifically to commercial business records exceeding statutory income/turnover thresholds, and does NOT apply across all user personal data. Applying accounting retention to personal user profiles violates data minimization under the DPDP Act. Designated as **CA REVIEW REQUIRED**.
-5. **International Privacy & AI Framework Harmonized:**
+7. **International Privacy & AI Framework Harmonized:**
    - *GDPR Article 3(2):* Clarified that mere accessibility from the EU does not trigger GDPR (Recital 23 requires demonstrable intention to offer goods or services).
    - *Special Category Data (Article 9):* Clarified that birth coordinates do not per se constitute religious data unless processing specifically reveals religious beliefs.
    - *Cross-Border Transfers:* Grounded international data flows on Standard Contractual Clauses (SCCs), explicitly barring Article 49(1)(a) consent derogations as a routine transfer solution per EDPB Guidelines 2/2018.
@@ -175,7 +188,7 @@ The following financial, tax, and accounting items must be audited and settled b
 3. **TCS Compliance under CGST Act §52:**
    - Implementation of 0.5% TCS deduction (0.25% CGST + 0.25% SGST, or 0.5% IGST) on net value of taxable supplies by third-party pandits; monthly Form GSTR-8 return filing protocol.
 4. **TDS Compliance under Income-tax Act:**
-   - Deduction of 1% TDS under Section 194-O (for marketplace e-commerce transactions) or Section 194J (for professional fees); quarterly Form 26Q filings and Form 16A issuance.
+   - Deduction of **0.1% TDS** under former Section 194-O (as amended by Finance (No. 2) Act, 2024 effective 1 Oct 2024) / Income-tax Act, 2025 equivalent (Section 536 transitional savings) on marketplace e-commerce transactions, subject to ₹5,00,000 threshold for individuals/HUFs under §194-O(2); or Section 194J for professional fees. Quarterly Form 26Q filings and Form 16A issuance. [CA REVIEW REQUIRED]
 5. **Tax Invoicing Architecture:**
    - Invoicing flows distinguishing principal sales (ISHTI issues tax invoice to devotee) from marketplace sales (pandit issues invoice to devotee; ISHTI issues commission invoice to pandit).
 6. **Statutory Books of Account Retention:**
@@ -191,7 +204,7 @@ To safeguard the platform, individual promoters, and consumers, the following ca
 | :--- | :---: | :--- |
 | **Live Payment Checkout & Paid Bookings** | **Gate L0 & Gate L2** | Corporate incorporation (L0.1), PAN/TAN (L0.3), GSTIN registration (L2.1), executed Payment Aggregator Merchant Agreement (L2.2), and CA tax review. |
 | **Minor / Child Kundli Generation (`/astro`)** | **Gate L1** | Working verifiable parental consent flow with guardian phone OTP verification and strict ban on minor profiling (DPDP Act §9). |
-| **Third-Party Pandit Marketplace Payouts (`/experts`)** | **Gate L2 & Gate L4** | Executed Pandit Independent Contractor Agreements (L4.1), pandit KYC verification (L4.2), and automated 0.5% TCS / 1% TDS deduction engine. |
+| **Third-Party Pandit Marketplace Payouts (`/experts`)** | **Gate L2 & Gate L4** | Executed Pandit Independent Contractor Agreements (L4.1), pandit KYC verification (L4.2), and automated 0.5% TCS / 0.1% TDS deduction engine. |
 | **Spiritual AI Conversational Assistant (`/bhakti`)** | **Gate L3** | Grounded RAG pipeline anchored exclusively to rights-cleared canonical scriptures, scholar peer review, and executed Enterprise Cloud zero-retention agreement. |
 | **Public Community Discussion Posting (`/community`)** | **Gate L1 & Gate L4** | Appointed Statutory Grievance Officer (L1.4), automated content moderation filter intercepting sectarian hate speech (L4.3), and 36-hour takedown tool (L4.4). |
 | **International Currency Transactions (USD/EUR/GBP)** | **Gate L5** | Executed Standard Contractual Clauses with foreign processors, FEMA-compliant inward remittance account, and Schedule B/C counsel sign-off. |

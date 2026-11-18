@@ -638,24 +638,108 @@ async function runM05Tests() {
     "Server admin check: 17d. Cookie-authenticated mutation from configured trusted origin is accepted"
   );
 
-  // 18. Client IP extraction with proxy validation
-  const cfClientIp = getClientIp({
-    get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.195" : null),
-  });
-  assert(
-    cfClientIp === "203.0.113.195",
-    "G5",
-    "Server admin check: 18a. Client IP correctly extracted from Cloudflare header"
-  );
+  // 18. Client IP extraction with proxy validation & spoofing defense
+  const origTrustedProxy = process.env.TRUSTED_PROXY;
+  const origTrustedStrategy = process.env.TRUSTED_PROXY_STRATEGY;
+  const origNodeEnv = process.env.NODE_ENV;
 
-  const fallbackIp = getClientIp({
-    get: () => null,
-  });
-  assert(
-    fallbackIp === "direct-client",
-    "G5",
-    "Server admin check: 18b. Direct un-proxied connection falls back safely to direct-client"
-  );
+  try {
+    // 18a. Missing trusted proxy config + spoofed x-forwarded-for -> direct-client
+    delete process.env.TRUSTED_PROXY;
+    delete process.env.TRUSTED_PROXY_STRATEGY;
+    const spoofedXff = getClientIp({
+      get: (h: string) => (h === "x-forwarded-for" ? "198.51.100.1, 10.0.0.1" : null),
+    });
+    assert(
+      spoofedXff === "direct-client",
+      "G5",
+      "Server admin check: 18a. Spoofed X-Forwarded-For without trusted proxy config is rejected as direct-client"
+    );
+
+    // 18b. Missing trusted proxy config + spoofed cf-connecting-ip -> direct-client
+    const spoofedCf = getClientIp({
+      get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.195" : null),
+    });
+    assert(
+      spoofedCf === "direct-client",
+      "G5",
+      "Server admin check: 18b. Spoofed CF-Connecting-IP without trusted proxy config is rejected as direct-client"
+    );
+
+    // 18c. Missing trusted proxy config + NODE_ENV === "production" -> still rejected
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    const prodWithoutConfig = getClientIp({
+      get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.195" : null),
+    });
+    assert(
+      prodWithoutConfig === "direct-client",
+      "G5",
+      "Server admin check: 18c. Proxy trust is NOT automatically granted merely based on NODE_ENV===production"
+    );
+
+    // 18d. Missing headers -> direct-client
+    const fallbackIp = getClientIp({
+      get: () => null,
+    });
+    assert(
+      fallbackIp === "direct-client",
+      "G5",
+      "Server admin check: 18d. Direct un-proxied connection falls back safely to direct-client"
+    );
+
+    // 18e. Valid configured proxy with TRUSTED_PROXY="true"
+    process.env.TRUSTED_PROXY = "true";
+    const validCf = getClientIp({
+      get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.195" : null),
+    });
+    assert(
+      validCf === "203.0.113.195",
+      "G5",
+      "Server admin check: 18e. Valid CF-Connecting-IP extracted when TRUSTED_PROXY='true' is configured"
+    );
+
+    // 18f. Valid configured proxy with TRUSTED_PROXY_STRATEGY="cloudflare"
+    delete process.env.TRUSTED_PROXY;
+    process.env.TRUSTED_PROXY_STRATEGY = "cloudflare";
+    const validCfStrategy = getClientIp({
+      get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.200" : null),
+    });
+    assert(
+      validCfStrategy === "203.0.113.200",
+      "G5",
+      "Server admin check: 18f. Valid CF-Connecting-IP extracted when TRUSTED_PROXY_STRATEGY='cloudflare'"
+    );
+
+    // 18g. Valid configured proxy with TRUSTED_PROXY_STRATEGY="reverse_proxy" & XFF
+    process.env.TRUSTED_PROXY_STRATEGY = "reverse_proxy";
+    const validXffStrategy = getClientIp({
+      get: (h: string) => (h === "x-forwarded-for" ? "198.51.100.77, 10.0.0.1" : null),
+    });
+    assert(
+      validXffStrategy === "198.51.100.77",
+      "G5",
+      "Server admin check: 18g. Valid client IP extracted from X-Forwarded-For under reverse_proxy strategy"
+    );
+
+    // 18h. Malformed IP injection rejected even when proxy is trusted
+    const malformedInjection = getClientIp({
+      get: (h: string) => (h === "x-forwarded-for" ? "not-an-ip-injection-attempt" : null),
+    });
+    assert(
+      malformedInjection === "direct-client",
+      "G5",
+      "Server admin check: 18h. Malformed or non-IP header rejected safely as direct-client"
+    );
+  } finally {
+    if (origTrustedProxy !== undefined) process.env.TRUSTED_PROXY = origTrustedProxy;
+    else delete process.env.TRUSTED_PROXY;
+
+    if (origTrustedStrategy !== undefined) process.env.TRUSTED_PROXY_STRATEGY = origTrustedStrategy;
+    else delete process.env.TRUSTED_PROXY_STRATEGY;
+
+    if (origNodeEnv !== undefined) (process.env as Record<string, string | undefined>).NODE_ENV = origNodeEnv;
+    else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+  }
 
   // Unconfigured or offline backend authentication -> 503 Disabled
   const offlineAuthProvider: SessionVerificationProvider = {

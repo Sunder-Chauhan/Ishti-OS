@@ -587,7 +587,7 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Corrected the TCS rate under CGST Act §52 from 1% to **0.5%** (0.25% CGST + 0.25% SGST, or 0.5% IGST) pursuant to Notification No. 15/2024-Central Tax (effective 10 July 2024).
      - Architected clear operational boundaries between:
        - *Principal Supplier Model:* ISHTI sells its own digital content / subscriptions; subject to regular forward-charge GST; TCS does NOT apply.
-       - *Marketplace ECO Model:* ISHTI facilitates third-party pandit services and collects consideration; subject to 0.5% TCS under §52 and 1% TDS under §194-O.
+       - *Marketplace ECO Model:* ISHTI facilitates third-party pandit services and collects consideration; subject to 0.5% TCS under §52 and 0.1% TDS under §194-O (or Income-tax Act, 2025 equivalent with Section 536 transitional treatment; exemption threshold ₹5L for individuals/HUFs under §194-O(2)). [CA REVIEW REQUIRED]
      - Marked GST SAC classification (999799, 998439), registration, TCS, TDS, and invoicing as **CA REVIEW REQUIRED**.
   4. **Income Tax Books of Account Scope:**
      - Clarified that 7-year retention under Income-tax Act, 2025 §62 / Rule 46 (and 6-year retention under 1961 Act §44AA / Rule 6F) applies specifically to commercial business records exceeding statutory income/turnover thresholds, and does NOT apply across all user personal data. Applying accounting retention to personal user profiles violates data minimization under the DPDP Act. Marked as **CA REVIEW REQUIRED**.
@@ -611,3 +611,31 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Next.js Web Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** successfully.
   - Quarantined environments: Production Supabase (`zxwkfnvmmxoojewhvsdc`) and staging Supabase (`zrjptpkhtklfgnovdrny`) strictly quarantined and untouched.
 - **Final Release Verdict:** **`READY FOR INDEPENDENT COUNSEL REVIEW`** (Technical safeguards and legal baselines verified; commercial launch strictly gated behind corporate incorporation, CA sign-off, and legal counsel review).
+
+---
+
+## 2026-11-18: ADR-029 — Pass 6: Full DPDP Phased Commencement Alignment (G.S.R. 843(E)), Marketplace TDS (0.1%), & Explicit Proxy Ingress Trust
+- **Status:** APPROVED & IMPLEMENTED LOCALLY
+- **Context:** Following independent code review of commit 1e6b9dc, three critical items required statutory reconciliation and security hardening before release:
+  1. *DPDP Act & Rules Commencement Schedule:* Sections 8, 9, 10, and 11–13 were erroneously labeled as "Commenced / In Force". Under Ministry of Electronics and Information Technology (MeitY) Gazette Notification G.S.R. 843(E) dated 13 November 2025, these sections commence at **18 months (13 May 2027)**, while Section 6(9) and Section 27(1)(d) commence at **12 months (13 November 2026)**. Labeling them as commenced misstated future obligations as current statutory violations.
+  2. *Marketplace TDS Rate:* Former Income-tax Act, 1961 Section 194-O was cited with an obsolete 1% TDS rate. Finance (No. 2) Act, 2024 reduced this rate to **0.1%** effective 1 October 2024, with a statutory ₹5,00,000 threshold for individuals/HUFs under §194-O(2). For assessment periods on or after 1 April 2026 under the Income-tax Act, 2025, this 0.1% rate is maintained with Section 536 transitional treatment.
+  3. *Proxy Trust Architecture:* In compliance-session-verifier.ts, getClientIp() inspected cf-connecting-ip unconditionally and defaulted to trusting forwarded headers whenever NODE_ENV === "production". Application code alone cannot cryptographically verify HTTP header origin; proxy trust must require explicit deployment configuration (TRUSTED_PROXY === "true" or TRUSTED_PROXY_STRATEGY === "cloudflare" / "reverse_proxy").
+- **Decision:**
+  1. **DPDP Act & Rules Full Phased Mapping:** Reconciled every DPDP Act and Rules provision across all matrices, logs, and risk registers against Gazette Notification G.S.R. 843(E). Added dedicated provision-by-provision tables for:
+     - *Immediate (13 Nov 2025):* Sections 18–26, 35, 38–43, Section 44 specified parts; Rules 1, 2, 17–21.
+     - *12 Months (13 Nov 2026):* Section 6(9), Section 27(1)(d); Rule 4.
+     - *18 Months (13 May 2027):* Sections 3–5, 6(1)–(8) & (10), Sections 7–17 (including §§8, 9, 10, 11–13), Section 27 except (d), Sections 28–34, 36, 37, Section 44(2); Rules 3, 5–16, 22, 23.
+     Reclassified Sections 6, 8, 9, 10, and 11–13 as pre-launch engineering controls commencing 13 May 2027.
+  2. **Marketplace TDS Recalibration:** Replaced 1% TDS with **0.1% TDS** across all matrices, logs, and risk registers; cited Finance (No. 2) Act, 2024, the ₹5,00,000 threshold under §194-O(2), Income-tax Act, 2025 equivalent, and Section 536 transitional savings; retained strict **CA REVIEW REQUIRED** designation.
+  3. **Strict Ingress Proxy Trust:** Refactored getClientIp() in apps/web/lib/compliance/compliance-session-verifier.ts:
+     - Removed automatic trust based solely on NODE_ENV === "production".
+     - Required explicit configuration (TRUSTED_PROXY === "true" or TRUSTED_PROXY_STRATEGY === "cloudflare" / "reverse_proxy").
+     - Removed blind trust of cf-connecting-ip.
+     - Enforced strict IPv4/IPv6 syntax validation.
+     - Expanded test suite in scripts/run-m05-tests.ts with 8 dedicated tests covering spoofed headers, production without config, and valid configured proxies.
+- **Verification Evidence:**
+  - Automated M05 Suite (scripts/run-m05-tests.ts): **110/110 PASSED** (0 failures).
+  - Security & Cryptography Suite (npm run test:security): **110/110 PASSED** (0 failures).
+  - Monorepo TypeScript Compilation (npm run typecheck): **0 ERRORS** across all workspaces.
+  - Production Web Application Build (npm run build:web): **31 ROUTES BUILT CLEANLY**.
+
