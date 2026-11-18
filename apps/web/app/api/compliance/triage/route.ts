@@ -3,6 +3,7 @@ import {
   verifyServerAdminSession,
   verifyCsrfOrigin,
   checkComplianceRateLimit,
+  getClientIp,
 } from "../../../../lib/compliance/compliance-server";
 import { triageSecurityIncident } from "../../../../lib/compliance/security-governance";
 
@@ -41,8 +42,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3. Rate limiting check
-  const ip = request.headers.get("x-forwarded-for") || "anonymous";
+  // 3. Rate limiting check with verified client IP provenance
+  const ip = getClientIp(request.headers);
   if (!checkComplianceRateLimit(`triage-post:${ip}`, 10, 60000)) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
@@ -126,6 +127,9 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     triage: triageResult,
     verifiedAdminId: auth.user?.id,
+    isStatutoryFiling: false,
+    disclaimer:
+      "INTERNAL_PRELIMINARY_TRIAGE_SIMULATION_ONLY — This output does NOT constitute an official statutory notification to CERT-In or the Data Protection Board of India. Statutory incident reports must be formally filed via CERT-In incident reporting channels (incident@cert-in.org.in) by authorized legal and security officers.",
   });
 }
 

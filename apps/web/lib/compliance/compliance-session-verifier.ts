@@ -69,7 +69,12 @@ export interface SessionVerificationProvider {
 }
 
 /**
- * In-memory sliding window rate limiter for compliance endpoints
+ * In-memory sliding window rate limiter for compliance endpoints.
+ *
+ * NOTE: This is PROCESS-LOCAL in-memory rate limiting. It operates per Node.js process instance.
+ * In a multi-instance or serverless container deployment, distributed rate limiting
+ * backed by Redis or PostgreSQL advisory locking (as scheduled for M06) is required
+ * for global quota enforcement across all instances.
  */
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
@@ -92,6 +97,44 @@ export function checkComplianceRateLimit(
 
   entry.count += 1;
   return true;
+}
+
+/**
+ * Extracts client IP address with proxy trustworthiness validation.
+ *
+ * In production behind trusted reverse proxies (e.g. Cloudflare / Vercel):
+ * - If TRUSTED_PROXY=true (or CF-Connecting-IP present from Cloudflare), inspect trusted headers.
+ * - Otherwise, treat x-forwarded-for as untrusted user input to prevent header-injection rate limit evasion.
+ */
+export function getClientIp(headers?: { get(name: string): string | null | undefined }): string {
+  if (!headers) return "direct-client";
+
+  // Check Cloudflare header if deployed behind CF
+  const cfIp = headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim();
+
+  const isTrustedProxy = process.env.TRUSTED_PROXY === "true" || process.env.NODE_ENV === "production";
+  if (isTrustedProxy) {
+    const xForwardedFor = headers.get("x-forwarded-for");
+    if (xForwardedFor) {
+      // In x-forwarded-for: client, proxy1, proxy2
+      // Behind a trusted reverse proxy, the client IP is the first entry
+      const parts = xForwardedFor.split(",").map((p) => p.trim()).filter(Boolean);
+      if (parts.length > 0) {
+        const firstIp = parts[0];
+        if (/^[a-fA-F0-9:.]+$/.test(firstIp)) {
+          return firstIp;
+        }
+      }
+    }
+  }
+
+  const realIp = headers.get("x-real-ip");
+  if (realIp && /^[a-fA-F0-9:.]+$/.test(realIp.trim())) {
+    return realIp.trim();
+  }
+
+  return "direct-client";
 }
 
 /**
@@ -192,26 +235,66 @@ export function verifyCsrfOrigin(request: {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
 
-  if (origin && host) {
+  if (!origin) {
+    // If browser omitted Origin, check Referer
+    const referer = request.headers.get("referer");
+    if (!referer) {
+      // In cookie-authenticated state-changing requests, missing Origin and Referer is rejected
+      return { valid: false, reason: "Missing Origin and Referer on state-changing cookie request." };
+    }
     try {
-      const originUrl = new URL(origin);
-      if (originUrl.host !== host) {
-        return {
-          valid: false,
-          reason: `Origin mismatch: '${originUrl.host}' does not match host '${host}'.`,
-        };
+      const refUrl = new URL(referer);
+      if (host && refUrl.host !== host) {
+        return { valid: false, reason: `Referer host mismatch: '${refUrl.host}' does not match host '${host}'.` };
       }
     } catch {
-      return { valid: false, reason: "Malformed Origin header." };
+      return { valid: false, reason: "Malformed Referer header." };
     }
+    return { valid: true };
   }
 
-  return { valid: true };
+  try {
+    const originUrl = new URL(origin);
+
+    // Check against configured trusted origins allowlist if present
+    const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || process.env.NEXT_PUBLIC_APP_URL || "";
+    const allowedOrigins = allowedOriginsEnv
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean);
+
+    if (allowedOrigins.length > 0) {
+      const isAllowed = allowedOrigins.some((allowed) => {
+        try {
+          const allowedUrl = new URL(allowed);
+          return allowedUrl.origin === originUrl.origin;
+        } catch {
+          return allowed === originUrl.origin || allowed === originUrl.host;
+        }
+      });
+      if (isAllowed) {
+        return { valid: true };
+      }
+    }
+
+    if (host && originUrl.host === host) {
+      return { valid: true };
+    }
+
+    return {
+      valid: false,
+      reason: `Origin mismatch: '${originUrl.host}' does not match host '${host}'.`,
+    };
+  } catch {
+    return { valid: false, reason: "Malformed Origin header." };
+  }
 }
 
 /**
  * Default production provider querying Supabase server environment.
  * Leverages @supabase/ssr server client for trusted user-resolution and database lookup.
+ * When a Bearer token is provided, instantiates the client with explicit Authorization header
+ * binding token verification directly to database RLS authorization context.
  */
 export const defaultSupabaseProvider: SessionVerificationProvider = {
   isBackendConfigured(): boolean {
@@ -224,15 +307,37 @@ export const defaultSupabaseProvider: SessionVerificationProvider = {
 
   async resolveUserAndRole(input: VerificationInput) {
     try {
-      const { createClient } = await import("../supabase/server");
-      const supabase = await createClient();
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-      // 1. Resolve user in single trusted context
       let user: { id: string } | null = null;
+      let dbClient: {
+        from: (table: string) => {
+          select: (cols: string) => {
+            eq: (col: string, val: string) => {
+              maybeSingle: () => Promise<{ data: { role?: string } | null; error: { message?: string } | null }>;
+            };
+          };
+        };
+      };
 
       if (input.bearerToken) {
-        // Bearer token resolution
-        const { data, error } = await supabase.auth.getUser(input.bearerToken);
+        // Bearer token resolution: bind token to Supabase client headers for direct RLS authorization
+        const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
+
+        const bearerClient = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+          global: {
+            headers: {
+              Authorization: `Bearer ${input.bearerToken}`,
+            },
+          },
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+          },
+        });
+
+        const { data, error } = await bearerClient.auth.getUser(input.bearerToken);
         if (error) {
           const msg = error.message?.toLowerCase() || "";
           if (msg.includes("expired")) {
@@ -244,9 +349,13 @@ export const defaultSupabaseProvider: SessionVerificationProvider = {
           return { status: "INVALID_TOKEN", error: error.message };
         }
         user = data?.user ? { id: data.user.id } : null;
+        dbClient = bearerClient as unknown as typeof dbClient;
       } else {
         // Cookie-based session resolution via @supabase/ssr
-        const { data, error } = await supabase.auth.getUser();
+        const { createClient } = await import("../supabase/server");
+        const cookieClient = await createClient();
+
+        const { data, error } = await cookieClient.auth.getUser();
         if (error) {
           const msg = error.message?.toLowerCase() || "";
           if (msg.includes("session missing") || msg.includes("auth session missing")) {
@@ -261,14 +370,15 @@ export const defaultSupabaseProvider: SessionVerificationProvider = {
           return { status: "INVALID_TOKEN", error: error.message };
         }
         user = data?.user ? { id: data.user.id } : null;
+        dbClient = cookieClient as unknown as typeof dbClient;
       }
 
       if (!user?.id) {
         return { status: "MISSING_SESSION", error: "Session did not resolve to a valid user identifier." };
       }
 
-      // 2. Query authoritative profile role using the EXACT same Supabase client and verified user.id
-      const { data: profile, error: profileError } = await supabase
+      // 2. Query authoritative profile role using the EXACT dbClient bound to the verified session
+      const { data: profile, error: profileError } = await dbClient
         .from("profiles")
         .select("role")
         .eq("id", user.id)

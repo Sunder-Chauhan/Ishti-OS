@@ -144,3 +144,17 @@ The **ISHTI Legal Decision Log (LDL)** records formal architectural decisions th
   2. Zero-retention addendum must be executed ensuring user prompts and completions are never logged, inspected by human reviewers, or used for model retraining.
   3. Client-side PII scrubbing filter implemented before prompt dispatch.
 - **Status:** APPROVED IN PRINCIPLE (Implementation required in M06).
+
+---
+
+### 2026-11-18: LDL-011 — Legal Accuracy Reconciliations, GST TCS Recalibration & Technical Endpoint Hardening
+- **Statutory Context:** DPDP Act phased commencement under G.S.R. 843(E) (13 Nov 2025); IT Rules Rule 3(2)(a)(i) (as amended Feb 2026); CGST Act §52 & Notification No. 15/2024-Central Tax (TCS 0.5%); Income-tax Act, 2025 §62 / Rule 46; GDPR Article 3(2) & EDPB Guidelines 2/2018; CCPA/CPRA $26.625M threshold (2026 CPI adjustment); EU AI Act Article 50.
+- **Legal Problem:** Prior drafts conflated statutory deadlines (e.g. misstating TCS rate as 1% instead of 0.5%, mischaracterizing future-commencing DPDP Act sections as current statutory violations, conflating accounting books retention with personal user data, and treating Article 49 consent as a routine cross-border transfer mechanism).
+- **Architectural Decision:**
+  1. Reconciled all DPDP Act citations strictly against Gazette Notification G.S.R. 843(E) dated 13 November 2025: distinguished in-force provisions from 12-month (§6(9), §27(1)(d)) and 18-month (§16(1), §17(1)) provisions; framed them as pre-launch engineering controls rather than current violations.
+  2. Disaggregated IT Rules intermediary deadlines: 24h acknowledgement (Rule 3(2)(a)(i)), 7d disposal (Rule 3(2)(a)(i) as amended Feb 2026), 24h removal for non-consensual sexually explicit content / impersonation (Rule 3(2)(b)), 36h takedown upon court/govt order (Rule 3(1)(d)), and §69A confidential blocking directions under the 2009 Blocking Rules.
+  3. Recalibrated GST TCS rate to **0.5%** (0.25% CGST + 0.25% SGST, or 0.5% IGST) pursuant to Notification No. 15/2024-Central Tax (effective 10 July 2024) and modeled the operational difference between principal sales (regular forward charge GST) and marketplace ECO operations (0.5% TCS applies).
+  4. Clarified that Income-tax Act, 2025 §62 books of accounts retention applies to business/professional accounting records exceeding statutory turnover thresholds, not generic devotee profile data; marked GST, TCS, TDS (§194-O/194J), and tax retention as `CA REVIEW REQUIRED`.
+  5. Enforced Standard Contractual Clauses (SCCs) for cross-border data flows, explicitly barring Article 49 consent derogation as a routine transfer solution per EDPB Guidelines 2/2018.
+  6. Hardened technical endpoints: bound Bearer-token verification to database authorization context, returned explicit 501 `NOT_IMPLEMENTED` on audit ledger endpoint until M06 WORM storage exists, documented process-local rate limiting, hardened CSRF trusted-origin check, validated client IP provenance, and added explicit simulation disclaimer to security triage output.
+- **Status:** APPROVED & IMPLEMENTED LOCALLY.

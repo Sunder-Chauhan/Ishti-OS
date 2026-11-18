@@ -295,3 +295,15 @@ Scope & Gates:
   - [x] Expanded test suite to 101/101 passing tests (17 dedicated security tests); 110/110 security regression tests; Next.js 31/31 routes
   - [x] Decision log updated (ADR-027 in `docs/DECISION_LOG.md`)
   - [x] Feature branch `feature/m05-trust-governance` prepared for Draft PR review
+- [x] Milestone M05 Legal Accuracy Correction, GST TCS Recalibration & Independent Release Audit Pass 5 (ADR-028):
+  - [x] DPDP Act & Rules commencement strictly reconciled to Gazette Notification G.S.R. 843(E) dated 13 Nov 2025 (phased 12m for §6(9)/§27(1)(d) and 18m for §16(1)/§17(1))
+  - [x] IT Rules deadlines disaggregated: 24h ack, 7d resolve (Feb 2026 amendment), 24h sexual content removal, 36h court/govt order takedown, §69A blocking orders
+  - [x] GST TCS rate recalibrated from 1% to 0.5% (Notification No. 15/2024-Central Tax) and principal supplier vs marketplace ECO models differentiated
+  - [x] Income-tax Act 2025 §62 / Rule 46 books of account retention clarified as applying to business records exceeding turnover limits, not user profiles; marked CA-REVIEW REQUIRED
+  - [x] GDPR Art 3(2) (targeting requirement) and Art 9 (religious beliefs) reconciled; cross-border transfers grounded on SCCs (barring Art 49 consent as routine mechanism)
+  - [x] CCPA/CPRA threshold updated to $26.625M (2026 inflation adjustment); EU AI Act Art 50 transparency mapped
+  - [x] Speculative fine ranges in Risk Register replaced with statutory maximums and marked COUNSEL ASSESSMENT REQUIRED
+  - [x] Technical hardening: Bearer-token verification bound to database context with Authorization header; GET `/api/compliance/audit` returns 501 `NOT_IMPLEMENTED` pending M06 WORM storage; `checkComplianceRateLimit` documented as process-local in-memory; CSRF origin verified against configured allowlist; client IP provenance verified rejecting untrusted forwarded headers; incident triage response explicitly flagged `isStatutoryFiling: false` with disclaimer
+  - [x] Test suite expanded to 104/104 M05 tests; 110/110 security regression tests passing (214 tests total, 0 failures)
+  - [x] Decision log updated (ADR-028 in `docs/DECISION_LOG.md`)
+  - [x] Final release audit report completed with status `READY FOR INDEPENDENT COUNSEL REVIEW`

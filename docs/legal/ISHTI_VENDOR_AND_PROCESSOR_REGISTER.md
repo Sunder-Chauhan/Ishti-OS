@@ -36,6 +36,7 @@ This register catalogs all third-party cloud infrastructure vendors, payment agg
 ## 3. Subprocessor Review & Audit Protocol
 
 1. **Annual Security Review:** Every vendor in this register must be reviewed annually for valid SOC 2 Type II, ISO 27001, and PCI-DSS (for payments) compliance.
-2. **Breach Notification SLA:** Vendor DPAs must contractually require vendors to notify ISHTI of any security incident or personal data breach affecting platform data within **24 hours**, enabling ISHTI to meet its CERT-In 6-hour and DPDP §8(6) statutory reporting obligations.
-3. **Data Return & Destruction:** Upon contract termination, vendors must guarantee complete deletion or return of all personal data within **30 days** and furnish a formal cryptographic Destruction Certificate.
-4. **No-Training Covenant:** Specific to AI vendors (Google Cloud), contract terms must strictly prohibit using ISHTI queries, user inputs, or generated responses for foundation model retraining or human review.
+2. **Breach Notification SLA:** Vendor DPAs must contractually mandate immediate escalation upon confirmation of any qualifying cybersecurity incident (within a maximum window of **2 to 4 hours**), enabling ISHTI to meet its statutory CERT-In 6-hour and DPDP §8(6) reporting requirements.
+3. **Cross-Border Transfer Basis:** All transfers to foreign processors (Vercel, Google Cloud, Cloudflare) must be governed by executed Standard Contractual Clauses (SCCs - Commission Implementing Decision (EU) 2021/914) and supplementary Transfer Impact Assessments (TIAs). Cross-border transfers must NOT rely on Article 49 consent derogations for routine operations.
+4. **Data Return & Destruction:** Upon contract termination, vendors must guarantee complete deletion or return of all personal data within **30 days** and furnish a formal cryptographic Destruction Certificate.
+5. **No-Training Covenant:** Specific to AI vendors (Google Cloud), contract terms must strictly prohibit using ISHTI queries, user inputs, or generated responses for foundation model retraining or human review.

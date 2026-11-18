@@ -3,8 +3,8 @@ import {
   verifyServerAdminSession,
   verifyCsrfOrigin,
   checkComplianceRateLimit,
+  getClientIp,
 } from "../../../../lib/compliance/compliance-server";
-import { getAuditLedger, verifyLedgerIntegrity } from "../../../../lib/compliance/audit-trail";
 
 /**
  * Protected Compliance Audit Endpoint (Server-Side Authorization Boundary)
@@ -17,11 +17,12 @@ import { getAuditLedger, verifyLedgerIntegrity } from "../../../../lib/complianc
  * 5. CSRF origin verification on mutations.
  * 6. Disallows unauthorized HTTP methods with 405.
  * 7. When backend auth is unavailable, access is disabled (503) rather than bypassed.
+ * 8. Authoritative WORM ledger storage is explicitly marked NOT_IMPLEMENTED (501) pending M06.
  */
 
 export async function GET(request: NextRequest) {
-  // 1. Rate limiting check
-  const ip = request.headers.get("x-forwarded-for") || "anonymous";
+  // 1. Rate limiting check with verified client IP provenance
+  const ip = getClientIp(request.headers);
   if (!checkComplianceRateLimit(`audit-get:${ip}`, 30, 60000)) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
@@ -42,15 +43,17 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 3. Verified platform administrator: read ledger
-  const ledger = getAuditLedger();
-  const isValid = await verifyLedgerIntegrity(ledger);
-
-  return NextResponse.json({
-    ledger,
-    isValid,
-    verifiedAdminId: auth.user?.id,
-  });
+  // 3. Authoritative server-side audit ledger requires M06 WORM persistent storage
+  return NextResponse.json(
+    {
+      error: "Authoritative compliance audit ledger is disabled pending Milestone M06 server-side WORM persistence.",
+      code: "NOT_IMPLEMENTED",
+      verifiedAdminId: auth.user?.id,
+      isPrototype: true,
+      ledger: [],
+    },
+    { status: 501 }
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -63,8 +66,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2. Rate limiting check
-  const ip = request.headers.get("x-forwarded-for") || "anonymous";
+  // 2. Rate limiting check with verified client IP provenance
+  const ip = getClientIp(request.headers);
   if (!checkComplianceRateLimit(`audit-post:${ip}`, 10, 60000)) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },

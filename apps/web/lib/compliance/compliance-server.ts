@@ -6,6 +6,7 @@ import {
   verifyAdminSession,
   verifyCsrfOrigin,
   checkComplianceRateLimit,
+  getClientIp,
   type AdminSessionCheckResult,
   type SessionVerificationProvider,
   type CookieItem,
@@ -13,7 +14,7 @@ import {
   defaultSupabaseProvider,
 } from "./compliance-session-verifier";
 
-export { verifyCsrfOrigin, checkComplianceRateLimit };
+export { verifyCsrfOrigin, checkComplianceRateLimit, getClientIp };
 export type { AdminSessionCheckResult, SessionVerificationProvider, CookieItem, VerificationInput };
 
 /**

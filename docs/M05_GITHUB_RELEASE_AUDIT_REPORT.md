@@ -83,12 +83,14 @@ Implements ISHTI Milestone M05 (Global Legal, Privacy & Trust Foundation) across
 - Re-implemented SHA-256 audit hash chain verification with block data recomputation, monotonic timestamp checks, index continuity, and verified across all 7 tampering scenarios (FIND-M05-08).
 - Implemented genuine server-only session token authorization (`compliance-session-verifier.ts`, `compliance-server.ts`) and protected Next.js API endpoints (`/api/compliance/audit`, `/api/compliance/triage`), moving security boundary entirely off the client browser. Formally designated live operational admin access as `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY` pending M06 live auth (FIND-M05-09).
 - Hardened server authentication: removed manual cookie parsing, bound user verification and profile role query into single trusted context, added chunked/encoded cookie reassembly, separated 503 outage errors from 401/403, and added CSRF origin validation, rate limiting, and 64KB payload limits (FIND-M05-10).
+- Reconciled DPDP Act phased commencement under G.S.R. 843(E), disaggregated IT Rules SLAs, corrected GST TCS to 0.5% (Notification No. 15/2024-Central Tax), bound Bearer token to DB context with Authorization header, returned 501 NOT_IMPLEMENTED on audit API, and verified client IP provenance (FIND-M05-11).
 - Delivered Comprehensive Legal Risk Prevention Programme in `docs/legal/` (23-item risk ledger, missing facts register, primary statutory applicability matrix, hard-stop launch gates L0–L5, vendor DPA register, two-tier scripture copyright register, contract inventory, and personal data lifecycle ROPA).
 
 ## Verification Evidence
-- M05 Test Suite (`scripts/run-m05-tests.ts`): 101/101 PASSED
+- M05 Test Suite (`scripts/run-m05-tests.ts`): 104/104 PASSED
 - Security Regression Suite (`npm run test:security`): 110/110 PASSED
-- TypeScript Compilation (`npm run typecheck`): 0 ERRORS
+- Total Automated Tests: 214/214 PASSED (0 failures)
+- TypeScript Compilation (`npm run typecheck`): 0 ERRORS across all workspaces
 - Next.js Production Build (`npm run build:web`): 31/31 ROUTES PRERENDERED
 - Zero database mutations; staging and production Supabase remained strictly quarantined.
 ```

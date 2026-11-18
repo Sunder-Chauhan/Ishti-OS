@@ -44,6 +44,7 @@ import {
   decodeCookieValue,
   verifyCsrfOrigin,
   checkComplianceRateLimit,
+  getClientIp,
   type SessionVerificationProvider,
   type VerificationInput,
   type CookieItem,
@@ -621,6 +622,39 @@ async function runM05Tests() {
     bearerCsrfExempt.valid === true,
     "G5",
     "Server admin check: 17c. Bearer-authenticated mutation is exempt from browser CSRF penalty"
+  );
+
+  // 17d. Configured trusted origin
+  process.env.ALLOWED_ORIGINS = "https://ishti.in,https://app.ishti.in";
+  const trustedOriginCsrf = verifyCsrfOrigin({
+    method: "POST",
+    headers: {
+      get: (h: string) => (h === "origin" ? "https://app.ishti.in" : h === "host" ? "ishti.in" : null),
+    },
+  });
+  assert(
+    trustedOriginCsrf.valid === true,
+    "G5",
+    "Server admin check: 17d. Cookie-authenticated mutation from configured trusted origin is accepted"
+  );
+
+  // 18. Client IP extraction with proxy validation
+  const cfClientIp = getClientIp({
+    get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.195" : null),
+  });
+  assert(
+    cfClientIp === "203.0.113.195",
+    "G5",
+    "Server admin check: 18a. Client IP correctly extracted from Cloudflare header"
+  );
+
+  const fallbackIp = getClientIp({
+    get: () => null,
+  });
+  assert(
+    fallbackIp === "direct-client",
+    "G5",
+    "Server admin check: 18b. Direct un-proxied connection falls back safely to direct-client"
   );
 
   // Unconfigured or offline backend authentication -> 503 Disabled

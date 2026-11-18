@@ -563,3 +563,51 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Next.js Production Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** cleanly.
      - Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and uncontacted.
 - **Status:** `TECHNICALLY VERIFIED WITH BLOCKERS (COUNSEL REVIEW REQUIRED & FOUNDER CONFIRMATION REQUIRED)`. Production project `zxwkfnvmmxoojewhvsdc` remains strictly quarantined.
+
+---
+
+## 2026-11-18 — ADR-028: M05 Legal Accuracy Corrections, GST TCS Recalibration, Precedent-Based Risk Accounting & Server Endpoint Hardening
+
+- **Context:** Following the initial release audit of Milestone M05, a rigorous corrective audit was performed to eliminate inaccurate legal claims, speculative financial guesswork, conflated statutory deadlines, and technical endpoint authorization gaps.
+- **Decision:**
+  1. **DPDP Act & Rules Phased Commencement Reconciliation:**
+     - Reconciled all statutory citations strictly against Gazette of India Notification G.S.R. 843(E) dated 13 November 2025.
+     - Correctly distinguished provisions commencing immediately from those commencing at 12 months (§6(9) and §27(1)(d), commencing 13 November 2026) and 18 months (§16(1) and §17(1), commencing 13 May 2027).
+     - Proactively implemented engineering controls for future obligations without mischaracterizing them as current statutory violations.
+     - Clarified that Data Protection Officers (DPOs) are statutorily mandatory under §10 ONLY for notified Significant Data Fiduciaries (SDFs).
+  2. **IT Rules Deadlines Disaggregation:**
+     - Disaggregated intermediary obligations into distinct statutory windows:
+       - 24-hour acknowledgement under Rule 3(2)(a)(i);
+       - 7-day complaint resolution/disposal under Rule 3(2)(a)(i) (as amended February 2026);
+       - 24-hour removal for content depicting non-consensual nudity, sexual acts, or impersonation under Rule 3(2)(b);
+       - 36-hour takedown upon actual knowledge via court order or Appropriate Government notification under Rule 3(1)(d);
+       - Confidential execution of statutory blocking directions issued under IT Act §69A and the 2009 Blocking Rules.
+     - Differentiated intermediary safe harbour under §79 for user-generated content from first-party publisher status for ISHTI editorial content.
+  3. **GST TCS Recalibration & Operating Model Architecture:**
+     - Corrected the TCS rate under CGST Act §52 from 1% to **0.5%** (0.25% CGST + 0.25% SGST, or 0.5% IGST) pursuant to Notification No. 15/2024-Central Tax (effective 10 July 2024).
+     - Architected clear operational boundaries between:
+       - *Principal Supplier Model:* ISHTI sells its own digital content / subscriptions; subject to regular forward-charge GST; TCS does NOT apply.
+       - *Marketplace ECO Model:* ISHTI facilitates third-party pandit services and collects consideration; subject to 0.5% TCS under §52 and 1% TDS under §194-O.
+     - Marked GST SAC classification (999799, 998439), registration, TCS, TDS, and invoicing as **CA REVIEW REQUIRED**.
+  4. **Income Tax Books of Account Scope:**
+     - Clarified that 7-year retention under Income-tax Act, 2025 §62 / Rule 46 (and 6-year retention under 1961 Act §44AA / Rule 6F) applies specifically to commercial business records exceeding statutory income/turnover thresholds, and does NOT apply across all user personal data. Applying accounting retention to personal user profiles violates data minimization under the DPDP Act. Marked as **CA REVIEW REQUIRED**.
+  5. **International Privacy & AI Framework Harmonization:**
+     - *GDPR Article 3(2):* Clarified that mere accessibility from the EU does not trigger GDPR (Recital 23 requires demonstrable intention to offer goods or services).
+     - *Special Category Data (Article 9):* Clarified that birth details do not per se constitute religious data unless processing specifically reveals religious beliefs.
+     - *Cross-Border Transfers:* Grounded international data flows on Standard Contractual Clauses (SCCs), explicitly barring Article 49(1)(a) consent derogations as a routine transfer solution per EDPB Guidelines 2/2018.
+     - *CCPA/CPRA:* Updated statutory gross-revenue threshold to **$26.625 million** (2026 CPI adjustment) or 100k consumers.
+     - *EU AI Act:* Mapped Article 50 transparency obligations (AI identity and synthetic output disclosure), noting phased rollout (2025–2027).
+  6. **Technical Security Hardening:**
+     - Bound Bearer-token verification directly to database authorization context in `compliance-session-verifier.ts` by instantiating the Supabase client with `{ global: { headers: { Authorization: \`Bearer ${input.bearerToken}\` } } }`, ensuring subsequent role lookups execute within the authenticated token's RLS context.
+     - Refactored `GET /api/compliance/audit` to return explicit 501 `NOT_IMPLEMENTED` with `{ code: "NOT_IMPLEMENTED" }`, preventing false claims of server-authoritative audit logging before Milestone M06 WORM persistence.
+     - Documented `checkComplianceRateLimit` honestly as process-local in-memory, requiring distributed Redis / Postgres locking in M06.
+     - Hardened CSRF origin validation (`verifyCsrfOrigin`) with configured trusted-origins allowlist (`ALLOWED_ORIGINS` / `NEXT_PUBLIC_APP_URL`) and Host/Referer validation.
+     - Added client IP provenance verification (`getClientIp`) rejecting untrusted forwarded headers unless behind configured trusted proxies.
+     - Added explicit simulation disclaimer notice to `POST /api/compliance/triage` response (`isStatutoryFiling: false`).
+- **Verification Evidence:**
+  - Automated M05 Suite (`scripts/run-m05-tests.ts`): **104/104 PASSED** (0 failures).
+  - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all workspaces.
+  - Next.js Web Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** successfully.
+  - Quarantined environments: Production Supabase (`zxwkfnvmmxoojewhvsdc`) and staging Supabase (`zrjptpkhtklfgnovdrny`) strictly quarantined and untouched.
+- **Final Release Verdict:** **`READY FOR INDEPENDENT COUNSEL REVIEW`** (Technical safeguards and legal baselines verified; commercial launch strictly gated behind corporate incorporation, CA sign-off, and legal counsel review).

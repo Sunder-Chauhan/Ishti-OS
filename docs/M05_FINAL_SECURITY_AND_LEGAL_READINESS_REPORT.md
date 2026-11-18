@@ -5,217 +5,241 @@
 **Repository:** `Sunder-Chauhan/Ishti-OS`  
 **Branch:** `feature/m05-trust-governance`  
 **Target Base:** `main` (commit `f3c2c5c2c14c34712c1f0b6bfec9eeac12e83a38`)  
-**Execution Timestamp:** 2026-11-17T22:30:00+05:30  
-**Overall Readiness Verdict:** **TECHNICALLY VERIFIED WITH BLOCKERS (COUNSEL REVIEW REQUIRED & FOUNDER CONFIRMATION REQUIRED)**  
+**Execution Timestamp:** 2026-11-18T13:30:00+05:30  
+**Overall Readiness Verdict:** **READY FOR INDEPENDENT COUNSEL REVIEW**  
 
 ---
 
-## 1. Executive Summary
+## Executive Protocol & Release Boundary
 
-Milestone M05 establishes the comprehensive **Legal, Privacy & Trust Foundation** for **ISHTI**, a global spiritual ecosystem delivering devotional content, Panchang calendar calculations, encrypted Kundli astrology, puja services, expert consultations, community satsang circles, and AI-powered spiritual guidance.
-
-Following an independent GitHub code review and legal audit, this final remediation programme completed two core mandates:
-1. **Server-Side Authentication Security Hardening:** Eliminated manual cookie parsing, bound identity verification and database role queries to a single trusted `@supabase/ssr` context, reassembled chunked cookies, decoded base64-encoded cookie payloads, accurately differentiated 401/403/503 outage codes, and enforced CSRF origin validation, sliding-window rate limiting, and 64KB payload bounds on protected administrative endpoints.
-2. **Comprehensive Legal Risk & Regulatory Readiness Programme:** Conducted an exhaustive legal risk assessment across 10 statutory domains. Formulated a 23-item risk ledger, identified missing corporate facts, mapped primary statutory sources with official Gazette citations, established a Two-Tier Scripture Rights Doctrine, inventoried personal data lifecycles (ROPA), and instituted hard-stop sequential Launch Gates (L0 through L5).
+This report represents the comprehensive technical, security, regulatory, and architectural release audit of ISHTI Milestone M05 (**Legal, Privacy & Trust Foundation**).
 
 > [!CRITICAL]
 > **GOVERNANCE & STATUTORY DISCLAIMER:**
-> Automated test passage demonstrates **technical implementation correctness only**. It does **NOT** constitute legal compliance, legal certification, regulatory sign-off, or immunity from litigation.
-> 
-> All legal analyses, statutory interpretations, and policy documents authored herein are architectural engineering specifications requiring formal review and execution by qualified Indian legal counsel and the platform promoters prior to commercial launch.
+> Automated test passage and architectural verification demonstrate **technical implementation correctness only**.
+> They do **NOT** constitute legal compliance, legal certification, regulatory sign-off, or immunity from civil or criminal liability.
+>
+> All legal analyses, statutory interpretations, regulatory matrices, and policy documents authored herein are engineering specifications and preliminary legal research baselines.
+> Commercial launch is strictly prohibited until the corporate entity is incorporated, statutory filings are completed, and formal written sign-offs are provided by qualified Indian legal counsel and a practicing Chartered Accountant (CA).
 
 ---
 
-## 2. Authentication & Authorization Security Corrections
+## 1. Corrections Completed in Pass 5
 
-### A. Manual Cookie Parsing Eliminated
-- **Previous Defect:** `compliance-session-verifier.ts` manually searched for raw string names (`sb-access-token`, `sb-*-auth-token`) and attempted to parse JSON array strings, failing on chunked or encoded Supabase SSR cookies.
-- **Remediation:** Reused the established `@supabase/ssr` server client (`createClient()` from `apps/web/lib/supabase/server.ts`). Automated chunk reassembly (`reassembleChunkedCookies`) and base64 payload decoding (`decodeCookieValue`) natively support multi-part cookies (e.g. `sb-<ref>-auth-token.0`, `.1`) and encoded session strings.
-
-### B. Bound Identity Verification & Authoritative Role Resolution
-- **Previous Defect:** `verifyToken()` validated a token in isolation, while a separate client queried `public.profiles`, introducing a split-identity vulnerability.
-- **Remediation:** Implemented `resolveUserAndRole()` in a single trusted context:
-  1. Resolves the authenticated user via `supabase.auth.getUser()`.
-  2. Extracts the verified, immutable `user.id`.
-  3. Queries `public.profiles.role` for that exact verified `user.id` using the same client.
-  4. Never consumes client-supplied role headers (`x-user-role`, `x-ishti-role`), request bodies, or React state.
-
-### C. Backend Outage Classification vs. Authentication Failures
-- **Previous Defect:** Network and database timeouts were collapsed into generic 401 Unauthorized responses.
-- **Remediation:** Enforced strict status differentiation:
-  - Missing Session $\to$ `401 Unauthorized` (`MISSING_SESSION`)
-  - Invalid Signature / Malformed Token $\to$ `401 Unauthorized` (`INVALID_TOKEN`)
-  - Expired Token Timestamp $\to$ `401 Unauthorized` (`EXPIRED_TOKEN`)
-  - Authenticated Non-Admin Role (`devotee`, `expert_pandit`, `content_scholar`) $\to$ `403 Forbidden` (`NON_ADMIN`)
-  - User Account Exists but Profile Record Missing in DB $\to$ `403 Forbidden` (`PROFILE_MISSING`)
-  - Authentication Service Infrastructure Outage $\to$ `503 Service Unavailable` (`AUTH_OUTAGE`)
-  - Authoritative Profile Database Outage $\to$ `503 Service Unavailable` (`DB_OUTAGE`)
-  - Verified `platform_admin` Session $\to$ `200 Authorized` (`SUCCESS`)
-
-### D. Protected API Endpoints Hardening
-- **`/api/compliance/audit`:** Protected with rate limiting (30 req/min), independent session verification, and CSRF origin validation on mutations.
-- **`/api/compliance/triage`:** Protected with rate limiting (10 req/min), 64KB Content-Length payload bounds, JSON schema validation, CSRF origin checks (`verifyCsrfOrigin`), and HTTP method restrictions (`Allow: POST`).
-- **`/profile/compliance`:** Presentation-only client component; displays restricted access card upon 401, 403, or 503; contains zero administrative bypass logic.
-
----
-
-## 3. Automated Verification Test Results
-
-### Suite Summary Across Monorepo
-
-| Test Suite | Command | Executed | Passed | Failed | Exit Code | Result |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **M05 Technical & Governance Suite** | `npx tsx scripts/run-m05-tests.ts` | 101 | 101 | 0 | 0 | **PASSED** |
-| **Security & Cryptography Suite** | `npm run test:security` | 110 | 110 | 0 | 0 | **PASSED** |
-| **TypeScript Typecheck** | `npm run typecheck` | 2 packages | 2 | 0 | 0 | **PASSED** |
-| **Next.js Production Build** | `npm run build:web` | 31 routes | 31 | 0 | 0 | **PASSED** |
-| **Total Automated Tests** | All Suites Combined | **211** | **211** | **0** | **0** | **PASSED** |
-
-### Breakdown of Dedicated Security Tests (Gate 5 Section 1)
-1. Missing session $\to$ 401 Unauthorized (`[PASS]`)
-2. Invalid token signature $\to$ 401 Unauthorized (`[PASS]`)
-3. Expired token timestamp $\to$ 401 Unauthorized (`[PASS]`)
-4. Valid devotee session $\to$ 403 Forbidden (`[PASS]`)
-5. Valid expert pandit session $\to$ 403 Forbidden (`[PASS]`)
-6. Valid content scholar session $\to$ 403 Forbidden (`[PASS]`)
-7. Valid platform administrator session $\to$ 200 Authorized (`[PASS]`)
-8. Chunked Supabase cookies (.0, .1) reassembly in index order $\to$ 200 Authorized (`[PASS]`)
-9. Encoded Supabase cookies (base64- prefix) decoded safely $\to$ 200 Authorized (`[PASS]`)
-10. Bearer-only authentication resolves admin $\to$ 200 Authorized (`[PASS]`)
-11. Client-supplied role header manipulation rejected $\to$ 403 Forbidden (`[PASS]`)
-12. Unauthenticated caller role manipulation rejected $\to$ 401 Unauthorized (`[PASS]`)
-13. Profile lookup failure: Database outage $\to$ 503 Service Unavailable (`[PASS]`)
-14. Profile lookup failure: Profile missing in database $\to$ 403 Forbidden (`[PASS]`)
-15. Authentication service provider outage $\to$ 503 Service Unavailable (`[PASS]`)
-16. Direct API request without session $\to$ 401 Unauthorized (`[PASS]`)
-17. Malformed requests: Payload > 64KB rejected with 413; malformed JSON rejected with 400 (`[PASS]`)
-18. CSRF protections: Cross-site mutation rejected (403); mismatched Origin rejected (403); Bearer exempt (`[PASS]`)
-19. Unconfigured backend authentication disables admin access $\to$ 503 Service Unavailable (`[PASS]`)
+1. **DPDP Act & Rules Phased Commencement Reconciled:**
+   - Reconciled all statutory citations strictly against Gazette of India Notification G.S.R. 843(E) dated 13 November 2025.
+   - Accurately distinguished provisions commencing immediately from those commencing at 12 months (Section 6(9) and Section 27(1)(d), commencing 13 November 2026) and 18 months (Section 16(1) and Section 17(1), commencing 13 May 2027).
+   - Removed inaccurate assertions describing future obligations as "current statutory violations"; framed all upcoming mandates as proactive pre-launch engineering controls.
+   - Clarified that Data Protection Officers (DPOs) are statutorily mandatory under Section 10 ONLY for notified Significant Data Fiduciaries (SDFs).
+2. **IT Rules Intermediary Deadlines Disaggregated:**
+   - Disaggregated intermediary compliance windows into their specific statutory rules:
+     - 24-hour acknowledgement under Rule 3(2)(a)(i);
+     - 7-day complaint disposal/resolution under Rule 3(2)(a)(i) (reflecting the February 2026 amendments);
+     - 24-hour removal for content depicting non-consensual nudity, sexual acts, or impersonation under Rule 3(2)(b);
+     - 36-hour takedown upon actual knowledge via court order or Appropriate Government notification under Rule 3(1)(d);
+     - Statutory blocking orders executed pursuant to confidential directions issued under IT Act §69A read with the 2009 Blocking Rules.
+   - Differentiated intermediary safe-harbour protections under Section 79 for user-generated discussions from first-party content publisher liability for platform editorial content.
+3. **GST TCS Recalibrated to 0.5% & Operating Models Partitioned:**
+   - Corrected the TCS rate under CGST Act §52 from 1% to **0.5%** (0.25% CGST + 0.25% SGST, or 0.5% IGST) pursuant to Notification No. 15/2024-Central Tax (effective 10 July 2024).
+   - Partitioned platform operating models into:
+     - *Principal Supplier Model:* ISHTI sells its own digital content / subscriptions; subject to regular forward-charge GST; TCS does NOT apply.
+     - *Marketplace ECO Model:* ISHTI facilitates third-party pandit services and collects consideration; subject to 0.5% TCS under §52 and 1% TDS under §194-O.
+   - Designated GST SAC classification (999799, 998439), registration, TCS, TDS, and invoicing as **CA REVIEW REQUIRED**.
+4. **Income Tax Books of Account Scope Clarified:**
+   - Clarified that mandatory 7-year retention under Income-tax Act, 2025 §62 / Rule 46 (and 6-year retention under 1961 Act §44AA / Rule 6F) applies specifically to commercial business records exceeding statutory income/turnover thresholds, and does NOT apply across all user personal data. Applying accounting retention to personal user profiles violates data minimization under the DPDP Act. Designated as **CA REVIEW REQUIRED**.
+5. **International Privacy & AI Framework Harmonized:**
+   - *GDPR Article 3(2):* Clarified that mere accessibility from the EU does not trigger GDPR (Recital 23 requires demonstrable intention to offer goods or services).
+   - *Special Category Data (Article 9):* Clarified that birth coordinates do not per se constitute religious data unless processing specifically reveals religious beliefs.
+   - *Cross-Border Transfers:* Grounded international data flows on Standard Contractual Clauses (SCCs), explicitly barring Article 49(1)(a) consent derogations as a routine transfer solution per EDPB Guidelines 2/2018.
+   - *CCPA/CPRA:* Updated statutory gross-revenue threshold to **$26.625 million** (2026 CPI adjustment) or 100k consumers.
+   - *EU AI Act:* Mapped Article 50 transparency obligations (AI identity and synthetic output disclosure), noting phased rollout (2025–2027).
+6. **Risk Register Financial Accounting Reformed:**
+   - Replaced speculative penalty guesswork with absolute statutory maximum ceilings and published judicial/regulatory precedents.
+   - Labeled uncertain exposure quantum as `COUNSEL ASSESSMENT REQUIRED` or `CA REVIEW REQUIRED`.
+7. **Server-Side Security & Authorization Hardened:**
+   - Bound Bearer-token verification directly to database authorization context in `compliance-session-verifier.ts` by instantiating the Supabase client with `{ global: { headers: { Authorization: \`Bearer ${input.bearerToken}\` } } }`, ensuring subsequent role lookups execute within the authenticated token's RLS context.
+   - Refactored `GET /api/compliance/audit` to return explicit 501 `NOT_IMPLEMENTED` with `{ code: "NOT_IMPLEMENTED" }`, preventing false claims of server-authoritative audit logging before Milestone M06 WORM persistence.
+   - Documented `checkComplianceRateLimit` honestly as process-local in-memory, requiring distributed Redis / Postgres locking in M06.
+   - Hardened CSRF origin validation (`verifyCsrfOrigin`) with configured trusted-origins allowlist (`ALLOWED_ORIGINS` / `NEXT_PUBLIC_APP_URL`) and Host/Referer validation.
+   - Added client IP provenance verification (`getClientIp`) rejecting untrusted forwarded headers unless behind configured trusted proxies.
+   - Added explicit simulation disclaimer notice to `POST /api/compliance/triage` response (`isStatutoryFiling: false`).
 
 ---
 
-## 4. Legal Research Methodology & Primary Source Register
+## 2. Remaining Technical Vulnerabilities & Engineering Dependencies
 
-All legal conclusions are grounded in primary Indian legislation, central Gazette notifications, and statutory directions:
+The following technical items are identified as intentional architectural dependencies scheduled for implementation in Milestone M06 (Backend Persistence & Production Infrastructure):
 
-| Statute / Instrument | Citation / Gazette Reference | Current Status | Primary URL |
-| :--- | :--- | :--- | :--- |
-| **Digital Personal Data Protection Act, 2023** | Act No. 22 of 2023; Gazette G.S.R. 843(E) | In Force (Phased) | `https://www.meity.gov.in/content/digital-personal-data-protection-act-2023` |
-| **Information Technology (Intermediary Guidelines) Rules, 2021** | Notification G.S.R. 139(E), amended Feb 2026 | In Force | `https://www.meity.gov.in/content/information-technology-intermediary-guidelines-and-digital-media-ethics-code-rules-2021` |
-| **CERT-In Directions under IT Act §70B(6)** | Direction No. 20(3)/2022-CERT-In | In Force (28 Jun 2022) | `https://www.cert-in.org.in/directions2022.jsp` |
-| **Consumer Protection Act, 2019 & E-Commerce Rules, 2020** | Act No. 35 of 2019; Notification G.S.R. 462(E) | In Force | `https://consumeraffairs.nic.in/acts-and-rules/consumer-protection` |
-| **Guidelines for Prevention of Dark Patterns, 2023** | CCPA Notification 30 Nov 2023 | In Force | `https://consumeraffairs.nic.in/sites/default/files/Dark_Patterns_Guidelines_2023.pdf` |
-| **The Drugs and Magic Remedies (Objectionable Advertisements) Act, 1954** | Act No. 21 of 1954 | In Force | `https://www.indiacode.nic.in/handle/123456789/1515` |
-| **Bharatiya Nyaya Sanhita, 2023** | Act No. 45 of 2023 (§299 Outraging Religious Feelings) | In Force (1 Jul 2024) | `https://www.mha.gov.in/en/commoncontent/the-bharatiya-nyaya-sanhita-2023` |
-| **Copyright Act, 1957** | Act No. 14 of 1957 (§14, §51, §52) | In Force | `https://copyright.gov.in/Documents/CopyrightRules1957.pdf` |
-| **Income-tax Act, 2025 & Income-tax Rules, 2026** | Act No. 6 of 2025 (§62 & Rule 46: 7-Year Retention) | Effective 1 Apr 2026 | `https://incometaxindia.gov.in` |
-| **Income-tax Act, 1961** | Act No. 43 of 1961 (§44AA / Rule 6F: 6 Assessment Years) | Transitional Savings (§536) | `https://incometaxindia.gov.in` |
-| **Companies Act, 2013** | Act No. 18 of 2013 (§128: 8 Financial Years) | In Force | `https://www.mca.gov.in` |
-| **Central Goods and Services Tax Act, 2017** | Act No. 12 of 2017 (§24 Mandatory Registration, §52 TCS) | In Force | `https://cbic-gst.gov.in` |
-| **General Data Protection Regulation (GDPR)** | Regulation (EU) 2016/679 (Art 3(2), Art 9 Special Category) | In Force | `https://eur-lex.europa.eu/eli/reg/2016/679/oj` |
-| **California Consumer Privacy Act (CCPA/CPRA)** | Cal. Civ. Code §1798.100 et seq. ($26.625M threshold) | In Force | `https://oag.ca.gov/privacy/ccpa` |
-
----
-
-## 5. Critical & High-Priority Legal Risks Identified
-
-A complete 23-item risk ledger was authored in [`docs/legal/ISHTI_LEGAL_RISK_REGISTER.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/ISHTI_LEGAL_RISK_REGISTER.md). The highest-exposure risks are:
-
-1. **RISK-CORP-01 (Unincorporated Commercial Operations):** Launching commercial transactions before corporate entity formation exposes founders to unlimited personal liability. *(Status: BLOCKED — Incorporation Required in Gate L0)*.
-2. **RISK-DP-02 (Processing Personal Data of Children):** Generating Kundli birth charts for infants/minors without verified parental consent violates DPDP Act §9(1) (statutory penalty up to ₹200 crore). *(Status: BLOCKED — Minor Governance Flow Required in M06)*.
-3. **RISK-RS-01 (Magic Remedies Act Violations):** Promising medical cures, fertility, or male children through rituals triggers criminal imprisonment under Sections 3 and 7 of the Drugs & Magic Remedies Act 1954. *(Status: Mitigated in Architecture; Operational Content Moderation Required)*.
-4. **RISK-AI-01 (Hallucinatory Scripture Attribution):** AI conversational assistants fabricating Sanskrit shlokas or misattributing controversial views to Shastras risks criminal prosecution under BNS §299 and loss of IT Act §79 safe harbour. *(Status: BLOCKED — RAG Vector Pipeline & Scholar Peer Review Required in M06)*.
-5. **RISK-IP-01 (Unlicensed Scripture Translations in AI Vector DB):** Ingesting modern copyright-protected English/Hindi commentaries into the AI RAG corpus constitutes commercial copyright infringement under Copyright Act §51. *(Status: Mitigated in Architecture; Seeds Restricted to Verified Public Domain)*.
-6. **RISK-INT-01 (Intermediary SLA Non-Compliance):** Failing to acknowledge user complaints within 24 hours or resolve within 7 days under the February 2026 amended IT Rules forfeits Section 79 intermediary immunity. *(Status: Mitigated Locally; Backend Ticketing Required in M06)*.
+1. **Process-Local Rate Limiting:**
+   - Current: `checkComplianceRateLimit` is an in-memory sliding-window limiter operating within a single Node.js runtime process.
+   - M06 Dependency: Distributed multi-instance rate limiting backed by Redis or PostgreSQL advisory locks (`public.rate_limit_events`) is required before horizontal scaling.
+2. **In-Memory Grievance & Audit Store:**
+   - Current: Grievance tickets and compliance audit events are managed in in-memory structures with client-side prototype flags.
+   - M06 Dependency: Production database tables (`public.grievance_tickets`, `public.compliance_audit_ledger`) and Cloud Storage Object Lock (WORM storage compliant with SEC Rule 17a-4 / ISO 27001) are required for tamper-proof persistence.
+3. **Hosted Supabase Auth Infrastructure:**
+   - Current: Offline baseline simulates authentication or returns 503 (`BACKEND_AUTH_UNAVAILABLE`) when live backend keys are absent, adhering to strict offline quarantine rules.
+   - M06 Dependency: Active integration with hosted Supabase Auth instances (`ap-south-1` Mumbai) for real cryptographically signed JWT sessions.
+4. **Automated Child Age Verification (DPDP Act §9):**
+   - Current: UI age-gate schema and guardian OTP declaration defined in architecture.
+   - M06 Dependency: Live SMS gateway integration (DLT-registered India OTP provider) to deliver verifiable parental consent OTPs before minor Kundli chart generation.
+5. **Canonical Scripture Vector RAG Pipeline:**
+   - Current: Database seed records cite 19th-century public-domain texts (Griffith 1896, Max Müller 1879) marked `pending_peer_review`.
+   - M06 Dependency: Dedicated pgvector database pipeline with strict source attribution and hallucination guardrails before public conversational AI launch.
 
 ---
 
-## 6. Engineering Controls Implemented in M05
+## 3. Legal Claims Verified Against Official Sources
 
-| Domain | Technical Control Implemented | Source Code Location |
+All statutory analyses, time windows, and threshold figures have been independently verified against official primary government sources:
+
+| Regulatory Instrument | Official Gazette / Primary Government Source Citation | Verified Provision & Parameter |
 | :--- | :--- | :--- |
-| **Authentication Security** | Pure server-only session token verification; single trusted context; chunked/encoded cookie reassembly; 401/403/503 differentiation; CSRF origin checks | `apps/web/lib/compliance/compliance-session-verifier.ts`<br/>`apps/web/lib/compliance/compliance-server.ts` |
-| **Protected Endpoints** | Dynamic Next.js App Router route handlers verifying admin sessions and rejecting unauthorized requests | `apps/web/app/api/compliance/audit/route.ts`<br/>`apps/web/app/api/compliance/triage/route.ts` |
-| **Presentation Boundary** | Browser compliance page refactored to presentation-only; displays restricted access card upon 401/403/503; zero client override | `apps/web/app/profile/compliance/page.tsx` |
-| **Consent Sanctuary** | Unbundled 6-purpose consent registry; optional purposes default to false; deterministic SHA-256 evidence hashing | `apps/web/lib/consent/consent-registry.ts`<br/>`apps/web/lib/consent/consent-service.ts` |
-| **Privacy Rights** | Demonstration SAR JSON package generator with SHA-256 fingerprint; 7-stage deletion sequence marked `NOT_IMPLEMENTED` | `apps/web/lib/privacy/export-service.ts`<br/>`apps/web/lib/privacy/deletion-orchestrator.ts` |
-| **Statutory Retention** | Field-level retention matrix separating 7/8-year commercial tax records from scrubbed personal data | `apps/web/lib/privacy/retention-matrix.ts` |
-| **Commerce Trust** | Minor-unit integer arithmetic; proposed 0% fee deduction; Pandit No-Show guarantee; EU CRD Art. 16(m) digital content waiver | `apps/web/lib/commerce/cancellation-calculator.ts`<br/>`apps/web/lib/commerce/multi-currency.ts` |
-| **Grievance Operations** | Automated IT Rules 2026 ticketing (24h ack, 7d resolve); 2-factor lookup (Ticket # + Email); zero fake complaints | `apps/web/lib/compliance/grievance-service.ts`<br/>`apps/web/app/legal/grievance/page.tsx` |
-| **Cybersecurity Triage** | Automated CERT-In 6-hour reporting window calculation; DPDP Act §8(6) personal breach assessment | `apps/web/lib/compliance/security-governance.ts` |
-| **Cryptographic Audit** | Append-only SHA-256 block hash chain with full data recomputation across all 7 tampering scenarios | `apps/web/lib/compliance/audit-trail.ts` |
+| **Digital Personal Data Protection Act, 2023** | Gazette of India Notification G.S.R. 843(E) dated 13 Nov 2025; DPDP Rules 2025 & Dec 2025 Corrigendum | Phased commencement: 12-month timeline for §6(9) and §27(1)(d); 18-month timeline for §16(1) and §17(1). Core fiduciary safeguards in force. DPO mandatory only for notified SDFs (§10). |
+| **Information Technology Rules, 2021** | Notification G.S.R. 139(E) dated 25 Feb 2021 as amended February 2026 | Rule 3(2)(a)(i): 24h acknowledgement, 7d disposal. Rule 3(2)(b): 24h removal for non-consensual sexually explicit content. Rule 3(1)(d): 36h takedown upon court order or government notification. Rule 3A: GAC appeals (`gac.gov.in`). |
+| **Information Technology Act, 2000 §69A** | Information Technology (Blocking Rules), 2009 (Notification G.S.R. 781(E)) | Statutory procedure for blocking access; confidential directions issued by Designated Officer / Review Committee. |
+| **CERT-In Directions under IT Act §70B(6)** | Direction No. 20(3)/2022-CERT-In dated 28 Apr 2022 | Mandatory 6-hour reporting window for 20 specified cyber incidents; mandatory clock synchronization with NPL/NIC NTP servers; 180-day log retention within India. |
+| **Central Goods and Services Tax Act, 2017** | Notification No. 15/2024-Central Tax dated 10 July 2024; CGST Act §52 | TCS rate reduced from 1% to **0.5%** (0.25% CGST + 0.25% SGST, or 0.5% IGST) effective 10 July 2024 for e-commerce operators collecting consideration. |
+| **Income-tax Act, 2025 & Rules, 2026** | Act No. 6 of 2025; Income-tax Rules, 2026 Rule 46 | Section 62 & Rule 46: 7-year retention of books of account and documents for qualifying businesses; Rule 46(8): mandatory daily electronic backup in India. Section 536: transitional savings for pre-2026 assessment years. |
+| **Companies Act, 2013** | Act No. 18 of 2013 Section 128 | Mandatory retention of books of account and vouchers for not less than 8 financial years. |
+| **Consumer Protection Act, 2019 & E-Commerce Rules, 2020** | Act No. 35 of 2019; Notification G.S.R. 462(E) dated 23 Jul 2020 | Mandatory corporate identity, registered office, customer grievance contacts, and transparent refund terms disclosures. |
+| **Guidelines for Prevention of Dark Patterns, 2023** | CCPA Notification dated 30 Nov 2023 | Absolute statutory prohibition of false urgency, basket sneaking, confirm shaming, forced action, and subscription traps. |
+| **The Drugs and Magic Remedies Act, 1954** | Act No. 21 of 1954 Sections 3, 4, 7 | Absolute statutory ban on advertisements claiming magical cures for diseases, disorders, fertility, or male child guarantees. |
+| **Bharatiya Nyaya Sanhita, 2023** | Act No. 45 of 2023 Section 299 & Section 302 | Criminal prohibition against deliberate, malicious acts outraging religious feelings; mandates proactive content moderation. |
+| **Copyright Act, 1957** | Act No. 14 of 1957 Sections 14, 51, 52 | Two-Tier Doctrine: Ancient Sanskrit texts in public domain; modern translations, commentaries, and critical typography independently protected. |
+| **General Data Protection Regulation (GDPR)** | Regulation (EU) 2016/679; EDPB Guidelines 2/2018 | Article 3(2) (Recital 23 targeting threshold); Article 9 (religious beliefs); Chapter V (Standard Contractual Clauses required; Art 49 consent barred as routine transfer mechanism). |
+| **California Consumer Privacy Act (CCPA/CPRA)** | Cal. Civ. Code §1798.100 et seq.; California Privacy Protection Agency (CPPA) 2026 Adjustments | Gross annual revenue threshold adjusted for CPI to **$26.625 million** or 100k consumers/households. |
+| **EU AI Act** | Regulation (EU) 2024/1689 Article 50 | Phased application (2025–2027); Article 50 transparency requirements: clear disclosure of AI interaction and synthetic outputs for non-high-risk conversational assistants. |
 
 ---
 
-## 7. Deliverables Register: Legal Governance Documents Authored
+## 4. Claims That Remain Unresolved
 
-The following formal governance and risk deliverables have been authored and committed to `docs/legal/`:
+The following determinations cannot be resolved by software engineering and remain open pending business and legal counsel decisions:
 
-1. **[`docs/legal/LEGAL_FACTS_REQUIRED.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/LEGAL_FACTS_REQUIRED.md):** Missing business and founder determinations register (incorporation, CIN, registered office, bank accounts, GSTIN, officer appointments).
-2. **[`docs/legal/ISHTI_LEGAL_RISK_REGISTER.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/ISHTI_LEGAL_RISK_REGISTER.md):** Comprehensive 23-item risk ledger across 10 statutory domains with three-tier exposure calculations.
-3. **[`docs/legal/ISHTI_REGULATORY_APPLICABILITY_MATRIX.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/ISHTI_REGULATORY_APPLICABILITY_MATRIX.md):** 21-statute applicability matrix citing official Gazette notifications and commencement timelines.
-4. **[`docs/legal/ISHTI_LEGAL_LAUNCH_CHECKLIST.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/ISHTI_LEGAL_LAUNCH_CHECKLIST.md):** Sequential release gates L0 through L5 with documentary evidence requirements and hard stops.
-5. **[`docs/legal/ISHTI_LEGAL_DECISION_LOG.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/ISHTI_LEGAL_DECISION_LOG.md):** Legal decision log recording LDL-001 through LDL-010.
-6. **[`docs/legal/ISHTI_VENDOR_AND_PROCESSOR_REGISTER.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/ISHTI_VENDOR_AND_PROCESSOR_REGISTER.md):** Subprocessor inventory (Supabase, Vercel, Razorpay, Stripe, Twilio, Google Cloud, Cloudflare).
-7. **[`docs/legal/ISHTI_CONTENT_RIGHTS_REGISTER.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/ISHTI_CONTENT_RIGHTS_REGISTER.md):** Scripture and content copyright register establishing the Two-Tier Scripture Rights Doctrine.
-8. **[`docs/legal/ISHTI_CONTRACT_REGISTER.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/ISHTI_CONTRACT_REGISTER.md):** 13-contract master inventory across corporate, consumer, marketplace, technology, and insurance domains.
-9. **[`docs/legal/ISHTI_DATA_INVENTORY_AND_LIFECYCLE.md`](file:///c:/Users/as/Documents/GitHub/spiritual-OS/docs/legal/ISHTI_DATA_INVENTORY_AND_LIFECYCLE.md):** Personal data inventory, legal bases, access roles, and 7-stage deletion lifecycle (ROPA).
-
----
-
-## 8. Launch Gates Status & Pre-Launch Blockers
-
-| Gate | Scope | Status | Technical Readiness | Legal / Corporate Readiness | Primary Blocker |
-| :--- | :--- | :---: | :---: | :---: | :--- |
-| **Gate L0** | Business & Entity Facts | **BLOCKED** | 100% | 0% | Company not incorporated; IP assignment deeds not executed. |
-| **Gate L1** | Privacy & Security | **BLOCKED** | 90% | 25% | Statutory Grievance Officer not appointed; Minor consent flow pending M06. |
-| **Gate L2** | Consumer & Commerce | **BLOCKED** | 95% | 20% | Payment aggregator merchant KYC pending; GST registration required. |
-| **Gate L3** | Content & AI | **BLOCKED** | 50% | 20% | RAG vector pipeline pending M06; modern translation commercial licenses required. |
-| **Gate L4** | Community & Experts | **BLOCKED** | 60% | 10% | Pandit onboarding contractor agreements not executed; moderation pending M06. |
-| **Gate L5** | International Expansion | **BLOCKED** | 80% | 15% | International payment merchant onboarding (FEMA inward remittance) required. |
+1. **Corporate Legal Form & Jurisdiction:**
+   - The registered name, legal entity structure (Pvt Ltd vs. LLP), registered office address, and CIN remain open pending formal incorporation by the founders under the Companies Act, 2013.
+2. **Mixed Spiritual Service Tax Treatment:**
+   - The precise GST taxability and composite/mixed supply classification of bundled offerings (e.g. puja samagri delivery + pandit chanting + recorded video streaming) require formal written opinion from a practicing Chartered Accountant.
+3. **Significant Data Fiduciary (SDF) Classification:**
+   - Whether ISHTI will be designated as an SDF under DPDP Act §10 depends on future Central Government notifications specifying volume, sensitivity of religious data, and risk of harm criteria.
+4. **International Digital Content Cooling-Off Enforceability:**
+   - Whether immediate download waivers under EU Directive 2011/83/EU Article 16(m) are fully recognized across non-EU diaspora jurisdictions without local statutory modifications requires local counsel review.
+5. **Payment Aggregator Non-Refundable Fee Recovery:**
+   - Commercial aggregator terms typically do not refund transaction processing fees upon customer refunds; whether ISHTI absorbs this cost or passes it on depends on commercial agreements and consumer protection review.
 
 ---
 
-## 9. Founder Decisions & Counsel Reviews Required
+## 5. Founder Decisions Required (Gate L0)
 
-### A. Founder Determinations Required (Gate L0):
-1. **Corporate Formation:** Incorporate Private Limited Company under Companies Act, 2013 and obtain Certificate of Incorporation, PAN, and TAN.
-2. **IP Assignment:** Execute formal Intellectual Property Assignment Agreement transferring all software, architecture, branding, and domains to the corporate entity.
-3. **Statutory Officers:** Formally appoint resident Statutory Grievance Officer (IT Rules 2021) and Data Protection Officer (DPDP Act §10).
-4. **Commercial Terms:** Formally approve consultation cancellation tiers (24h/50%/0%) and confirm whether gateway transaction fees are absorbed or deducted.
-5. **Corporate Bank Account & Merchant Onboarding:** Complete entity KYC with Razorpay / Cashfree and Stripe.
+The platform promoters must take formal action on the following items before commercial launch:
 
-### B. Legal Counsel Reviews Required:
-1. **Corporate & IP Counsel:** Review IP Assignment Agreement and register trademark applications for "ISHTI" wordmark and flame device logo (Classes 9, 38, 41, 45).
-2. **Data Privacy Counsel:** Review Notice at Collection, unbundled consent disclosures, and execute Standard Contractual Clauses (SCCs) for international diaspora data flows.
-3. **Consumer Protection Counsel:** Review Terms of Service, refund tiers, and non-medical spiritual disclaimers against Consumer Protection Act 2019 and Dark Patterns Guidelines 2023.
-4. **Tax Counsel / CA:** Confirm SAC service classifications (999799, 998439), 1% TCS compliance under CGST Act §52, and 7-year electronic tax retention under Income-tax Act 2025.
+1. **Corporate Formation:** Incorporate Private Limited Company under the Companies Act, 2013 and obtain Certificate of Incorporation, Corporate PAN, and TAN.
+2. **Intellectual Property Assignment:** Execute formal, stamped Deeds of IP Assignment transferring all code, software architecture, UI designs, brand marks, and domain names from individual founders and contractors to the corporate entity.
+3. **Statutory Officer Appointments:** Formally appoint a resident Indian citizen as the Statutory Grievance Officer (under IT Rules 2021) and designate an internal Privacy Lead.
+4. **Commercial Operating Model Adoption:** Formally approve whether ISHTI operates as a Principal Supplier, Marketplace ECO, or Pure Directory.
+5. **Commercial Refund Policy Adoption:** Formally sign off on consultation cancellation tiers (24h/50%/0%) and the 100% Pandit No-Show Guarantee.
+6. **Corporate Bank Account & Merchant Onboarding:** Open corporate bank account and execute merchant onboarding agreements with Razorpay / Cashfree and Stripe.
 
 ---
 
-## 10. Git Verification & Infrastructure Quarantine Attestation
+## 6. Indian Legal Counsel Review Required
 
-### Git State
-- **Branch:** `feature/m05-trust-governance`
-- **Latest Commit Hash:** To be finalized upon staging and commit
-- **Base `main` Commit:** `f3c2c5c2c14c34712c1f0b6bfec9eeac12e83a38` (clean, uncommitted, untouched)
-- **Local Working Tree:** Clean after commit; zero unstaged modifications; zero direct commits to `main`.
+The following legal instruments must be formally reviewed, approved, and settled by qualified Indian legal counsel:
 
-### Quarantine Attestation
-We formally certify that:
-1. **Production Supabase (`zxwkfnvmmxoojewhvsdc`) was strictly quarantined and uncontacted.** Zero SQL queries, migrations, or data mutations were executed.
-2. **Staging Supabase (`zrjptpkhtklfgnovdrny`) was strictly quarantined and uncontacted.** Zero remote network calls were executed.
-3. Zero deployments were executed to Vercel or any cloud hosting provider.
-4. Zero live SMS, emails, or push notifications were dispatched.
-5. All administrative access in the offline M05 baseline is fail-closed, returning 503 or 401 by default.
+1. **Master Terms of Service & Regional Schedules:**
+   - Master Terms and Schedule A (India due diligence under IT Rules 2021);
+   - Schedule B (EU/UK GDPR disclosures and Article 16(m) waiver);
+   - Schedule C (US dispute resolution and class action waiver);
+   - Schedule D (Global remittance terms).
+2. **Global Privacy Notice & Notice at Collection:**
+   - Ensure disclosures strictly reflect server-side AES-256-GCM envelope encryption without claiming client-side zero-knowledge secrecy.
+   - Verify unbundled 6-purpose consent notices under DPDP Act §6.
+3. **Pandit Marketplace Independent Contractor Agreement:**
+   - Settle binding terms establishing a principal-to-principal contractor relationship (avoiding employee reclassification risks);
+   - Strictly prohibit outcome guarantees, medical claims, and fear-based dosha upselling;
+   - Settle platform commission deductions and payout schedules.
+4. **Content Rights Clearance & Publisher Licensing:**
+   - Vetting of all scripture translations and commentaries ingested into future AI RAG vector stores.
+5. **Standard Contractual Clauses (SCCs):**
+   - Execution of EU-approved SCCs (Controller-to-Processor) with US cloud vendors (Vercel, Google Cloud, Cloudflare) for diaspora data protection.
 
 ---
 
-## 11. Final Operational Conclusion
+## 7. Chartered Accountant (CA) Review Required
 
-The technical architecture and governance foundations of ISHTI Milestone M05 are **technically verified, cleanly built, and supported by 211 passing automated tests**. 
+The following financial, tax, and accounting items must be audited and settled by a practicing Chartered Accountant:
 
-However, in accordance with the mandatory governance principle:
-**ISHTI is legally prepared by design, but commercial launch remains strictly held pending corporate entity incorporation, statutory officer appointments, merchant contracts, and formal legal counsel sign-off.**
+1. **GST Registration:** Mandatory registration under CGST Act §24(x) for e-commerce operations.
+2. **Service Classification & SAC Codes:**
+   - Formal classification of offerings under SAC 999799 (religious/spiritual services), SAC 998439 (digital text/audio streaming), or SAC 998314 (IT platform facilitation).
+3. **TCS Compliance under CGST Act §52:**
+   - Implementation of 0.5% TCS deduction (0.25% CGST + 0.25% SGST, or 0.5% IGST) on net value of taxable supplies by third-party pandits; monthly Form GSTR-8 return filing protocol.
+4. **TDS Compliance under Income-tax Act:**
+   - Deduction of 1% TDS under Section 194-O (for marketplace e-commerce transactions) or Section 194J (for professional fees); quarterly Form 26Q filings and Form 16A issuance.
+5. **Tax Invoicing Architecture:**
+   - Invoicing flows distinguishing principal sales (ISHTI issues tax invoice to devotee) from marketplace sales (pandit issues invoice to devotee; ISHTI issues commission invoice to pandit).
+6. **Statutory Books of Account Retention:**
+   - Implementation of 7-year statutory lock for financial ledgers under Income-tax Act, 2025 §62 / Rule 46 and 8 financial years under Companies Act, 2013 §128; daily electronic backup verification in India under Rule 46(8).
 
-**FINAL STATUS:** **TECHNICALLY VERIFIED WITH BLOCKERS (COUNSEL REVIEW REQUIRED & FOUNDER CONFIRMATION REQUIRED)**
+---
+
+## 8. Features Prohibited from Launch Until Relevant Gate is Cleared
+
+To safeguard the platform, individual promoters, and consumers, the following capabilities are **STRICTLY PROHIBITED** from live deployment until their designated gates are fully cleared:
+
+| Product Feature / Capability | Gate Required | Clear Condition to Unlock |
+| :--- | :---: | :--- |
+| **Live Payment Checkout & Paid Bookings** | **Gate L0 & Gate L2** | Corporate incorporation (L0.1), PAN/TAN (L0.3), GSTIN registration (L2.1), executed Payment Aggregator Merchant Agreement (L2.2), and CA tax review. |
+| **Minor / Child Kundli Generation (`/astro`)** | **Gate L1** | Working verifiable parental consent flow with guardian phone OTP verification and strict ban on minor profiling (DPDP Act §9). |
+| **Third-Party Pandit Marketplace Payouts (`/experts`)** | **Gate L2 & Gate L4** | Executed Pandit Independent Contractor Agreements (L4.1), pandit KYC verification (L4.2), and automated 0.5% TCS / 1% TDS deduction engine. |
+| **Spiritual AI Conversational Assistant (`/bhakti`)** | **Gate L3** | Grounded RAG pipeline anchored exclusively to rights-cleared canonical scriptures, scholar peer review, and executed Enterprise Cloud zero-retention agreement. |
+| **Public Community Discussion Posting (`/community`)** | **Gate L1 & Gate L4** | Appointed Statutory Grievance Officer (L1.4), automated content moderation filter intercepting sectarian hate speech (L4.3), and 36-hour takedown tool (L4.4). |
+| **International Currency Transactions (USD/EUR/GBP)** | **Gate L5** | Executed Standard Contractual Clauses with foreign processors, FEMA-compliant inward remittance account, and Schedule B/C counsel sign-off. |
+
+---
+
+## 9. Verification Suite & Monorepo Health Summary
+
+```
+================================================================================
+   ISHTI Milestone M05: Legal, Privacy & Trust Technical Verification Suite   
+================================================================================
+  Gate 1: Policy Registry & Governance Architecture:       10 passed, 0 failed
+  Gate 2: Sovereign Consent & Cryptographic Evidence:       7 passed, 0 failed
+  Gate 3: Privacy Rights, SAR & 7-Stage Deletion:          14 passed, 0 failed
+  Gate 4: Commerce Trust & Minor-Unit Refund Arithmetic:   21 passed, 0 failed
+  Gate 5: Compliance Operations, Grievances & Security:    52 passed, 0 failed
+================================================================================
+TOTAL M05 TESTS: 104 | PASSED: 104 | FAILED: 0 | EXIT CODE: 0
+================================================================================
+
+================================================================================
+   ISHTI Milestone M02: Comprehensive Security & Verification Suite
+================================================================================
+  1. Static Integrity Checks:                              29 passed, 0 failed
+  2. Unit Tests (Cryptography, Context Binding & Net):     52 passed, 0 failed
+  3. Real Application Integration:                          3 passed, 0 failed
+  4. Real PostgreSQL 18 & RLS Tests:                       22 passed, 0 failed
+  5. Concurrency Tests:                                     4 passed, 0 failed
+================================================================================
+TOTAL SECURITY REGRESSION TESTS: 110 | PASSED: 110 | FAILED: 0 | EXIT CODE: 0
+================================================================================
+
+Monorepo Health:
+- TypeScript Compilation: 0 errors across all packages (@spiritual-os/types, @spiritual-os/web, @spiritual-os/mobile)
+- Next.js Web Build: 31/31 routes prerendered/compiled cleanly with zero warnings
+- Quarantined Environments: Production (zxwkfnvmmxoojewhvsdc) and staging (zrjptpkhtklfgnovdrny) Supabase strictly untouched
+```
+
+---
+
+## 10. Final Release Audit Verdict
+
+**VERDICT:** **READY FOR INDEPENDENT COUNSEL REVIEW**
+
+**Attestation:**
+The engineering team certifies that Milestone M05's technical safeguards, cryptographic algorithms, server-only authorization boundaries, and policy schemas have been implemented and verified with zero automated failures.
+
+All legal and tax claims have been grounded in official government Gazette citations, disaggregated by specific rule, and checked for accuracy.
+
+The repository on branch `feature/m05-trust-governance` is audited, stable, and ready for review by independent legal counsel, Chartered Accountants, and the platform promoters.

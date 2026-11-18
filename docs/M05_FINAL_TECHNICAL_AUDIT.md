@@ -42,6 +42,7 @@ The audit covers all deliverables across Gates G1 through G5:
 | **FIND-M05-08** | High | Audit Hash Chain (`audit-trail.ts`) | Verification only checked link pointer without recomputing block hashes; dummy genesis hash | **REMEDIATED & VERIFIED** |
 | **FIND-M05-09** | Critical | Compliance Server Authorization (`compliance-server.ts`, `compliance-session-verifier.ts`, `/api/compliance/*`) | Client-side authorization boundary replaced with genuine server-only session verification & protected API endpoints | **REMEDIATED & VERIFIED (BLOCKED: BACKEND AUTH DEPENDENCY)** |
 | **FIND-M05-10** | Critical | Single-Context Auth & Outage Classification (`compliance-session-verifier.ts`, `compliance-server.ts`, `/api/compliance/*`) | Manual cookie parsing removed; bound identity & role resolution to single trusted context; chunked/base64 cookie handling; accurate 503 outage vs 401/403 classification; CSRF protection | **REMEDIATED & VERIFIED (BLOCKED: BACKEND AUTH DEPENDENCY)** |
+| **FIND-M05-11** | High | Statutory Reconciliations & Technical Hardening (`ISHTI_REGULATORY_APPLICABILITY_MATRIX.md`, `compliance-session-verifier.ts`, `/api/compliance/*`) | DPDP Act G.S.R. 843(E) commencement reconciled; IT Rules SLAs disaggregated; GST TCS updated to 0.5%; Bearer token bound to DB context; 501 NOT_IMPLEMENTED returned on audit API; CSRF & IP provenance hardened | **REMEDIATED & VERIFIED** |
 
 ### Detailed Finding Reports
 
@@ -154,7 +155,7 @@ To ensure complete transparency prior to draft PR review, all M05 deliverables a
 
 | Test Suite | Command | Executed | Passed | Failed | Exit Code | Result |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **M05 Technical & Governance Suite** | `npx tsx scripts/run-m05-tests.ts` | 101 | 101 | 0 | 0 | **PASSED** |
+| **M05 Technical & Governance Suite** | `npx tsx scripts/run-m05-tests.ts` | 104 | 104 | 0 | 0 | **PASSED** |
 | **Security & Cryptography Suite** | `npm run test:security` | 110 | 110 | 0 | 0 | **PASSED** |
 | **TypeScript Typecheck** | `npm run typecheck` | 2 packages | 2 | 0 | 0 | **PASSED** |
 | **Next.js Production Build** | `npm run build:web` | 31 routes | 31 | 0 | 0 | **PASSED** |
@@ -165,5 +166,5 @@ To ensure complete transparency prior to draft PR review, all M05 deliverables a
 
 All technical, security, and governance requirements for ISHTI Milestone M05 (Gates G1 through G5) have been thoroughly audited, remediated, and verified.
 
-**DECISION: READY FOR DRAFT PR REVIEW**  
-The branch `feature/m05-trust-governance` is verified, cleanly builds, passes 211 tests across all verification suites (101 M05 technical and governance tests, 110 security regression tests), strictly protects production and staging environments, and accurately separates implemented local features from prototypes and future backend requirements. Live operational administrative console access is formally designated as `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY` pending the Milestone M06 Supabase Auth backend. Commercial launch gates remain in hard-stop blocked status pending corporate incorporation and formal counsel review.
+**DECISION: READY FOR INDEPENDENT COUNSEL REVIEW**  
+The branch `feature/m05-trust-governance` is verified, cleanly builds, passes 214 tests across all verification suites (104 M05 technical and governance tests, 110 security regression tests), strictly protects production and staging environments, and accurately separates implemented local features from prototypes and future backend requirements. Live operational administrative console access is formally designated as `BLOCKED — BACKEND AUTHENTICATION DEPENDENCY` pending the Milestone M06 Supabase Auth backend. Commercial launch gates remain in hard-stop blocked status pending corporate incorporation, CA sign-off, and formal legal counsel review.

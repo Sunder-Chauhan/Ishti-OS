@@ -14,11 +14,11 @@
 This risk register evaluates the legal, regulatory, intellectual property, financial, and operational exposures across all product domains of **ISHTI** (Puja, Astro, Bhakti, Panchang, Experts, Community, AI).
 
 ### Exposure Assessment Methodology
-To prevent catastrophic financial underestimation while avoiding misleading alarmism, all penalties and financial liabilities are assessed using a **three-tier exposure model**:
+To prevent catastrophic financial underestimation while avoiding misleading speculation or unsupported guesswork, all penalties and financial liabilities are assessed using an objective **statutory and precedent-based exposure model**:
 
-1. **Maximum Statutory Ceiling:** The absolute statutory maximum fine or civil penalty prescribed in the legislation (e.g., DPDP Act §33: up to ₹250 crore per breach; CPA 2019 §21: up to ₹50 lakh for misleading advertisement).
-2. **Realistic Enforcement Exposure:** The probable administrative sanction, regulatory penalty, or settlement range calculated on proportionality, business size, absence of prior infractions, and prompt self-reporting.
-3. **Collateral & Operational Exposure:** Civil consumer compensation, legal defense counsel fees, expert witness costs, payment aggregator account freezes, business interruption, and brand damage.
+1. **Maximum Statutory Ceiling:** The absolute statutory maximum fine, civil penalty, or imprisonment prescribed in the enacted legislation (e.g., DPDP Act §33: up to ₹250 crore per breach; CPA 2019 §21: up to ₹50 lakh for misleading advertisement; IT Act §70B(7): fine up to ₹1 lakh and imprisonment up to 1 year).
+2. **Statutory Adjudicatory Factors & Precedents:** Where published administrative guidance or judicial precedents exist (e.g. CCPA orders on dark patterns, GDPR Article 83 regulatory decisions), they are specifically cited. Where an enactment is recent and the adjudicatory body is newly notified or pending detailed penalty guidelines (e.g. DPDP Act 2023, Income-tax Act 2025), penalties are labeled **`COUNSEL ASSESSMENT REQUIRED`** rather than populated with arbitrary estimates.
+3. **Collateral & Operational Exposure:** Practical impacts including civil consumer compensation, legal defense fees, payment aggregator account holds, mandatory takedown orders, and brand damage.
 
 ---
 
@@ -66,9 +66,9 @@ pie title Risk Distribution by Domain
 - **Trigger:** Devotee complaint to Data Protection Board of India (DPBI) or regulatory inquiry following a dispute.
 - **Consequence:** Administrative fine under DPDP Act Schedule (Item 1: failure to take reasonable security safeguards up to ₹250 crore; Item 2: failure to notify breach up to ₹200 crore; Item 4: other non-compliance up to ₹50 crore).
 - **Financial Exposure:**
-  - *Max Statutory Penalty:* Up to ₹50,000,000 (₹50 crore) under DPDP Act §33(1) for general non-compliance.
-  - *Realistic Enforcement Range:* ₹5,00,000 to ₹25,00,000 for early-stage platform taking immediate corrective action.
-  - *Collateral Exposure:* Legal representation fees (₹5,00,000–₹15,00,000), reputation loss.
+  - *Max Statutory Penalty:* Up to ₹500,000,000 (₹50 crore) under DPDP Act Schedule Item 5 for general non-compliance.
+  - *Enforcement Precedents / Realistic Quantum:* [COUNSEL ASSESSMENT REQUIRED — DPDP Act §33(2) mandates consideration of nature, gravity, duration, repetitive nature, and prompt mitigation; no judicial precedent yet established by the Data Protection Board of India for early-stage applications].
+  - *Collateral Exposure:* Legal representation fees, potential order to halt specific processing.
 - **Severity:** High | **Likelihood:** Medium (if marketing and spiritual consents are bundled)
 - **Prevention Control:** Implement unbundled 6-purpose consent registry (`apps/web/lib/consent/consent-registry.ts`) where optional purposes (`spiritual_ai`, `marketing_updates`) default to `false` (opt-in). Generate cryptographic SHA-256 evidence hashes.
 - **Evidence to Retain:** Server-side immutable consent logs recording: Devotee ID, Purpose ID, Version, Action (GRANTED/WITHDRAWN), ISO timestamp, and SHA-256 evidence hash.
@@ -87,9 +87,9 @@ pie title Risk Distribution by Domain
 - **Trigger:** Processing personal data of an individual under 18 years without verified guardian consent.
 - **Consequence:** Statutory penalty under DPDP Act Schedule (Item 3: non-fulfillment of obligations in respect of children up to ₹200 crore).
 - **Financial Exposure:**
-  - *Max Statutory Penalty:* Up to ₹2,000,000,000 (₹200 crore).
-  - *Realistic Enforcement Range:* ₹10,00,000 to ₹50,00,000 plus mandatory deletion order.
-  - *Collateral Exposure:* Regulatory scrutiny of all platform records.
+  - *Max Statutory Penalty:* Up to ₹2,000,000,000 (₹200 crore) under DPDP Act Schedule Item 3.
+  - *Enforcement Precedents / Realistic Quantum:* [COUNSEL ASSESSMENT REQUIRED — In the US, FTC COPPA precedents (e.g. Epic Games $275M, YouTube $170M) demonstrate severe enforcement on child data; Indian DPBI adjudicatory rules are pending; formal counsel assessment required].
+  - *Collateral Exposure:* Mandatory order to purge minor data and halt processing.
 - **Severity:** Critical | **Likelihood:** High (parents routinely request Kundli generation for infants)
 - **Prevention Control:**
   1. Add explicit age-declaration step during profile creation.
@@ -111,8 +111,9 @@ pie title Risk Distribution by Domain
 - **Trigger:** Technical audit, consumer complaint, or discovery during litigation revealing platform can decrypt birth data.
 - **Consequence:** CCPA notice for misleading claims, penalty up to ₹10 lakh (first offense) or ₹50 lakh (subsequent) under CPA §21, consumer fraud claims.
 - **Financial Exposure:**
-  - *Max Statutory Penalty:* ₹50,00,000 under CPA 2019 §21.
-  - *Realistic Enforcement Range:* ₹2,00,000 to ₹5,00,000 fine plus mandatory corrective advertising.
+  - *Max Statutory Penalty:* Up to ₹10,00,000 for first violation; up to ₹50,00,000 for subsequent violations under CPA 2019 §21.
+  - *Enforcement Precedents / Realistic Quantum:* CCPA orders frequently mandate immediate withdrawal of misleading claims and corrective public notices; [COUNSEL ASSESSMENT REQUIRED for fine quantum].
+  - *Collateral Exposure:* Mandatory corrective notices, consumer trust erosion.
 - **Severity:** Medium | **Likelihood:** Low (after M05 remediation)
 - **Prevention Control:** Maintain strict technical accuracy in all documentation and UI: label architecture as "Server-Side Authenticated AES-256-GCM Envelope Encryption with Context-Bound AAD". Strictly prohibit marketing team from using "Zero-Knowledge" or "End-to-End Encrypted".
 - **Evidence to Retain:** Verified UI copy audits, cryptographic design documentation.
@@ -125,20 +126,21 @@ pie title Risk Distribution by Domain
 #### RISK-DP-04: Cross-Border Processing of Diaspora Religious Data Without Valid Transfer Mechanism
 - **Domain:** Data Protection & Privacy
 - **Feature Affected:** EU/UK/US diaspora devotees accessing platform, AWS hosting in Mumbai, US-based AI models (`/legal/privacy`, `/bhakti`)
-- **Legal Source:** GDPR (Regulation (EU) 2016/679) Chapter V (Articles 44–49), Article 9 (Special Category Data); DPDP Act §16 (Restricted countries blacklist).
+- **Legal Source:** GDPR (Regulation (EU) 2016/679) Chapter V (Articles 44–49), Article 9 (Special Category Data); EDPB Guidelines 2/2018 on Derogations; DPDP Act §16 (Restricted countries blacklist).
 - **Applicability:** Confirmed for international devotees.
-- **Risk Description:** Transferring religious preference or astrological data of EU/UK residents to Indian servers or US AI vendors without Standard Contractual Clauses (SCCs) or explicit Article 49 derogation.
+- **Risk Description:** Transferring personal data (including religious preferences or astrological profiles) of EU/UK residents to Indian servers or US AI vendors without Standard Contractual Clauses (SCCs) or other lawful Chapter V transfer mechanisms. Note: EDPB Guidelines 2/2018 explicitly establish that Article 49(1)(a) derogation (explicit consent) must be interpreted restrictively and CANNOT be used as a routine, repetitive cross-border transfer mechanism.
 - **Trigger:** Complaint to an EU Data Protection Authority (e.g. CNIL, DPC Ireland, BfDI).
-- **Consequence:** Fines under GDPR Article 83(5) (up to €20M or 4% global turnover), cross-border data transfer suspension order.
+- **Consequence:** Fines under GDPR Article 83(5) (up to €20M or 4% global turnover), cross-border data transfer suspension order under Article 58(2)(j).
 - **Financial Exposure:**
-  - *Max Statutory Penalty:* Up to €20,000,000 or 4% of worldwide turnover.
-  - *Realistic Enforcement Range:* Formal warning or order to execute SCCs for low-volume early-stage platform.
-  - *Collateral Exposure:* International legal defense costs (€25,000–€75,000).
+  - *Max Statutory Penalty:* Up to €20,000,000 or 4% of worldwide turnover (whichever is higher).
+  - *Enforcement Precedents / Realistic Quantum:* [COUNSEL ASSESSMENT REQUIRED — DPA enforcement precedents (e.g. Meta transfer rulings and numerous SME corrective orders) confirm that transfer suspension orders and compliance mandates are primary operational risks].
+  - *Collateral Exposure:* International legal defense costs (€25,000–€75,000), cross-border cloud re-architecture.
 - **Severity:** High | **Likelihood:** Medium
 - **Prevention Control:**
-  1. Rely on Article 49(1)(a) explicit consent for international devotees registering directly on the Indian platform.
-  2. Execute Standard Contractual Clauses (Module 2/3) with all non-Indian subprocessors.
-  3. Author jurisdiction-specific Schedule B for EU/UK devotees in Terms of Service.
+  1. Ground cross-border transfers on Standard Contractual Clauses (SCCs - Commission Implementing Decision (EU) 2021/914) with non-EEA subprocessors.
+  2. Perform Transfer Impact Assessment (TIA) evaluating local surveillance laws and technical safeguards.
+  3. Bar Article 49(1)(a) consent as a routine transfer solution per EDPB Guidelines 2/2018.
+  4. Author jurisdiction-specific Schedule B for EU/UK devotees in Terms of Service.
 - **Evidence to Retain:** Executed SCCs, signed Data Processing Agreements with cloud hosting and AI vendors.
 - **Owner:** International Legal Counsel / DPO
 - **Status:** Counsel Review Required
@@ -419,41 +421,46 @@ pie title Risk Distribution by Domain
 - **Domain:** Payments & Taxation
 - **Feature Affected:** Data retention matrix, account deletion orchestrator (`retention-matrix.ts`, `deletion-orchestrator.ts`)
 - **Legal Source:** Income-tax Act, 2025 (Act No. 6 of 2025, effective 1 April 2026), Section 62 and Income-tax Rules, 2026 Rule 46 (7 tax years); Income-tax Act, 1961 Section 44AA / Rule 6F (6 years from assessment year) for prior periods; Companies Act, 2013 Section 128 (8 financial years).
-- **Applicability:** Confirmed.
-- **Risk Description:** Either prematurely purging commercial invoice records upon devotee deletion request (violating tax audit laws) OR retaining personal devotional data indefinitely under the false pretext of tax compliance.
+- **Applicability:** Applies strictly to commercial business accounting records exceeding statutory turnover/income thresholds.
+- **Risk Description:** Either prematurely purging commercial invoice records upon devotee deletion request (violating tax audit laws) OR retaining personal devotional data indefinitely under the false pretext of tax compliance. Note: Section 62 and Rule 46 apply to persons carrying on business or profession whose income or gross receipts/turnover exceed statutory limits; they require preservation of books of account and financial vouchers, NOT generic devotee user profiles, spiritual chats, or astrological charts. Applying accounting retention to personal user profiles violates the data minimization principles of the DPDP Act.
 - **Trigger:** Income tax reassessment notice or DPBI inquiry regarding excessive data retention.
-- **Consequence:** Tax penalty under Income Tax Act for failure to keep books of account (₹25,000–₹1,00,000+ disallowance of expenses); DPDP Act penalty for violating data minimization.
-- **Financial Exposure:** Tax reassessment penalties + DPBI fines.
+- **Consequence:** Tax penalty under Income Tax Act for failure to keep books of account; DPDP Act penalty for violating data minimization.
+- **Financial Exposure:**
+  - *Max Statutory Penalty:* Statutory penalty under Income-tax Act for failure to keep/maintain books of account (up to ₹25,000–₹1,00,000 plus disallowance of expenses); DPDP Act general penalty up to ₹50 crore for data minimization violation.
+  - *Enforcement Precedents / Realistic Quantum:* [CA REVIEW REQUIRED & COUNSEL ASSESSMENT REQUIRED].
+  - *Collateral Exposure:* Inability to substantiate tax deductions during audit.
 - **Severity:** High | **Likelihood:** Medium
 - **Prevention Control:** Implement strict architectural segregation:
   1. Financial invoices, payment transaction IDs, and GST records locked for statutory 7 years (Income-tax Act 2025) and 8 financial years (Companies Act 2013).
   2. Generic personal data (devotional chats, birth charts, search history) deleted immediately upon request. Commercial records pseudonymized to `ANON-USER-DELETED`.
 - **Evidence to Retain:** Statutory Retention Schedule Matrix (`apps/web/lib/privacy/retention-matrix.ts`), deletion logs showing field-level redaction.
-- **Owner:** Chief Financial Officer / Tax Counsel
-- **Status:** Architecture Reconciled & Tested in Gate 3
+- **Owner:** Chief Financial Officer / Chartered Accountant
+- **Status:** CA REVIEW REQUIRED (Architecture Reconciled & Tested in Gate 3)
 - **Deadline:** Before Processing First Real Payment
 
 ---
 
-#### RISK-TAX-02: Failure to Deduct TCS / TDS on Pandit Consultation Payouts
+#### RISK-TAX-02: Failure to Deduct TCS / TDS on Pandit Marketplace Payouts
 - **Domain:** Payments & Taxation
 - **Feature Affected:** Expert consultation billing, payout disbursement (`/experts`, `/profile/refunds`)
-- **Legal Source:** CGST Act, 2017 Section 52 (Tax Collection at Source by e-commerce operators at 1%); Income-tax Act, 1961 Section 194J / Section 194-O (1% TDS on e-commerce participants); Income-tax Act, 2025.
-- **Applicability:** Confirmed (If operating as marketplace facilitating expert payments).
-- **Risk Description:** Disbursing gross consultation fees to pandits without deducting and remitting 1% TCS under GST and 1% TDS under Section 194-O.
-- **Trigger:** GST or Income Tax departmental audit of platform bank statements.
-- **Consequence:** Recovery of tax from platform promoters, interest under CGST Act §50, penalty under §122.
+- **Legal Source:** Central Goods and Services Tax (CGST) Act, 2017 Section 52 (Tax Collection at Source by e-commerce operators at **0.5%** — Notification No. 15/2024-Central Tax, effective 10 July 2024); Income-tax Act, 1961 Section 194-O (1% TDS on e-commerce participants) / Section 194J (TDS on professional fees); Income-tax Act, 2025.
+- **Applicability:** Applies strictly when operating as an Electronic Commerce Operator (ECO) facilitating third-party pandit services and collecting consideration. (Principal sales by ISHTI are subject to regular forward charge GST, where TCS does NOT apply).
+- **Risk Description:** Disbursing gross consultation fees to independent pandits without collecting and remitting 0.5% TCS under CGST Act §52 (0.25% CGST + 0.25% SGST, or 0.5% IGST) and deducting 1% TDS under Section 194-O of the Income-tax Act.
+- **Trigger:** GST or Income Tax departmental audit of platform bank statements and payment aggregator escrow accounts.
+- **Consequence:** Recovery of tax from platform promoters, interest under CGST Act §50 (18% p.a.), penalty under CGST Act §122 and Income-tax Act §271C.
 - **Financial Exposure:**
-  - *Max Statutory Penalty:* 100% of tax not collected, plus 18% annual interest.
-  - *Realistic Enforcement Range:* Tax arrears + interest + penalties (₹5,00,000–₹20,00,000).
+  - *Max Statutory Penalty:* 100% of tax not collected/remitted plus 18% annual interest under CGST Act §50.
+  - *Enforcement Precedents / Realistic Quantum:* [CA REVIEW REQUIRED — Recovery of unpaid tax arrears with statutory interest].
+  - *Collateral Exposure:* Bank account attachment under CGST Act §83, suspension of GSTIN.
 - **Severity:** High | **Likelihood:** High (common startup oversight)
 - **Prevention Control:**
-  1. Require PAN and bank details during pandit onboarding.
-  2. Implement automated settlement calculator deducting 1% TCS and applicable TDS before crediting pandit account.
-  3. File monthly Form GSTR-8 returns.
-- **Evidence to Retain:** Monthly TCS/TDS deposit challans, GSTR-8 filing receipts.
+  1. Classify transactions based on operating model: Principal (regular forward charge GST) vs. Marketplace ECO (0.5% TCS under §52).
+  2. Require PAN, GSTIN (where registered), and bank details during pandit onboarding.
+  3. Implement automated settlement calculator deducting 0.5% TCS and 1% TDS before crediting pandit account.
+  4. File monthly Form GSTR-8 returns.
+- **Evidence to Retain:** Monthly TCS/TDS deposit challans, GSTR-8 filing receipts, Form 26Q quarterly returns.
 - **Owner:** Finance Lead / Chartered Accountant
-- **Status:** Open (Requires Financial Engine in M06)
+- **Status:** CA REVIEW REQUIRED (Requires Financial Settlement Engine in M06)
 - **Deadline:** Before First Paid Consultation Disbursement
 
 ---
@@ -537,7 +544,7 @@ pie title Risk Distribution by Domain
 - **Feature Affected:** Entire platform, all legal policies, bank accounts
 - **Legal Source:** Companies Act, 2013, Section 3 & Section 447; Indian Contract Act, 1872.
 - **Applicability:** Confirmed.
-- **Risk Description:** Launching public commercial transactions while operating as an unincorporated association, exposing individual founders to unlimited joint and several personal liability for all contracts, data breaches, and disputes.
+- **Risk Description:** Launching public commercial transactions, accepting payments, or executing binding commercial vendor contracts while operating as an unincorporated entity, exposing individual founders to unlimited joint and several personal liability for all contracts, data breaches, and disputes. Note: Closed-group private prototype testing (involving founders, uncompensated internal testers, and advisors) does not constitute commercial operation and is permissible prior to incorporation. However, public user onboarding, commercial monetization, and merchant agreements strictly require prior corporate incorporation.
 - **Trigger:** Any legal claim, dispute, tax notice, or data breach occurring before incorporation.
 - **Consequence:** Direct attachment of personal assets of individual founders; inability to enforce contracts.
 - **Financial Exposure:** Unlimited personal liability of promoters.
