@@ -60,14 +60,14 @@ pie title Risk Distribution by Domain
 #### RISK-DP-01: Processing Personal Data Without Demonstrable Unbundled Consent
 - **Domain:** Data Protection & Privacy
 - **Feature Affected:** User onboarding, Kundli generation, Phone OTP registration (`/profile/consent`, `/astro`)
-- **Legal Source:** Digital Personal Data Protection Act, 2023 (Act No. 22 of 2023), Section 6(1) & 6(2) [Commencing 13 May 2027 under Gazette Notification G.S.R. 843(E); Section 6(9) commencing 13 Nov 2026]; GDPR (Regulation (EU) 2016/679) Article 7.
-- **Applicability:** Confirmed (India, global diaspora). Note: While statutory enforcement commences on 13 May 2027 under G.S.R. 843(E), ISHTI enforces unbundled consent proactively in M05 as a mandatory pre-launch engineering baseline.
+- **Legal Source:** Digital Personal Data Protection Act, 2023 (Act No. 22 of 2023), Section 6(1)–(8) & (10) [SCHEDULED / NOT YET COMMENCED: Commencing 13 May 2027 under Gazette Notification G.S.R. 843(E); Section 6(9) COMMENCED / IN FORCE: Commenced 13 Nov 2026]; GDPR (Regulation (EU) 2016/679) Article 7.
+- **Applicability:** Confirmed (India, global diaspora). Note: While statutory enforcement for Section 6(1)–(8) commences on 13 May 2027 under G.S.R. 843(E) (and Section 6(9) commenced 13 Nov 2026), ISHTI enforces unbundled consent proactively in M05 as a mandatory pre-launch engineering baseline.
 - **Risk Description:** Bundling consent for distinct processing activities (e.g. bundling basic account creation with AI chat logging, third-party marketing, or expert directory profiling) or pre-ticking consent boxes.
 - **Trigger:** Devotee complaint to Data Protection Board of India (DPBI) or regulatory inquiry following a dispute.
-- **Consequence:** Administrative fine under DPDP Act Schedule (Item 1: failure to take reasonable security safeguards up to ₹250 crore; Item 2: failure to notify breach up to ₹200 crore; Item 4: other non-compliance up to ₹50 crore).
+- **Consequence:** Administrative fine under DPDP Act Section 33(1) and Schedule Item 7 (Residual breach of any other provision of the Act or rules made thereunder up to ₹50 crore).
 - **Financial Exposure:**
-  - *Max Statutory Penalty:* Up to ₹500,000,000 (₹50 crore) under DPDP Act Schedule Item 5 for general non-compliance.
-  - *Enforcement Precedents / Realistic Quantum:* [COUNSEL ASSESSMENT REQUIRED — DPDP Act §33(2) mandates consideration of nature, gravity, duration, repetitive nature, and prompt mitigation; no judicial precedent yet established by the Data Protection Board of India for early-stage applications].
+  - *Max Statutory Penalty:* Up to ₹500,000,000 (₹50 crore) under DPDP Act Schedule Item 7 for residual non-compliance. (Note: DPDP Schedule Item 1 applies to Section 8(5) up to ₹250 crore; Item 2 to Section 8(6) up to ₹200 crore; Item 3 to Section 9 up to ₹200 crore; Item 4 to Section 10 up to ₹150 crore; Item 5 to Section 15 up to ₹10,000).
+  - *Enforcement Factors / Assessment:* [COUNSEL ASSESSMENT REQUIRED — DPDP Act §33(2) mandates consideration of: (a) nature, gravity, duration; (b) type and nature of personal data; (c) repetitive nature; (d) financial gain or avoided loss; (e) timely and effective mitigation actions; (f) proportionality; (g) economic impact. No judicial precedent yet established by the Data Protection Board of India; maximum statutory ceiling must NOT be treated as a predicted fine].
   - *Collateral Exposure:* Legal representation fees, potential order to halt specific processing.
 - **Severity:** High | **Likelihood:** Medium (if marketing and spiritual consents are bundled)
 - **Prevention Control:** Implement unbundled 6-purpose consent registry (`apps/web/lib/consent/consent-registry.ts`) where optional purposes (`spiritual_ai`, `marketing_updates`) default to `false` (opt-in). Generate cryptographic SHA-256 evidence hashes.
@@ -81,14 +81,14 @@ pie title Risk Distribution by Domain
 #### RISK-DP-02: Failure to Implement Mandatory Verifiable Parental Consent for Children
 - **Domain:** Data Protection & Privacy
 - **Feature Affected:** Kundli birth chart generation for minors/infants, children's naming rituals (`/astro`, `/puja`)
-- **Legal Source:** DPDP Act, 2023, Section 9(1) (mandatory verifiable parental consent) and Section 9(2) (strict bar on tracking/behavioral monitoring of children) [Commencing 13 May 2027 under Gazette Notification G.S.R. 843(E)]; COPPA (15 U.S.C. §6501); GDPR Article 8.
+- **Legal Source:** DPDP Act, 2023, Section 9(1) (mandatory verifiable parental consent) and Section 9(2) (strict bar on tracking/behavioral monitoring of children) [SCHEDULED / NOT YET COMMENCED: Commencing 13 May 2027 under Gazette Notification G.S.R. 843(E)]; COPPA (15 U.S.C. §6501); GDPR Article 8.
 - **Applicability:** Confirmed (Indian minors under 18 years; US minors under 13). Proactively required prior to public launch as a core trust boundary ahead of 18-month statutory enforcement.
 - **Risk Description:** Parents generating birth charts for newborn children or minors without verified parental consent mechanism, or platform serving behavioral tracking/recommendations based on a child's Kundli.
 - **Trigger:** Processing personal data of an individual under 18 years without verified guardian consent.
-- **Consequence:** Statutory penalty under DPDP Act Schedule (Item 3: non-fulfillment of obligations in respect of children up to ₹200 crore).
+- **Consequence:** Statutory penalty under DPDP Act Section 33(1) and Schedule Item 3 (non-fulfillment of additional obligations in respect of children and persons with disability up to ₹200 crore).
 - **Financial Exposure:**
   - *Max Statutory Penalty:* Up to ₹2,000,000,000 (₹200 crore) under DPDP Act Schedule Item 3.
-  - *Enforcement Precedents / Realistic Quantum:* [COUNSEL ASSESSMENT REQUIRED — In the US, FTC COPPA precedents (e.g. Epic Games $275M, YouTube $170M) demonstrate severe enforcement on child data; Indian DPBI adjudicatory rules are pending; formal counsel assessment required].
+  - *Enforcement Factors / Assessment:* [COUNSEL ASSESSMENT REQUIRED — Section 33(2) statutory adjudicatory factors apply; maximum ceiling is a statutory limit, not a predicted fine. In the US, FTC COPPA precedents (e.g. Epic Games $275M, YouTube $170M) demonstrate severe enforcement on child data; Indian DPBI adjudicatory rules are pending; formal counsel assessment required].
   - *Collateral Exposure:* Mandatory order to purge minor data and halt processing.
 - **Severity:** Critical | **Likelihood:** High (parents routinely request Kundli generation for infants)
 - **Prevention Control:**
@@ -259,15 +259,15 @@ pie title Risk Distribution by Domain
 #### RISK-AI-03: Devotee Personal Data Retention & Training Leakage by Third-Party AI Providers
 - **Domain:** AI & Content Governance / Privacy
 - **Feature Affected:** Spiritual conversational assistant (`/bhakti`, Gemini API integration)
-- **Legal Source:** DPDP Act, 2023, Section 8(1) (Fiduciary responsibility for data processors); GDPR Article 28.
+- **Legal Source:** DPDP Act, 2023, Section 8(1) (Fiduciary responsibility for data processors) and Section 8(5) (Reasonable security safeguards) [SCHEDULED / NOT YET COMMENCED: Commencing 13 May 2027 under Gazette Notification G.S.R. 843(E)]; GDPR Article 28.
 - **Applicability:** Confirmed.
 - **Risk Description:** Devotees sharing intimate personal prayers, health crises, or marital troubles in AI chat, which are subsequently retained by third-party model providers for foundation model retraining.
 - **Trigger:** Devotee private prayer appearing in public model completion or data breach at AI vendor.
-- **Consequence:** Severe personal data breach, DPBI investigation, gross breach of fiduciary trust.
+- **Consequence:** Severe personal data breach, DPBI investigation under DPDP Act Section 33(1) and Schedule Item 1 (breach in observing reasonable security safeguards under Section 8(5) up to ₹250 crore).
 - **Financial Exposure:**
-  - *Max Statutory Penalty:* Up to ₹250 crore under DPDP Act §33 for failure to secure personal data.
-  - *Realistic Enforcement Range:* ₹25,00,000 to ₹1,00,000,000 depending on scale.
-  - *Collateral Exposure:* Complete loss of community confidence.
+  - *Max Statutory Penalty:* Up to ₹2,500,000,000 (₹250 crore) under DPDP Act Schedule Item 1 (§8(5)).
+  - *Enforcement Factors / Assessment:* [COUNSEL ASSESSMENT REQUIRED — Speculative penalty ranges removed; under DPDP Act §33(2), penalty is adjudged based on statutory factors including nature, gravity, duration, data sensitivity, mitigation timeliness, and financial impact. Statutory ceiling is a legal exposure cap, not a predicted fine].
+  - *Collateral Exposure:** Complete loss of community confidence.
 - **Severity:** Critical | **Likelihood:** Medium (if standard consumer API keys are used)
 - **Prevention Control:**
   1. Mandate zero-data-retention enterprise tier for Gemini API / Google Cloud Vertex AI where prompts and completions are explicitly exempt from vendor logging and training.
@@ -426,8 +426,8 @@ pie title Risk Distribution by Domain
 - **Trigger:** Income tax reassessment notice or DPBI inquiry regarding excessive data retention.
 - **Consequence:** Tax penalty under Income Tax Act for failure to keep books of account; DPDP Act penalty for violating data minimization.
 - **Financial Exposure:**
-  - *Max Statutory Penalty:* Statutory penalty under Income-tax Act for failure to keep/maintain books of account (up to ₹25,000–₹1,00,000 plus disallowance of expenses); DPDP Act general penalty up to ₹50 crore for data minimization violation.
-  - *Enforcement Precedents / Realistic Quantum:* [CA REVIEW REQUIRED & COUNSEL ASSESSMENT REQUIRED].
+  - *Max Statutory Penalty:* Statutory penalty under Income-tax Act for failure to keep/maintain books of account (up to ₹25,000–₹1,00,000 plus disallowance of expenses); DPDP Act Section 33(1) and Schedule Item 7 residual penalty up to ₹50 crore for data minimization violation.
+  - *Enforcement Precedents / Realistic Quantum:* [CA REVIEW REQUIRED & COUNSEL ASSESSMENT REQUIRED — Statutory adjudicatory factors under DPDP Act §33(2) apply; maximum penalty ceiling is an exposure cap, not a predicted fine].
   - *Collateral Exposure:* Inability to substantiate tax deductions during audit.
 - **Severity:** High | **Likelihood:** Medium
 - **Prevention Control:** Implement strict architectural segregation:
@@ -443,9 +443,9 @@ pie title Risk Distribution by Domain
 #### RISK-TAX-02: Failure to Deduct TCS / TDS on Pandit Marketplace Payouts
 - **Domain:** Payments & Taxation
 - **Feature Affected:** Expert consultation billing, payout disbursement (`/experts`, `/profile/refunds`)
-- **Legal Source:** Central Goods and Services Tax (CGST) Act, 2017 Section 52 (Tax Collection at Source by e-commerce operators at **0.5%** — Notification No. 15/2024-Central Tax, effective 10 July 2024); Income-tax Act, 1961 Section 194-O (**0.1% TDS** on e-commerce participants — rate reduced from 1% to 0.1% effective 1 October 2024 by Finance (No. 2) Act, 2024; individual/HUF exemption up to ₹5 lakh under §194-O(2)) / Section 194J (TDS on professional fees); Income-tax Act, 2025 (Section 536 transitional treatment).
+- **Legal Source:** Central Goods and Services Tax (CGST) Act, 2017 Section 52 (Tax Collection at Source by e-commerce operators at **0.5%** — Notification No. 15/2024-Central Tax, effective 10 July 2024); Income-tax Act, 2025 **Section 393(1), Table Serial No. 8(v)** (**0.1% TDS** on e-commerce participants) & **Section 393(4), Table Serial No. 11** (individual/HUF exemption up to ₹5 lakh threshold upon furnishing PAN or Aadhaar); former Income-tax Act, 1961 Section 194-O (0.1% TDS effective 1 October 2024 via Finance (No. 2) Act, 2024) / Section 194J (TDS on professional fees); Section 536 transitional savings.
 - **Applicability:** Applies strictly when operating as an Electronic Commerce Operator (ECO) facilitating third-party pandit services and collecting consideration. (Principal sales by ISHTI are subject to regular forward charge GST, where TCS does NOT apply).
-- **Risk Description:** Disbursing gross consultation fees to independent pandits without collecting and remitting 0.5% TCS under CGST Act §52 (0.25% CGST + 0.25% SGST, or 0.5% IGST) and deducting 0.1% TDS under Section 194-O of the Income-tax Act (or Income-tax Act, 2025 equivalent, subject to ₹5L individual/HUF threshold).
+- **Risk Description:** Disbursing gross consultation fees to independent pandits without collecting and remitting 0.5% TCS under CGST Act §52 (0.25% CGST + 0.25% SGST, or 0.5% IGST) and deducting 0.1% TDS under Income-tax Act, 2025 Section 393(1), Table Serial No. 8(v) (or former Section 194-O via Section 536 transitional savings, subject to ₹5L individual/HUF exemption under Section 393(4), Table Serial No. 11 upon furnishing PAN/Aadhaar).
 - **Trigger:** GST or Income Tax departmental audit of platform bank statements and payment aggregator escrow accounts.
 - **Consequence:** Recovery of tax from platform promoters, interest under CGST Act §50 (18% p.a.), penalty under CGST Act §122 and Income-tax Act §271C.
 - **Financial Exposure:**

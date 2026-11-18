@@ -4,6 +4,7 @@ import {
   verifyCsrfOrigin,
   checkComplianceRateLimit,
   getClientIp,
+  getComplianceRateLimitKey,
 } from "../../../../lib/compliance/compliance-server";
 import { triageSecurityIncident } from "../../../../lib/compliance/security-governance";
 
@@ -42,9 +43,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3. Rate limiting check with verified client IP provenance
-  const ip = getClientIp(request.headers);
-  if (!checkComplianceRateLimit(`triage-post:${ip}`, 10, 60000)) {
+  // 3. Rate limiting check with verified client IP provenance and partitioned fallback
+  const rateLimitKey = getComplianceRateLimitKey("triage-post", request.headers);
+  if (!checkComplianceRateLimit(rateLimitKey, 10, 60000)) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
       { status: 429 }

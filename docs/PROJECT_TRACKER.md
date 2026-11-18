@@ -315,4 +315,14 @@ Scope & Gates:
   - [x] Test suite expanded to 110/110 M05 tests (adding 8 dedicated proxy-trust and IP spoofing tests); 110/110 security regression tests passing (220 tests total, 0 failures)
   - [x] Decision log updated (ADR-029 in docs/DECISION_LOG.md)
   - [x] Final release audit report updated with status READY FOR INDEPENDENT COUNSEL REVIEW
+- [x] Milestone M05 Pass 7: Final Legal Schedule Reconciliation & Proxy Boundary Verification (ADR-030):
+  - [x] Reconciled DPDP Act 12-month commencement (Section 6(9), Section 27(1)(d), Rule 4) as COMMENCED / IN FORCE as of 18 November 2026; 18-month provisions (Sections 3–5, 6(1)–(8)&(10), 7–17, 27 except (d), 28–34, 36, 37, 44(2)) as SCHEDULED / NOT YET COMMENCED (13 May 2027) / PRE-LAUNCH ENGINEERING CONTROL; Section 10 as SCHEDULED / NOT YET COMMENCED & CONDITIONALLY APPLICABLE
+  - [x] Reconciled DPDP Act Schedule penalties (Items 1–7) under Section 33(1); corrected Risk Register lines 67 and 69 misattributions; grounded penalties on Section 33(2) statutory adjudicatory factors
+  - [x] Mapped Income-tax Act, 2025 e-commerce marketplace TDS to Section 393(1), Table Serial No. 8(v) (0.1% TDS) and individual/HUF exemption under Section 393(4), Table Serial No. 11 (gross <= ₹5L with PAN/Aadhaar) with Section 536 transitional treatment; marked CA REVIEW REQUIRED
+  - [x] Hardened proxy trust in compliance-session-verifier.ts: Cloudflare mode strictly inspects CF-Connecting-IP without fallback; reverse proxy mode prioritizes X-Real-IP and requires ingress sanitization for XFF; direct mode ignores all forwarded headers
+  - [x] Resolved "direct-client" rate limit DoS vulnerability: partitioned rate limit keys via getComplianceRateLimitKey() by Bearer token hash, session cookie hash, or client fingerprint hash (User-Agent|Accept-Language|Sec-CH-UA)
+  - [x] Documented origin shielding (Cloudflare AOP / VPC firewall) as an unresolved infrastructure deployment requirement
+  - [x] Test suite expanded to 117/117 M05 tests (adding 7 dedicated tests for proxy modes and rate-limit key partitioning); 110/110 security regression tests passing (227 tests total, 0 failures)
+  - [x] Decision log updated (ADR-030 in docs/DECISION_LOG.md; LDL-013 in docs/legal/ISHTI_LEGAL_DECISION_LOG.md)
+  - [x] Final independent reconciliation report completed: docs/M05_PASS_7_INDEPENDENT_RECONCILIATION_REPORT.md with status READY FOR INDEPENDENT COUNSEL REVIEW
 

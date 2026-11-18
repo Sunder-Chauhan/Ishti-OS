@@ -639,3 +639,31 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Monorepo TypeScript Compilation (npm run typecheck): **0 ERRORS** across all workspaces.
   - Production Web Application Build (npm run build:web): **31 ROUTES BUILT CLEANLY**.
 
+---
+
+## 2026-11-18: ADR-030 — Pass 7: Legal Schedule Reconciliation, Statutory Penalty Mapping, Income-tax Act 2025 Section 393 Alignment, & Proxy Isolation Hardening
+- **Status:** APPROVED & IMPLEMENTED LOCALLY
+- **Context:** Following independent audit of commit `b0a60da` (Pass 6), four areas required statutory reconciliation and security hardening:
+  1. *DPDP Act Phased Commencement Date:* Today is 18 November 2026. The 12-month commencement milestone under Gazette Notification G.S.R. 843(E) (13 November 2026) has passed. Section 6(9), Section 27(1)(d), and Rule 4 are now `COMMENCED / IN FORCE`. The 18-month provisions (Sections 3–5, 6(1)–(8)&(10), 7–17, 27 except (d), 28–34, 36, 37, 44(2); Rules 3, 5–16, 22, 23) remain `SCHEDULED / NOT YET COMMENCED` (13 May 2027) / `PRE-LAUNCH ENGINEERING CONTROL`. Section 10 is `SCHEDULED / NOT YET COMMENCED` & `CONDITIONALLY APPLICABLE` pending Central Government criteria.
+  2. *DPDP Act Penalty Schedule (Section 33(1)):* In `ISHTI_LEGAL_RISK_REGISTER.md`, lines 67 and 69 misattributed Item 4 (SDF obligations up to ₹150 crore) and Item 5 (devotee duties up to ₹10,000) to general non-compliance. The exact Schedule establishes:
+     - Item 1: Section 8(5) up to ₹250 crore;
+     - Item 2: Section 8(6) up to ₹200 crore;
+     - Item 3: Section 9 up to ₹200 crore;
+     - Item 4: Section 10 up to ₹150 crore;
+     - Item 5: Section 15 up to ₹10,000;
+     - Item 6: Section 32 breach of undertaking;
+     - Item 7: Residual breach of any other provision or rules up to ₹50 crore.
+     Furthermore, speculative fine guesses were removed. Section 33(2) statutory adjudicatory factors govern penalty assessment. Statutory ceilings are legal caps, not predicted fines.
+  3. *Income-tax Act, 2025 E-Commerce Marketplace TDS:* Withholding is governed by **Section 393(1), Table Serial No. 8(v)** (0.1% TDS on gross sales/services) with the individual/HUF exemption up to ₹5,00,000 under **Section 393(4), Table Serial No. 11** (upon furnishing PAN or Aadhaar), and Section 536 transitional treatment for pre-1 April 2026 liabilities under former Section 194-O (Finance (No. 2) Act, 2024). Marked `CA REVIEW REQUIRED`.
+  4. *Proxy Strategy Header Hardening & Rate-Limit Key Partitioning:* In `compliance-session-verifier.ts`, `TRUSTED_PROXY_STRATEGY` was tightened: Cloudflare mode strictly inspects `CF-Connecting-IP` without fallback; reverse proxy mode prioritizes `X-Real-IP` and requires ingress sanitization for XFF; direct mode ignores all forwarded headers. To eliminate the `"direct-client"` rate limit denial-of-service vulnerability where unauthenticated clients share a single rate-limit bucket, `getComplianceRateLimitKey()` was introduced, partitioning unauthenticated clients by request fingerprint hash (combining User-Agent, Accept-Language, Sec-CH-UA) or session cookie hash, while authenticating requests are partitioned by Bearer token hash. Origin shielding (Cloudflare AOP / VPC firewall) is documented as an unresolved deployment requirement.
+- **Decision:**
+  1. Updated Table A, Table B, Table C (new penalty schedule), and matrix entries `STAT-01` through `STAT-05` in `ISHTI_REGULATORY_APPLICABILITY_MATRIX.md`.
+  2. Corrected risk register citations in `ISHTI_LEGAL_RISK_REGISTER.md` for `RISK-DP-01` (Schedule Item 7), `RISK-DP-02` (Schedule Item 3), `RISK-AI-03` (Schedule Item 1; removed speculative range), and `RISK-TAX-01` / `RISK-TAX-02` (Section 393 mapping).
+  3. Implemented partitioned rate-limit keying and strict proxy strategy checking in `compliance-session-verifier.ts`, `compliance-server.ts`, and API routes (`/api/compliance/audit`, `/api/compliance/triage`).
+  4. Added 7 new automated tests in `scripts/run-m05-tests.ts` (now 117/117 passing).
+- **Verification Evidence:**
+  - Automated M05 Suite (`scripts/run-m05-tests.ts`): **117/117 PASSED** (0 failures).
+  - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all packages.
+  - Production Web Application Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED**.
+

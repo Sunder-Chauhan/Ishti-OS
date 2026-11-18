@@ -7,15 +7,34 @@ import {
   verifyCsrfOrigin,
   checkComplianceRateLimit,
   getClientIp,
+  getComplianceRateLimitKey,
+  getTrustedProxyStrategy,
+  isTrustedProxyConfigured,
+  isValidIpFormat,
   type AdminSessionCheckResult,
   type SessionVerificationProvider,
   type CookieItem,
   type VerificationInput,
+  type TrustedProxyStrategy,
   defaultSupabaseProvider,
 } from "./compliance-session-verifier";
 
-export { verifyCsrfOrigin, checkComplianceRateLimit, getClientIp };
-export type { AdminSessionCheckResult, SessionVerificationProvider, CookieItem, VerificationInput };
+export {
+  verifyCsrfOrigin,
+  checkComplianceRateLimit,
+  getClientIp,
+  getComplianceRateLimitKey,
+  getTrustedProxyStrategy,
+  isTrustedProxyConfigured,
+  isValidIpFormat,
+};
+export type {
+  AdminSessionCheckResult,
+  SessionVerificationProvider,
+  CookieItem,
+  VerificationInput,
+  TrustedProxyStrategy,
+};
 
 /**
  * Extracts session tokens and cookies from an incoming Next.js request or server cookie store.

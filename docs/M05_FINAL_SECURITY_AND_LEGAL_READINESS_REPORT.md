@@ -24,18 +24,29 @@ This report represents the comprehensive technical, security, regulatory, and ar
 
 ---
 
-## 1. Corrections Completed Across Audit Passes (Pass 5 & Pass 6)
+## 1. Corrections Completed Across Audit Passes (Pass 5, Pass 6 & Pass 7)
 
 1. **DPDP Act & Rules Phased Commencement Strictly Reconciled (G.S.R. 843(E)):**
    - Reconciled all statutory citations strictly against Gazette of India Notification G.S.R. 843(E) dated 13 November 2025.
-   - Accurately distinguished the tripartite commencement phases:
-     - **Immediate (13 November 2025):** Act Sections 18–26 (Data Protection Board establishment, composition, terms, proceedings), Section 35 (Power to call for information), Sections 38–43 (Good faith protection, bar of jurisdiction, Central Government rulemaking powers), and Section 44 specified parts. DPDP Rules 2025: Rules 1, 2, and 17–21.
-     - **12 Months (13 November 2026):** Act Section 6(9) (Notice for pre-existing personal data) and Section 27(1)(d) (Board inquiry on reference from Central/State Government). DPDP Rules 2025: Rule 4 (Notice form and manner for pre-existing personal data).
-     - **18 Months (13 May 2027):** Act Sections 3–5 (Applicability, Grounds, Notice), Section 6(1)–(8) & (10) (Consent), Sections 7–17 (Legitimate uses, General obligations §8, Children's data §9, SDF obligations §10, Principal rights §§11–13, Nomination §14, Duties §15, Cross-border transfer §16, Exemptions §17), Section 27 (except clause (d)), Sections 28–34 (Penalties, Appeals), Sections 36, 37, and Section 44(2) (Repeal of IT Act §43A). DPDP Rules 2025: Rules 3, 5–16, 22, 23.
+   - Accurately distinguished the tripartite commencement phases as of 18 November 2026:
+     - **Immediate (13 November 2025):** Act Sections 18–26 (Data Protection Board establishment, composition, terms, proceedings), Section 35 (Power to call for information), Sections 38–43 (Good faith protection, bar of jurisdiction, Central Government rulemaking powers), and Section 44 specified parts. DPDP Rules 2025: Rules 1, 2, and 17–21. Status: **COMMENCED / IN FORCE**.
+     - **12 Months (13 November 2026):** Act Section 6(9) (Notice for pre-existing personal data) and Section 27(1)(d) (Board inquiry on reference from Central/State Government). DPDP Rules 2025: Rule 4 (Notice form and manner for pre-existing personal data). Status: **COMMENCED / IN FORCE** (commenced 13 November 2026; operational notice architecture active).
+     - **18 Months (13 May 2027):** Act Sections 3–5 (Applicability, Grounds, Notice), Section 6(1)–(8) & (10) (Consent), Sections 7–17 (Legitimate uses, General obligations §8, Children's data §9, SDF obligations §10, Principal rights §§11–13, Nomination §14, Duties §15, Cross-border transfer §16, Exemptions §17), Section 27 (except clause (d)), Sections 28–34 (Penalties, Appeals), Sections 36, 37, and Section 44(2) (Repeal of IT Act §43A). DPDP Rules 2025: Rules 3, 5–16, 22, 23. Status: **SCHEDULED / NOT YET COMMENCED** (Pre-launch engineering control; NOT a current statutory violation).
+   - Reclassified Section 10 (SDF obligations) as **SCHEDULED / NOT YET COMMENCED** & **CONDITIONALLY APPLICABLE** (criteria pending Central Government notification; not mandatory for early-stage startups).
    - Corrected matrix entries for Sections 8, 9, 10, and 11–13: reclassified from "Commenced / In Force" to **Commencing 13 May 2027 (18 Months)**.
    - Removed inaccurate assertions describing future obligations as "current statutory violations"; framed all upcoming mandates as proactive pre-launch engineering controls.
-   - Clarified that Data Protection Officers (DPOs) are statutorily mandatory under Section 10 ONLY for notified Significant Data Fiduciaries (SDFs).
-2. **IT Rules Intermediary Deadlines Disaggregated:**
+2. **DPDP Act Penalty Schedule Mapping & Section 33(2) Adjudicatory Factors:**
+   - Corrected statutory penalty mappings to match the exact Schedule under Section 33(1):
+     - *Item 1:* Section 8(5) failure to take reasonable security safeguards — up to ₹250 crore;
+     - *Item 2:* Section 8(6) failure to notify Board / Data Principals of breach — up to ₹200 crore;
+     - *Item 3:* Section 9 non-fulfillment of obligations for children — up to ₹200 crore;
+     - *Item 4:* Section 10 non-fulfillment of SDF obligations — up to ₹150 crore;
+     - *Item 5:* Section 15 non-fulfillment of devotee duties — up to ₹10,000;
+     - *Item 6:* Section 32 breach of voluntary undertaking — up to applicable breach amount;
+     - *Item 7:* Residual breach of any other provision or rules — up to ₹50 crore.
+   - Corrected Risk Register lines 67 and 69 which previously misattributed Items 4 and 5 to general non-compliance.
+   - Grounded all penalty evaluations on Section 33(2) statutory adjudicatory factors (nature, gravity, duration, data type, repetitive nature, financial gain/loss, mitigation effectiveness, proportionality, and entity viability); explicitly noted that statutory ceilings are exposure caps, not predicted fines.
+3. **IT Rules Intermediary Deadlines Disaggregated:**
    - Disaggregated intermediary compliance windows into their specific statutory rules:
      - 24-hour acknowledgement under Rule 3(2)(a)(i);
      - 7-day complaint disposal/resolution under Rule 3(2)(a)(i) (reflecting the February 2026 amendments);
@@ -43,33 +54,36 @@ This report represents the comprehensive technical, security, regulatory, and ar
      - 36-hour takedown upon actual knowledge via court order or Appropriate Government notification under Rule 3(1)(d);
      - Statutory blocking orders executed pursuant to confidential directions issued under IT Act §69A read with the 2009 Blocking Rules.
    - Differentiated intermediary safe-harbour protections under Section 79 for user-generated discussions from first-party content publisher liability for platform editorial content.
-3. **GST TCS Recalibrated to 0.5% & Operating Models Partitioned:**
+4. **GST TCS Recalibrated to 0.5% & Operating Models Partitioned:**
    - Corrected the TCS rate under CGST Act §52 from 1% to **0.5%** (0.25% CGST + 0.25% SGST, or 0.5% IGST) pursuant to Notification No. 15/2024-Central Tax (effective 10 July 2024).
    - Partitioned platform operating models into:
      - *Principal Supplier Model:* ISHTI sells its own digital content / subscriptions; subject to regular forward-charge GST; TCS does NOT apply.
      - *Marketplace ECO Model:* ISHTI facilitates third-party pandit services and collects consideration; subject to 0.5% TCS under §52 and 0.1% TDS under §194-O (or Income-tax Act, 2025 equivalent; exemption threshold ₹5L for individuals/HUFs under §194-O(2)). [CA REVIEW REQUIRED]
    - Designated GST SAC classification (999799, 998439), registration, TCS, TDS, and invoicing as **CA REVIEW REQUIRED**.
-4. **Marketplace TDS Recalibrated to 0.1% & Section 536 Transitional Treatment:**
+5. **Marketplace TDS Recalibrated to 0.1% & Income-tax Act, 2025 Section 393 Alignment:**
    - Corrected e-commerce marketplace TDS under former Income-tax Act, 1961 Section 194-O from 1% to **0.1%**, as reduced effective 1 October 2024 by Finance (No. 2) Act, 2024.
-   - Mapped corresponding e-commerce provisions under the Income-tax Act, 2025 (effective 1 April 2026), incorporating Section 536 transitional savings and the statutory ₹5,00,000 threshold for individuals/HUFs under §194-O(2).
+   - Mapped corresponding e-commerce provisions under the Income-tax Act, 2025 (effective 1 April 2026) to **Section 393(1), Table Serial No. 8(v)** (0.1% TDS on gross sales) with statutory individual/HUF exemption up to ₹5,00,000 under **Section 393(4), Table Serial No. 11** (upon furnishing PAN/Aadhaar), incorporating Section 536 transitional savings.
    - Marked all TDS applicability, classification, and withholding rules as **CA REVIEW REQUIRED**.
-5. **Ingress & Proxy Trust Architecture Hardened:**
-   - Removed automatic proxy trust based solely on `NODE_ENV === "production"` in `compliance-session-verifier.ts`.
-   - Forwarded headers (`CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`) are now trusted ONLY when the deployment has an explicitly configured trusted ingress (`TRUSTED_PROXY === "true"` or `TRUSTED_PROXY_STRATEGY === "cloudflare"` / `"reverse_proxy"`).
-   - Documented architectural boundary: application code alone cannot cryptographically verify network header origin; infrastructural ingress must strip client-supplied headers and inject authoritative values.
-   - Added 8 automated tests for spoofed `X-Forwarded-For`, spoofed `CF-Connecting-IP`, unconfigured production fallback, and valid configured proxy scenarios (all passing).
-6. **Income Tax Books of Account Scope Clarified:**
+6. **Ingress & Proxy Trust Architecture Hardened & Rate-Limit Key Partitioning:**
+   - Tightened `TRUSTED_PROXY_STRATEGY` in `compliance-session-verifier.ts`:
+     - *Cloudflare Strategy:* Strictly inspects `CF-Connecting-IP`; rejects fallback to `X-Forwarded-For` or `X-Real-IP` to prevent spoofing.
+     - *Reverse Proxy Strategy:* Prioritizes `X-Real-IP`; inspects `X-Forwarded-For` only under operational precondition that ingress strips client headers.
+     - *Direct Strategy:* Ignores all forwarded headers.
+   - Resolved `"direct-client"` rate limit denial-of-service vulnerability via `getComplianceRateLimitKey()`: partitions unauthenticated requests by client fingerprint hash (`User-Agent|Accept-Language|Sec-CH-UA`) or session cookie hash, while authenticating requests are partitioned by Bearer token hash.
+   - Explicitly documented that application code cannot cryptographically verify network header origin; origin shielding (Cloudflare Authenticated Origin Pulls / VPC firewall) is an unresolved infrastructure deployment dependency.
+   - Expanded test suite in `scripts/run-m05-tests.ts` to 117 automated tests (adding 15 dedicated proxy-trust, spoofing, and rate-limiting tests, all passing).
+7. **Income Tax Books of Account Scope Clarified:**
    - Clarified that mandatory 7-year retention under Income-tax Act, 2025 §62 / Rule 46 (and 6-year retention under 1961 Act §44AA / Rule 6F) applies specifically to commercial business records exceeding statutory income/turnover thresholds, and does NOT apply across all user personal data. Applying accounting retention to personal user profiles violates data minimization under the DPDP Act. Designated as **CA REVIEW REQUIRED**.
-7. **International Privacy & AI Framework Harmonized:**
+8. **International Privacy & AI Framework Harmonized:**
    - *GDPR Article 3(2):* Clarified that mere accessibility from the EU does not trigger GDPR (Recital 23 requires demonstrable intention to offer goods or services).
    - *Special Category Data (Article 9):* Clarified that birth coordinates do not per se constitute religious data unless processing specifically reveals religious beliefs.
    - *Cross-Border Transfers:* Grounded international data flows on Standard Contractual Clauses (SCCs), explicitly barring Article 49(1)(a) consent derogations as a routine transfer solution per EDPB Guidelines 2/2018.
    - *CCPA/CPRA:* Updated statutory gross-revenue threshold to **$26.625 million** (2026 CPI adjustment) or 100k consumers.
    - *EU AI Act:* Mapped Article 50 transparency obligations (AI identity and synthetic output disclosure), noting phased rollout (2025–2027).
-6. **Risk Register Financial Accounting Reformed:**
+9. **Risk Register Financial Accounting Reformed:**
    - Replaced speculative penalty guesswork with absolute statutory maximum ceilings and published judicial/regulatory precedents.
    - Labeled uncertain exposure quantum as `COUNSEL ASSESSMENT REQUIRED` or `CA REVIEW REQUIRED`.
-7. **Server-Side Security & Authorization Hardened:**
+10. **Server-Side Security & Authorization Hardened:**
    - Bound Bearer-token verification directly to database authorization context in `compliance-session-verifier.ts` by instantiating the Supabase client with `{ global: { headers: { Authorization: \`Bearer ${input.bearerToken}\` } } }`, ensuring subsequent role lookups execute within the authenticated token's RLS context.
    - Refactored `GET /api/compliance/audit` to return explicit 501 `NOT_IMPLEMENTED` with `{ code: "NOT_IMPLEMENTED" }`, preventing false claims of server-authoritative audit logging before Milestone M06 WORM persistence.
    - Documented `checkComplianceRateLimit` honestly as process-local in-memory, requiring distributed Redis / Postgres locking in M06.
@@ -188,7 +202,7 @@ The following financial, tax, and accounting items must be audited and settled b
 3. **TCS Compliance under CGST Act §52:**
    - Implementation of 0.5% TCS deduction (0.25% CGST + 0.25% SGST, or 0.5% IGST) on net value of taxable supplies by third-party pandits; monthly Form GSTR-8 return filing protocol.
 4. **TDS Compliance under Income-tax Act:**
-   - Deduction of **0.1% TDS** under former Section 194-O (as amended by Finance (No. 2) Act, 2024 effective 1 Oct 2024) / Income-tax Act, 2025 equivalent (Section 536 transitional savings) on marketplace e-commerce transactions, subject to ₹5,00,000 threshold for individuals/HUFs under §194-O(2); or Section 194J for professional fees. Quarterly Form 26Q filings and Form 16A issuance. [CA REVIEW REQUIRED]
+   - Deduction of **0.1% TDS** on marketplace e-commerce transactions under Income-tax Act, 2025 **Section 393(1), Table Serial No. 8(v)** (or former Section 194-O via Section 536 transitional treatment), subject to statutory individual/HUF exemption threshold up to ₹5,00,000 under **Section 393(4), Table Serial No. 11** upon furnishing PAN or Aadhaar; or Section 394 / former Section 194J for professional fees. Quarterly Form 26Q filings and Form 16A issuance. [CA REVIEW REQUIRED]
 5. **Tax Invoicing Architecture:**
    - Invoicing flows distinguishing principal sales (ISHTI issues tax invoice to devotee) from marketplace sales (pandit issues invoice to devotee; ISHTI issues commission invoice to pandit).
 6. **Statutory Books of Account Retention:**
@@ -221,9 +235,9 @@ To safeguard the platform, individual promoters, and consumers, the following ca
   Gate 2: Sovereign Consent & Cryptographic Evidence:       7 passed, 0 failed
   Gate 3: Privacy Rights, SAR & 7-Stage Deletion:          14 passed, 0 failed
   Gate 4: Commerce Trust & Minor-Unit Refund Arithmetic:   21 passed, 0 failed
-  Gate 5: Compliance Operations, Grievances & Security:    52 passed, 0 failed
+  Gate 5: Compliance Operations, Grievances & Security:    65 passed, 0 failed
 ================================================================================
-TOTAL M05 TESTS: 104 | PASSED: 104 | FAILED: 0 | EXIT CODE: 0
+TOTAL M05 TESTS: 117 | PASSED: 117 | FAILED: 0 | EXIT CODE: 0
 ================================================================================
 
 ================================================================================

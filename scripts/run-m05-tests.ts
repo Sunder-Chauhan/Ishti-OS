@@ -45,6 +45,10 @@ import {
   verifyCsrfOrigin,
   checkComplianceRateLimit,
   getClientIp,
+  getComplianceRateLimitKey,
+  getTrustedProxyStrategy,
+  isTrustedProxyConfigured,
+  isValidIpFormat,
   type SessionVerificationProvider,
   type VerificationInput,
   type CookieItem,
@@ -687,18 +691,7 @@ async function runM05Tests() {
       "Server admin check: 18d. Direct un-proxied connection falls back safely to direct-client"
     );
 
-    // 18e. Valid configured proxy with TRUSTED_PROXY="true"
-    process.env.TRUSTED_PROXY = "true";
-    const validCf = getClientIp({
-      get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.195" : null),
-    });
-    assert(
-      validCf === "203.0.113.195",
-      "G5",
-      "Server admin check: 18e. Valid CF-Connecting-IP extracted when TRUSTED_PROXY='true' is configured"
-    );
-
-    // 18f. Valid configured proxy with TRUSTED_PROXY_STRATEGY="cloudflare"
+    // 18e. Valid configured proxy with TRUSTED_PROXY_STRATEGY="cloudflare"
     delete process.env.TRUSTED_PROXY;
     process.env.TRUSTED_PROXY_STRATEGY = "cloudflare";
     const validCfStrategy = getClientIp({
@@ -707,28 +700,127 @@ async function runM05Tests() {
     assert(
       validCfStrategy === "203.0.113.200",
       "G5",
-      "Server admin check: 18f. Valid CF-Connecting-IP extracted when TRUSTED_PROXY_STRATEGY='cloudflare'"
+      "Server admin check: 18e. Valid CF-Connecting-IP extracted when TRUSTED_PROXY_STRATEGY='cloudflare'"
     );
 
-    // 18g. Valid configured proxy with TRUSTED_PROXY_STRATEGY="reverse_proxy" & XFF
-    process.env.TRUSTED_PROXY_STRATEGY = "reverse_proxy";
-    const validXffStrategy = getClientIp({
-      get: (h: string) => (h === "x-forwarded-for" ? "198.51.100.77, 10.0.0.1" : null),
+    // 18f. Cloudflare mode with missing CF-Connecting-IP but present XFF: strictly NO silent fallback
+    const cfMissingFallback = getClientIp({
+      get: (h: string) => (h === "x-forwarded-for" ? "198.51.100.1" : null),
     });
     assert(
-      validXffStrategy === "198.51.100.77",
+      cfMissingFallback === "direct-client",
       "G5",
-      "Server admin check: 18g. Valid client IP extracted from X-Forwarded-For under reverse_proxy strategy"
+      "Server admin check: 18f. Cloudflare mode with missing CF-Connecting-IP strictly rejects XFF fallback"
     );
 
-    // 18h. Malformed IP injection rejected even when proxy is trusted
+    // 18g. Cloudflare mode with malformed CF-Connecting-IP: strictly NO silent fallback
+    const cfMalformedFallback = getClientIp({
+      get: (h: string) => {
+        if (h === "cf-connecting-ip") return "malformed-ip-string";
+        if (h === "x-forwarded-for") return "198.51.100.1";
+        return null;
+      },
+    });
+    assert(
+      cfMalformedFallback === "direct-client",
+      "G5",
+      "Server admin check: 18g. Cloudflare mode with malformed CF-Connecting-IP strictly rejects XFF fallback"
+    );
+
+    // 18h. Cloudflare mode with conflicting forwarded headers: authoritative CF-Connecting-IP takes precedence
+    const cfConflictingHeaders = getClientIp({
+      get: (h: string) => {
+        if (h === "cf-connecting-ip") return "203.0.113.50";
+        if (h === "x-forwarded-for") return "198.51.100.99, 10.0.0.1";
+        if (h === "x-real-ip") return "198.51.100.88";
+        return null;
+      },
+    });
+    assert(
+      cfConflictingHeaders === "203.0.113.50",
+      "G5",
+      "Server admin check: 18h. Cloudflare mode prioritizes authoritative CF-Connecting-IP over conflicting headers"
+    );
+
+    // 18i. Valid configured proxy with TRUSTED_PROXY_STRATEGY="reverse_proxy" & X-Real-IP
+    process.env.TRUSTED_PROXY_STRATEGY = "reverse_proxy";
+    const validRealIpStrategy = getClientIp({
+      get: (h: string) => {
+        if (h === "x-real-ip") return "198.51.100.77";
+        if (h === "x-forwarded-for") return "10.0.0.1, 192.168.1.1";
+        return null;
+      },
+    });
+    assert(
+      validRealIpStrategy === "198.51.100.77",
+      "G5",
+      "Server admin check: 18i. Valid client IP extracted from authoritative X-Real-IP under reverse_proxy strategy"
+    );
+
+    // 18j. Valid configured proxy with TRUSTED_PROXY_STRATEGY="reverse_proxy" & XFF fallback
+    const validXffStrategy = getClientIp({
+      get: (h: string) => (h === "x-forwarded-for" ? "198.51.100.88, 10.0.0.1" : null),
+    });
+    assert(
+      validXffStrategy === "198.51.100.88",
+      "G5",
+      "Server admin check: 18j. Valid client IP extracted from X-Forwarded-For under reverse_proxy strategy"
+    );
+
+    // 18k. Malformed IP injection rejected even when proxy is trusted
     const malformedInjection = getClientIp({
       get: (h: string) => (h === "x-forwarded-for" ? "not-an-ip-injection-attempt" : null),
     });
     assert(
       malformedInjection === "direct-client",
       "G5",
-      "Server admin check: 18h. Malformed or non-IP header rejected safely as direct-client"
+      "Server admin check: 18k. Malformed or non-IP header rejected safely as direct-client"
+    );
+
+    // 18l. Explicit TRUSTED_PROXY_STRATEGY="direct": all forwarded headers ignored
+    process.env.TRUSTED_PROXY_STRATEGY = "direct";
+    const explicitDirect = getClientIp({
+      get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.195" : null),
+    });
+    assert(
+      explicitDirect === "direct-client",
+      "G5",
+      "Server admin check: 18l. Explicit TRUSTED_PROXY_STRATEGY='direct' treats all headers as untrusted"
+    );
+
+    // 18m. Shared rate-limit fallback partitioning (mitigates direct-client denial-of-service)
+    delete process.env.TRUSTED_PROXY;
+    delete process.env.TRUSTED_PROXY_STRATEGY;
+
+    const keyClientA = getComplianceRateLimitKey("audit-get", {
+      get: (h: string) => (h === "user-agent" ? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" : null),
+    });
+    const keyClientB = getComplianceRateLimitKey("audit-get", {
+      get: (h: string) => (h === "user-agent" ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" : null),
+    });
+    assert(
+      keyClientA !== keyClientB,
+      "G5",
+      "Server admin check: 18m. Unauthenticated direct clients are partitioned by fingerprint to prevent shared DoS"
+    );
+
+    const keyAuthBearer = getComplianceRateLimitKey("audit-get", {
+      get: (h: string) => (h === "authorization" ? "Bearer token-admin-108" : null),
+    });
+    assert(
+      keyAuthBearer.startsWith("audit-get:token:"),
+      "G5",
+      "Server admin check: 18n. Authenticated caller rate limit key is bound to token hash"
+    );
+
+    process.env.TRUSTED_PROXY_STRATEGY = "cloudflare";
+    const keyVerifiedIp = getComplianceRateLimitKey("audit-get", {
+      get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.50" : null),
+    });
+    assert(
+      keyVerifiedIp === "audit-get:ip:203.0.113.50",
+      "G5",
+      "Server admin check: 18o. Verified proxy IP correctly formats IP-based rate limit key"
     );
   } finally {
     if (origTrustedProxy !== undefined) process.env.TRUSTED_PROXY = origTrustedProxy;

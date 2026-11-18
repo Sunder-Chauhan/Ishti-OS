@@ -4,6 +4,7 @@ import {
   verifyCsrfOrigin,
   checkComplianceRateLimit,
   getClientIp,
+  getComplianceRateLimitKey,
 } from "../../../../lib/compliance/compliance-server";
 
 /**
@@ -21,9 +22,9 @@ import {
  */
 
 export async function GET(request: NextRequest) {
-  // 1. Rate limiting check with verified client IP provenance
-  const ip = getClientIp(request.headers);
-  if (!checkComplianceRateLimit(`audit-get:${ip}`, 30, 60000)) {
+  // 1. Rate limiting check with verified client IP provenance and partitioned fallback
+  const rateLimitKey = getComplianceRateLimitKey("audit-get", request.headers);
+  if (!checkComplianceRateLimit(rateLimitKey, 30, 60000)) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
       { status: 429 }
@@ -66,9 +67,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2. Rate limiting check with verified client IP provenance
-  const ip = getClientIp(request.headers);
-  if (!checkComplianceRateLimit(`audit-post:${ip}`, 10, 60000)) {
+  // 2. Rate limiting check with verified client IP provenance and partitioned fallback
+  const rateLimitKey = getComplianceRateLimitKey("audit-post", request.headers);
+  if (!checkComplianceRateLimit(rateLimitKey, 10, 60000)) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
       { status: 429 }

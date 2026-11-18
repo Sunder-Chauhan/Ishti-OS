@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import type { UserRole } from "@spiritual-os/types";
 
 /**
@@ -99,34 +100,57 @@ export function checkComplianceRateLimit(
   return true;
 }
 
+export type TrustedProxyStrategy = "cloudflare" | "reverse_proxy" | "direct" | "none";
+
 /**
  * Ingress & Client IP Extraction Architecture:
  *
- * ARCHITECTURAL NOTICE:
- * Application code alone cannot cryptographically authenticate the network source of
- * HTTP request headers. A client connecting directly to an application server can
- * arbitrarily set headers such as `X-Forwarded-For`, `CF-Connecting-IP`, or `X-Real-IP`.
+ * CRITICAL DEPLOYMENT ARCHITECTURE NOTICE:
+ * An environment variable flag (e.g. `TRUSTED_PROXY=true` or `TRUSTED_PROXY_STRATEGY=cloudflare`)
+ * is an application configuration declaration, NOT mathematical proof of network provenance.
+ *
+ * An application cannot establish true network provenance if the origin server remains
+ * directly accessible on the public Internet. If an attacker discovers the origin server IP,
+ * they can connect directly to port 80/443, spoof edge headers (`CF-Connecting-IP`, `X-Forwarded-For`),
+ * and bypass edge rate limits.
  *
  * Therefore:
- * 1. An infrastructural trusted ingress (e.g. Cloudflare edge termination, AWS ALB, Nginx reverse proxy)
- *    is strictly required to strip any untrusted client-supplied forwarded headers and inject
- *    authoritative values before proxying requests to the application.
- * 2. In application code, forwarded headers are NEVER trusted merely because they exist in
- *    the request, nor is proxy trust automatically enabled based solely on `NODE_ENV === "production"`.
- * 3. Forwarded headers are ONLY evaluated when the deployment environment explicitly declares
- *    a trusted ingress configuration via:
- *    - `TRUSTED_PROXY === "true"`, OR
- *    - `TRUSTED_PROXY_STRATEGY === "cloudflare"` | `"reverse_proxy"`
- * 4. If trusted ingress is NOT configured, all forwarded headers (`cf-connecting-ip`,
- *    `x-forwarded-for`, `x-real-ip`) are treated as untrusted user input and ignored,
- *    returning `"direct-client"` to prevent header-spoofing rate limit evasion.
- * 5. Even when trusted ingress is enabled, extracted IP values must strictly conform to
- *    syntactically valid IPv4 or IPv6 address formats.
+ * 1. `TRUSTED_PROXY=true` as a bare boolean is AMBIGUOUS and overly broad because it fails to
+ *    specify which header is authoritative, how many hops exist, or whether ingress sanitization
+ *    is enforced. Supported deployments must explicitly declare `TRUSTED_PROXY_STRATEGY`.
+ * 2. In `cloudflare` mode:
+ *    - The single authoritative header is `CF-Connecting-IP`.
+ *    - If `CF-Connecting-IP` is missing, malformed, or tampered, the code MUST NOT silently fall
+ *      back to `X-Forwarded-For` or `X-Real-IP`. Falling back creates a vulnerability where an attacker
+ *      connecting directly or through an alternate proxy can forge XFF while claiming Cloudflare edge.
+ * 3. In `reverse_proxy` mode:
+ *    - The authoritative ingress MUST be configured at the infrastructure layer to sanitize/strip
+ *      any untrusted incoming client-supplied headers (e.g. Nginx `proxy_set_header X-Real-IP $remote_addr;`
+ *      or overwriting `X-Forwarded-For`).
+ *    - By default, `X-Real-IP` is preferred as the single authoritative hop set by the reverse proxy.
+ *    - If `X-Forwarded-For` is evaluated, the first hop is trusted ONLY under the operational assumption
+ *      that the ingress proxy strips client-supplied `X-Forwarded-For` headers at the ingress boundary.
+ * 4. In `direct` or `none` mode (or unconfigured):
+ *    - All forwarded headers are treated as untrusted user input and ignored.
+ * 5. Full network provenance remains an UNRESOLVED DEPLOYMENT REQUIREMENT until infrastructure-level
+ *    origin shielding (Cloudflare Authenticated Origin Pulls / mTLS or VPC security group firewalling
+ *    allowing only Cloudflare/ALB CIDR ranges) is independently verified in hosted environments.
  */
+export function getTrustedProxyStrategy(): TrustedProxyStrategy {
+  const strategy = process.env.TRUSTED_PROXY_STRATEGY?.toLowerCase().trim();
+  if (strategy === "cloudflare" || strategy === "reverse_proxy" || strategy === "direct" || strategy === "none") {
+    return strategy;
+  }
+  // If legacy TRUSTED_PROXY="true" is set without strategy, default to reverse_proxy
+  // with strict sanitization requirements, but explicit TRUSTED_PROXY_STRATEGY is required.
+  if (process.env.TRUSTED_PROXY === "true") {
+    return "reverse_proxy";
+  }
+  return "none";
+}
 
 export function isTrustedProxyConfigured(): boolean {
-  if (process.env.TRUSTED_PROXY === "true") return true;
-  const strategy = process.env.TRUSTED_PROXY_STRATEGY?.toLowerCase().trim();
+  const strategy = getTrustedProxyStrategy();
   return strategy === "cloudflare" || strategy === "reverse_proxy";
 }
 
@@ -144,17 +168,15 @@ export function isValidIpFormat(ip: string | null | undefined): boolean {
 export function getClientIp(headers?: { get(name: string): string | null | undefined }): string {
   if (!headers) return "direct-client";
 
-  // Strictly verify whether this deployment has an explicitly configured trusted ingress.
-  // NEVER trust forwarded headers based on NODE_ENV === "production" alone, and NEVER
-  // trust cf-connecting-ip merely because the header exists without trusted proxy configuration.
-  if (!isTrustedProxyConfigured()) {
+  const strategy = getTrustedProxyStrategy();
+
+  // If proxy strategy is 'none' or 'direct', all forwarded headers are untrusted.
+  if (strategy === "none" || strategy === "direct") {
     return "direct-client";
   }
 
-  const strategy = process.env.TRUSTED_PROXY_STRATEGY?.toLowerCase().trim();
-
-  // If Cloudflare strategy or general trusted proxy with cf-connecting-ip present:
-  if (strategy === "cloudflare" || process.env.TRUSTED_PROXY === "true") {
+  // 1. Cloudflare Mode:
+  if (strategy === "cloudflare") {
     const cfIp = headers.get("cf-connecting-ip");
     if (cfIp) {
       const trimmed = cfIp.trim();
@@ -162,30 +184,96 @@ export function getClientIp(headers?: { get(name: string): string | null | undef
         return trimmed;
       }
     }
+    // STRICT ISOLATION: In Cloudflare mode, DO NOT fall back to X-Forwarded-For or X-Real-IP!
+    // If CF-Connecting-IP is missing or invalid, edge provenance cannot be established.
+    return "direct-client";
   }
 
-  // Inspect standard X-Forwarded-For (client is the first hop added by authoritative ingress)
-  const xForwardedFor = headers.get("x-forwarded-for");
-  if (xForwardedFor) {
-    const parts = xForwardedFor.split(",").map((p) => p.trim()).filter(Boolean);
-    if (parts.length > 0) {
-      const firstIp = parts[0];
-      if (isValidIpFormat(firstIp)) {
-        return firstIp;
+  // 2. Reverse Proxy Mode:
+  if (strategy === "reverse_proxy") {
+    // Authoritative check 1: X-Real-IP (preferred authoritative header injected by Nginx/Envoy)
+    const realIp = headers.get("x-real-ip");
+    if (realIp) {
+      const trimmed = realIp.trim();
+      if (isValidIpFormat(trimmed)) {
+        return trimmed;
       }
     }
-  }
 
-  // Inspect X-Real-IP if configured
-  const realIp = headers.get("x-real-ip");
-  if (realIp) {
-    const trimmed = realIp.trim();
-    if (isValidIpFormat(trimmed)) {
-      return trimmed;
+    // Authoritative check 2: X-Forwarded-For (valid only if ingress sanitizes client-supplied header)
+    const xForwardedFor = headers.get("x-forwarded-for");
+    if (xForwardedFor) {
+      const parts = xForwardedFor.split(",").map((p) => p.trim()).filter(Boolean);
+      if (parts.length > 0) {
+        const firstIp = parts[0];
+        if (isValidIpFormat(firstIp)) {
+          return firstIp;
+        }
+      }
     }
+
+    return "direct-client";
   }
 
   return "direct-client";
+}
+
+/**
+ * Builds a safe, partitioned rate limit identifier.
+ *
+ * MITIGATION FOR SHARED "direct-client" DENIAL-OF-SERVICE:
+ * When client IP cannot be established with verified proxy provenance (`ip === "direct-client"`):
+ * 1. If an authenticated Authorization Bearer token is present, partition by token hash:
+ *    `${prefix}:token:${sha256(bearerToken).slice(0, 16)}`
+ * 2. If session cookies are present, partition by cookie hash:
+ *    `${prefix}:cookie:${sha256(cookieValue).slice(0, 16)}`
+ * 3. If unauthenticated and un-provable, partition by deterministic client-attribute fingerprint
+ *    (User-Agent, Accept-Language, Sec-CH-UA) to avoid pooling all direct clients into
+ *    one shared bucket where a single abusive client exhausts the quota for all other direct users:
+ *    `${prefix}:fp:${sha256(fingerprintString).slice(0, 16)}`
+ */
+export function getComplianceRateLimitKey(
+  prefix: string,
+  headers?: { get(name: string): string | null | undefined }
+): string {
+  const ip = getClientIp(headers);
+  if (ip !== "direct-client") {
+    return `${prefix}:ip:${ip}`;
+  }
+
+  if (!headers) {
+    return `${prefix}:direct-fallback`;
+  }
+
+  // 1. Check Authorization header for Bearer tokens
+  const auth = headers.get("authorization");
+  if (auth && auth.toLowerCase().startsWith("bearer ")) {
+    const token = auth.slice(7).trim();
+    if (token) {
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex").slice(0, 16);
+      return `${prefix}:token:${tokenHash}`;
+    }
+  }
+
+  // 2. Check Cookie header for session tokens
+  const cookieHeader = headers.get("cookie");
+  if (cookieHeader) {
+    const cookieHash = crypto.createHash("sha256").update(cookieHeader).digest("hex").slice(0, 16);
+    return `${prefix}:cookie:${cookieHash}`;
+  }
+
+  // 3. Fallback: Partition unauthenticated direct clients by request fingerprint
+  const ua = headers.get("user-agent") || "";
+  const lang = headers.get("accept-language") || "";
+  const secChUa = headers.get("sec-ch-ua") || "";
+  const fpSource = `${ua}|${lang}|${secChUa}`;
+
+  if (fpSource.length > 2) {
+    const fpHash = crypto.createHash("sha256").update(fpSource).digest("hex").slice(0, 16);
+    return `${prefix}:fp:${fpHash}`;
+  }
+
+  return `${prefix}:direct-unpartitioned`;
 }
 
 /**
