@@ -73,17 +73,17 @@ pyramid
      * *Assertion:* Documents financial transaction IDs retained pursuant to Income-tax Act, 2025 §62 (7-year retention exception).
 
 ### 2.4. Grievance Redressal IT Rules Dual-Clock SLA Verification (Correction 2)
-- **Objective:** Verify that grievance tickets correctly calculate statutory legal deadlines vs internal operational targets based on classification under official IT Rules updated 10 February 2026.
+- **Objective:** Verify that grievance tickets correctly calculate statutory legal deadlines vs internal operational targets based on classification under official consolidated IT Rules updated 10 February 2026 including the February 2026 corrigendum.
 - **Harness:** `scripts/test-grievance-slas.ts`.
 - **Test Scenarios:**
   1. Submit Rule 3(2)(b) emergency complaint (non-consensual imagery / sexual acts / impersonation).
-     * *Assertion:* `statutory_ack_deadline` = +2h, `statutory_disposal_deadline` = **+2 Hours**; `internal_slt_disposal_deadline` = **+1 Hour**.
+     * *Assertion:* `statutory_ack_deadline` = +2h, `statutory_disposal_deadline` = **+2 Hours**; `internal_slt_disposal_deadline` = **+1 Hour** (30m ack); zero pause permitted.
   2. Submit Proviso to Rule 3(2)(a)(i) specified content removal request.
-     * *Assertion:* `statutory_disposal_deadline` = **+36 Hours**; `internal_slt_disposal_deadline` = **+12 Hours**.
+     * *Assertion:* `statutory_ack_deadline` = +24h, `statutory_disposal_deadline` = **+36 Hours**; `internal_slt_disposal_deadline` = **+12 Hours** (6h ack); pause rules require counsel confirmation.
   3. Submit Rule 3(1)(d) government/court takedown notification.
-     * *Assertion:* `statutory_disposal_deadline` = **+36 Hours**; `internal_slt_disposal_deadline` = **+6 Hours**.
+     * *Assertion:* `statutory_ack_deadline` = +1h, `statutory_disposal_deadline` = **+3 Hours**; `internal_slt_disposal_deadline` = **+1 Hour** (30m ack); zero pause permitted.
   4. Submit standard devotee privacy/service grievance under Rule 3(2)(a)(i).
-     * *Assertion:* `statutory_ack_deadline` = +24 Hours, `statutory_disposal_deadline` = **+7 Days** (reflecting Feb 2026 amendment); `internal_slt_disposal_deadline` = **+48 Hours**.
+     * *Assertion:* `statutory_ack_deadline` = +24 Hours, `statutory_disposal_deadline` = **+7 Days** (reflecting Feb 2026 amendment); `internal_slt_disposal_deadline` = **+48 Hours** (12h ack); pause rules require counsel confirmation.
 
 ### 2.5. Merkle Hash Chain Corruption & Tamper Detection (Correction 6)
 - **Objective:** Prove that manual modification of an audit record by a rogue database administrator is immediately detected by the integrity daemon.
@@ -93,6 +93,30 @@ pyramid
   2. Disable the trigger temporarily in a local test sandbox and modify the payload of record #25.
   3. Execute `verify_audit_ledger_integrity()`.
   * *Assertion:* The verification function returns `false`, identifying record #25 as corrupted (`record_hash != calculated_hash`), and flags downstream records #26–50 as invalidated.
+
+### 2.6. Ingress Origin Shielding Bypass Penetration Suite
+- **Objective:** Empirically verify that origin web servers on Vercel reject direct traffic, spoofed proxy headers, and unauthenticated alias access.
+- **Harness:** `scripts/test-origin-shielding.ts`.
+- **Test Scenarios:**
+  1. *Direct `*.vercel.app` Deployment URL Access:* Send direct HTTP requests to deployment URL; assert rejection (HTTP 403) or canonical domain redirect.
+  2. *Alternative Vercel Aliases & Previews:* Probe branch/preview URLs; assert deployment protection or origin secret enforcement.
+  3. *Missing Proxy Header:* Send direct HTTP request lacking `x-ishti-proxy-secret`; assert immediate HTTP 403 rejection.
+  4. *Spoofed Proxy Header from External IP:* Send request containing valid secret from an IP outside Cloudflare CIDRs; assert Vercel Firewall drops connection at network layer.
+  5. *Secret Rotation Dual-Window:* Verify that rotating the secret using a dual-window environment configuration permits zero-downtime rollover.
+  6. *Host-Header Manipulation:* Send request with forged `Host` header; assert middleware strictly validates against trusted domain allowlist.
+  7. *Middleware Bypass on Static / Asset Routes:* Verify whether static asset or internal routes bypass middleware, confirming zero data route leaks.
+  8. *Unexpected Network Paths:* Audit IPv6 vs IPv4 routing and internal peering boundaries.
+
+### 2.7. Upstash Redis Empirical Latency Benchmark Harness
+- **Objective:** Empirically measure real-world network latency and concurrency scaling between serverless execution contexts and Upstash Redis in AWS `ap-south-1` (Mumbai).
+- **Harness:** `scripts/benchmark-redis-latency.ts`.
+- **Benchmark Metrics & Assertions:**
+  1. *Latency Distribution (10,000 operations):* Assert p50 <15ms, p95 <35ms, p99 <75ms under normal operation.
+  2. *Cold vs. Warm Starts:* Quantify cold connection TLS setup latency vs persistent warm execution.
+  3. *Concurrency Scaling:* Sustain concurrent loads of 100, 500, and 1,000 workers across serverless instances; assert zero connection pool dropouts.
+  4. *Timeout & Error Handling:* Assert operations exceeding 150ms timeout abort cleanly without hanging serverless threads.
+  5. *Fail-Closed Enforcement:* Sever connection to Redis; assert 100% of sensitive mutation routes strictly return HTTP 503 `RATE_LIMIT_SERVICE_UNAVAILABLE`.
+  6. *Budget & Volume Verification:* Validate measured command volumes against tier budget assumptions (free tier vs launch tier).
 
 ---
 
@@ -116,6 +140,8 @@ ISHTI Milestone M06 Acceptance Gate Verification Criteria
 [ ] GATE 3: CORE PERSISTENCE & ADVERSARIAL SUITE
     • Core M06 Verification Suite (`scripts/run-m06-tests.ts`): 100% pass.
     • Distributed rate limiting chaos tests pass (sensitive routes fail closed).
+    • Empirical Redis latency benchmark meets SLA (p50 <15ms, p99 <75ms).
+    • 8-point origin shielding bypass suite passes (0 direct access via `*.vercel.app` or spoofed proxy headers).
     • Server-mediated anonymous grievance intake penetration tests pass.
     • 15-point multi-copy privacy erasure and DEK shredding tests pass.
     • Merkle hash chain corruption detection tests pass.
@@ -127,7 +153,8 @@ ISHTI Milestone M06 Acceptance Gate Verification Criteria
 
 [ ] GATE 5: ZERO-DOWNTIME MIGRATION VERIFICATION
     • Forward migrations execute cleanly on clean database.
-    • Reverse migrations (`down/`) roll back cleanly without residue.
+    • Reverse migrations (`down/`) roll back schema-only additions cleanly without residue.
+    • Nuanced rollback classification adhered to (zero destructive migrations; backup and restore verified before state-altering changes).
     • Idempotency verified: re-running migrations causes 0 errors.
 ================================================================================
 ```

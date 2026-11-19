@@ -917,3 +917,37 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Architecture Approval Packet: **`READY FOR FOUNDER / OPERATOR SIGN-OFF`**
   - Implementation Code Execution: **`STRICTLY PAUSED / AWAITING AUTHORIZATION`**
 
+---
+
+## 2026-11-19: ADR-038 — Milestone M06 G0: Final Statutory Timeline Reconciliation, Origin Shielding Reclassification & Migration Rollback Architecture
+- **Status:** PENDING OPERATOR APPROVAL (GATE G0)
+- **Context:** Following independent architectural and legal review of the M06 G0 approval packet, critical statutory discrepancies in IT Rules timelines were identified and corrected, origin shielding on Vercel was reclassified as a proposed rather than empirically verified control, Redis latency was qualified as unverified pending benchmark testing, and migration rollback assumptions were replaced with a production-grade 6-tier classification.
+- **Decision:**
+  1. **IT Rules Statutory Clocks Reconciled (Consolidated Rules Updated 10 February 2026 + Corrigendum):**
+     - Corrected Rule 3(1)(d) statutory timeline: removal or disabling access must occur within **3 HOURS** (not 36 hours!) from receipt of an order issued by a court of competent jurisdiction or reasoned notification by the Appropriate Government or its agency under Section 79(3)(b) within its statutory scope.
+     - Maintained Rule 3(2)(b) emergency action/takedown within **2 HOURS** for complaints alleging content depicting sexual acts, nudity, private areas, or impersonation.
+     - Maintained Proviso to Rule 3(2)(a)(i) resolution within **36 HOURS** for specified removal-request categories, subject to statutory exclusions.
+     - Maintained Rule 3(2)(a)(i) ordinary intermediary grievance timeline: **24 hours acknowledgement; 7 days resolution/disposal** (reduced from 15d by Feb 2026 amendment).
+     - Formally distinguished IT Act Section 69A: a separate, confidential government blocking procedure under the 2009 Blocking Rules; failure to comply carries criminal liability under Section 69A(3) (imprisonment up to seven years and fine).
+     - Standardized clock pause protocol: zero statutory pause permitted under Rule 3(2)(b) and Rule 3(1)(d); pause rules for ordinary grievances under Rule 3(2)(a)(i) are strictly subject to formal legal counsel confirmation.
+  2. **DEC-M06-002 Origin Shielding Status Reclassification:**
+     - Reclassified status from `PENDING OPERATOR APPROVAL` to **`RECOMMENDED — DEPLOYMENT VERIFICATION REQUIRED (PENDING OPERATOR APPROVAL)`**.
+     - Documented that Cloudflare CIDR firewall allowlisting + shared proxy secret (`x-ishti-proxy-secret`) is a proposed Vercel-compatible approach, **NOT an empirically verified origin security control**.
+     - Defined mandatory 8-point empirical test suite: direct `*.vercel.app` deployment URL bypass, alternative Vercel aliases, missing proxy header, spoofed proxy header from untrusted IPs, secret rotation dual-window rollover, host-header manipulation, middleware bypass on static/internal routes, and unexpected network paths.
+  3. **DEC-M06-001 Redis Latency Qualification:**
+     - Marked Upstash Redis Serverless AWS `ap-south-1` Mumbai latency as **`UNVERIFIED UNTIL EMPIRICALLY BENCHMARKED`**.
+     - Specified 6-point benchmark suite: p50/p95/p99 latency over 10,000 atomic Lua scripts, cold vs warm execution, 1,000 concurrent serverless workers, 150ms timeout abort, fail-closed 503 validation, and monthly volume budget validation.
+  4. **Nuanced Database Migration Rollback Architecture:**
+     - Rejected naive assumption that every migration can be reversed with a `down/` SQL script.
+     - Categorized database changes into 6 operational classes: reversible schema-only changes, data-preserving rollbacks, irreversible data transformations, destructive migrations (prohibited in M06), backup restorations (point-in-time recovery with tombstone replay), and forward-fix migrations (preferred in production).
+     - Mandated physical database backup and point-in-time restore verification prior to state-altering production migrations.
+  5. **Multi-Dimensional M06 G0 Status Separation:**
+     - Explicitly disaggregated G0 status: Architecture Recommendation `COMPLETE`, Statutory Mapping `CORRECTED`, Infrastructure Compatibility `PROPOSED`, Empirical Verification `PENDING BENCHMARKS`, Migration Plan `REVIEWED`, Legal Counsel Approval `PENDING REVIEW`, Operator Approval `PENDING OPERATOR SIGN-OFF`.
+- **Verification Evidence:**
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across `@spiritual-os/mobile` and `@spiritual-os/web`.
+  - Documentation across all 6 planning deliverables synchronized with zero statutory contradictions.
+  - Zero application code, zero migrations, zero remote database mutations executed.
+- **Release Verdict:**
+  - Milestone M06 G0 Defect Correction: **`COMPLETE & SYNCHRONIZED`**
+  - Implementation Code Execution: **`STRICTLY PAUSED / AWAITING OPERATOR AUTHORIZATION`**
+

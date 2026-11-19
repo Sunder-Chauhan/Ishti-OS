@@ -53,7 +53,7 @@ flowchart TD
   2. *Universal PostgreSQL Advisory Lock Limiting:* Rejected because opening database transactions for every incoming request saturates transaction connection poolers (PgBouncer) under high ingress spikes.
   3. *Self-Hosted Valkey Container:* Rejected for M06 baseline due to container OS patching and cluster management overhead during serverless application persistence phase.
 - **Risks Accepted:** Sensitive mutation routes become temporarily unavailable (503) if Upstash Redis experiences a global outage.
-- **Risks Still Open:** Requires verifying sub-millisecond REST latency from Vercel edge runtime to Upstash AWS `ap-south-1` region during Phase 2 benchmarking.
+- **Risks Still Open:** Upstash AWS `ap-south-1` Mumbai round-trip latency from Vercel edge/serverless runtime is **UNVERIFIED UNTIL EMPIRICALLY BENCHMARKED**. Phase 2 execution requires running a comprehensive benchmark harness measuring p50/p95/p99 latency, cold vs warm execution, high concurrency (100–1,000 reqs), timeout/error rates, fail-closed enforcement, and budget/volume assumptions.
 - **Owner:** Principal Software Architect & Application Security Engineer
 - **Required Approval:** Founder / Engineering Lead
 - **Status:** **`PENDING OPERATOR APPROVAL`**
@@ -62,39 +62,51 @@ flowchart TD
 
 ### DEC-M06-002: Ingress Origin Shielding on Vercel Hosting
 - **Decision ID:** `DEC-M06-002`
-- **Recommended Option:** **Cloudflare CIDR Firewall Allowlisting + Cryptographic Shared Proxy Secret + Direct Host Header Protection**
+- **Classification Status:** **`RECOMMENDED — DEPLOYMENT VERIFICATION REQUIRED (PENDING OPERATOR APPROVAL)`**
+- **Recommended Option:** **Cloudflare CIDR Firewall Allowlisting + Cryptographic Shared Proxy Secret + Direct Host Header Protection (Proposed Vercel Baseline)**
   * Restrict Vercel incoming HTTP traffic strictly to Cloudflare's published IPv4 and IPv6 CIDR blocks via Vercel Firewall rules.
   * Cloudflare Transform Rules inject a 32-byte random secret header `x-ishti-proxy-secret` on origin pulls; Next.js middleware drops requests lacking the verified secret with HTTP 403.
   * Direct `*.vercel.app` domain bypass mitigated by inspecting the `Host` header in middleware and redirecting/rejecting unauthenticated direct access.
+  * **Critical Qualification:** Cloudflare CIDR allowlisting plus a shared secret header is currently a **proposed Vercel-compatible approach, NOT an empirically verified origin security control**. It must NOT be claimed that Cloudflare blocks direct Vercel access unless deployment-level tests demonstrate it.
   * Explicitly note: A shared secret is an application-layer safeguard, **NOT equivalent to mutual TLS (mTLS)**. Full Cloudflare AOP client-cert verification is incompatible with standard Vercel Pro.
   * Containerized contingency: If Vercel origin shielding is compromised, migrate Next.js to Fly.io/ECS behind **Cloudflare Tunnel (`cloudflared`)** to close all inbound public ports.
+- **Mandatory Empirical Deployment Verification Tests Required:**
+  1. Direct `*.vercel.app` deployment URL access bypass.
+  2. Direct access to alternative Vercel aliases or preview URLs.
+  3. Requests reaching origin without the expected proxy header.
+  4. Spoofed proxy header requests from untrusted external IPs.
+  5. Secret rotation dual-window validation test.
+  6. Host-header manipulation / host poisoning tests.
+  7. Next.js middleware bypass or unprotected route tests (e.g. static assets vs API).
+  8. Requests reaching origin through unexpected network paths (IPv6 vs IPv4, peering).
 - **Alternatives Rejected & Why:**
   1. *Cloudflare Authenticated Origin Pulls (AOP with mTLS):* Rejected as technically unsupported on standard Vercel Pro plan without costly Enterprise custom edge contracts.
   2. *Secret Header Alone:* Rejected because discovering the origin domain or IP allows direct bypass if firewall rules are absent.
 - **Risks Accepted:** Origin shielding on Vercel relies on edge middleware execution and firewall rule maintenance rather than cryptographic network-layer mTLS handshake termination.
-- **Risks Still Open:** Secret rotation requires a 90-day operational runbook supporting dual-secret acceptance windows in middleware.
+- **Risks Still Open:** Empirical origin shielding tests must be executed in staging prior to production cutover; secret rotation requires a 90-day operational runbook supporting dual-secret acceptance windows.
 - **Owner:** DevOps & Infrastructure Security Lead
 - **Required Approval:** Founder / Infrastructure Lead
-- **Status:** **`PENDING OPERATOR APPROVAL`**
+- **Status:** **`RECOMMENDED — DEPLOYMENT VERIFICATION REQUIRED (PENDING OPERATOR APPROVAL)`**
 
 ---
 
 ### DEC-M06-003: Grievance Architecture & IT Rules Timeline Realignment
 - **Decision ID:** `DEC-M06-003`
-- **Recommended Option:** **Next.js Route Handler (`POST /api/compliance/triage`) with IT Rules Dual-Clock Timers (2h / 24h / 36h / 7d)**
+- **Recommended Option:** **Next.js Route Handler (`POST /api/compliance/triage`) with IT Rules Five Statutory Clocks (2h / 3h / 36h / 24h / 7d)**
   * Next.js Route Handler selected as the sole public intake interface over Server Actions due to REST standard contract, HTTP status codes, mobile app compatibility, and bounded stream reading.
-  * Reconcile statutory deadlines to official IT Rules updated 10 February 2026:
-    - *Rule 3(2)(b) Sexual Content / Impersonation:* **Action within 2 hours** (automated P0 alert).
-    - *Proviso to Rule 3(2)(a)(i) Specified Removal Requests:* **Resolution within 36 hours**.
-    - *Rule 3(1)(d) Court Orders / Govt Takedowns:* **Removal within 36 hours**.
-    - *Rule 3(2)(a)(i) Ordinary Intermediary Grievance:* **24 hours acknowledgement; 7 days resolution/disposal** (reduced from 15d by Feb 2026 amendment).
-    - *IT Act §69A Blocking Orders:* **Immediate confidential compliance**.
-  * Decouple statutory deadlines from internal operational targets (SLTs: 12h ack, 48h resolution for standard complaints; 1h resolution for Rule 3(2)(b)).
+  * Reconcile statutory deadlines to official consolidated IT Rules updated 10 February 2026 including the February 2026 corrigendum:
+    - *Rule 3(2)(b) Sexual Content / Impersonation:* **Action / takedown within 2 hours** (automated P0 alert; zero pause permitted).
+    - *Rule 3(1)(d) Court Orders / Reasoned Government Takedown Intimations:* **Removal or access disablement within 3 hours** from receipt of qualifying actual-knowledge order/intimation within its statutory scope. *(Note: Strictly 3 hours, NOT a general 36-hour deadline; zero pause permitted within the 3-hour window).*
+    - *Proviso to Rule 3(2)(a)(i) Specified Removal Requests:* **Resolution within 36 hours** for content specified under relevant sub-clauses, subject to statutory exclusions. Pause rules require formal counsel confirmation.
+    - *Rule 3(2)(a)(i) Ordinary Intermediary Grievance:* **24 hours acknowledgement; 7 days resolution/disposal** (reduced from 15d by Feb 2026 amendment). Pause rules require formal counsel confirmation.
+    - *IT Act §69A Blocking Directions:* **Separate confidential blocking procedure** under 2009 Blocking Rules; immediate compliance as directed by Central Government Designated Officer. Failure to comply carries criminal liability under Section 69A(3). Not an ordinary grievance clock.
+  * **Clock Pause Rules Protocol:** Zero pause permitted under Rule 3(2)(b) and Rule 3(1)(d); pause rules for ordinary grievances under Rule 3(2)(a)(i) require formal legal counsel confirmation.
+  * Decouple statutory deadlines from internal operational targets (SLTs: 12h ack, 48h resolution for standard complaints; 30m ack, 1h resolution for Rule 3(2)(b) emergency content and Rule 3(1)(d) court orders).
 - **Alternatives Rejected & Why:**
   1. *Server Actions for Public Ingress:* Rejected because Server Actions use React flight protocol serialization, preventing standard REST integration for mobile apps or external complainants.
-  2. *Single 24h Blanket Timeline:* Rejected as legally incorrect; failed to meet the strict 2-hour takedown mandate for Rule 3(2)(b) content.
-- **Risks Accepted:** The 2-hour window under Rule 3(2)(b) requires an active Grievance Officer on-call alerting rotation.
-- **Risks Still Open:** Formal written opinion from Indian legal counsel required to verify applicability classifications before commercial launch.
+  2. *Single 24h Blanket Timeline:* Rejected as legally incorrect; failed to meet the strict 2-hour takedown mandate for Rule 3(2)(b) content and 3-hour mandate for Rule 3(1)(d) court orders.
+- **Risks Accepted:** The 2-hour window under Rule 3(2)(b) and 3-hour window under Rule 3(1)(d) require an active Grievance Officer on-call alerting rotation.
+- **Risks Still Open:** Formal written opinion from Indian legal counsel required to verify applicability classifications and pause rules before commercial launch.
 - **Owner:** Legal Engineering Lead & Compliance Officer
 - **Required Approval:** Founder & Legal Counsel
 - **Status:** **`PENDING OPERATOR APPROVAL`**
@@ -192,18 +204,35 @@ flowchart TD
 
 ## 3. Operator Approval Execution Sign-Off Block
 
-| Decision Reference | Recommended Option Summary | Operator Verdict | Operator Signature / Initials | Date |
-| :--- | :--- | :---: | :---: | :---: |
-| **DEC-M06-001** | Upstash Redis Primary + Fail-Closed Sensitive Routes | `PENDING APPROVAL` | ____________________ | ______ |
-| **DEC-M06-002** | Cloudflare CIDR Allowlisting + Shared Secret Header on Vercel | `PENDING APPROVAL` | ____________________ | ______ |
-| **DEC-M06-003** | Route Handler `/api/compliance/triage` + 2h/24h/36h/7d IT Rules Timers | `PENDING APPROVAL` | ____________________ | ______ |
-| **DEC-M06-004** | 15-Point Multi-Copy Erasure + DEK Shredding + 30d Backup Expiry Policy | `PENDING APPROVAL` | ____________________ | ______ |
-| **DEC-M06-005** | 8-Layer Defense (Merkle Chains + R2 WORM) + Retention Matrix | `PENDING APPROVAL` | ____________________ | ______ |
-| **DEC-M06-006** | Server-Mediated Ingress + `SECURITY DEFINER` RPC strictly for `service_role` | `PENDING APPROVAL` | ____________________ | ______ |
-| **DEC-M06-007** | Decouple Commerce to M07 + Mandatory CA Written Certification | `PENDING APPROVAL` | ____________________ | ______ |
-| **DEC-M06-008** | Decouple Scripture Catalog & `pgvector` Search to M08 | `PENDING APPROVAL` | ____________________ | ______ |
+| Decision Reference | Recommended Option Summary | Current Engineering Status | Operator Verdict | Operator Signature / Initials | Date |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **DEC-M06-001** | Upstash Redis Primary + Fail-Closed Sensitive Routes | Latency Unverified (Pending Benchmark) | `PENDING APPROVAL` | ____________________ | ______ |
+| **DEC-M06-002** | Cloudflare CIDR Allowlisting + Shared Secret Header on Vercel | Proposed (Deployment Verification Required) | `PENDING APPROVAL` | ____________________ | ______ |
+| **DEC-M06-003** | Route Handler `/api/compliance/triage` + 5 Legal Clocks (2h/3h/36h/24h/7d) | Corrected to 10 Feb 2026 Rules | `PENDING APPROVAL` | ____________________ | ______ |
+| **DEC-M06-004** | 15-Point Multi-Copy Erasure + DEK Shredding + 30d Backup Expiry Policy | Architecture Complete | `PENDING APPROVAL` | ____________________ | ______ |
+| **DEC-M06-005** | 8-Layer Defense (Merkle Chains + R2 WORM) + Retention Matrix | Architecture Complete | `PENDING APPROVAL` | ____________________ | ______ |
+| **DEC-M06-006** | Server-Mediated Ingress + `SECURITY DEFINER` RPC strictly for `service_role` | Architecture Complete | `PENDING APPROVAL` | ____________________ | ______ |
+| **DEC-M06-007** | Decouple Commerce to M07 + Mandatory CA Written Certification | Scope Decoupled | `PENDING APPROVAL` | ____________________ | ______ |
+| **DEC-M06-008** | Decouple Scripture Catalog & `pgvector` Search to M08 | Scope Decoupled | `PENDING APPROVAL` | ____________________ | ______ |
+
+---
+
+## 4. Multi-Dimensional Milestone M06 G0 Status Breakdown
+> [!WARNING]
+> **GOVERNANCE INTEGRITY MANDATE:**  
+> In accordance with strict architectural audit rules, G0 criteria are **NOT marked satisfied merely because they have been documented**. Empirical verification and legal approvals remain distinct operational gates.
+
+| Evaluation Dimension | Current Formal Status | Audit Evidence & Detailed Findings |
+| :--- | :---: | :--- |
+| **1. Architecture Recommendation** | **`COMPLETE`** | All 8 core architectural decisions (DEC-M06-001 through DEC-M06-008) have been comprehensively specified, alternatives evaluated, failure modes modeled, and trade-offs documented across 7 M06 planning deliverables. |
+| **2. Statutory Mapping** | **`CORRECTED`** | Fully reconciled against official Gazette Notification G.S.R. 843(E) (DPDP Act phased commencement) and the consolidated IT Rules 2021 as amended 10 February 2026 (including corrigendum): Rule 3(2)(b) emergency action within 2h, Rule 3(1)(d) takedown within 3h, Proviso to Rule 3(2)(a)(i) resolution within 36h, Rule 3(2)(a)(i) 24h ack & 7d disposal, IT Act §69A confidential blocking orders. Pause rules marked as requiring counsel confirmation. |
+| **3. Infrastructure Compatibility** | **`PROPOSED (NOT EMPIRICALLY VERIFIED)`** | Ingress shielding via Cloudflare CIDR firewall allowlisting + shared proxy secret (`x-ishti-proxy-secret`) and host-header protection is architecturally proposed for Vercel Pro. However, it is **not yet verified in a live deployment environment**. |
+| **4. Infrastructure Empirical Verification** | **`PENDING DEPLOYMENT BENCHMARKS`** | Upstash Redis `ap-south-1` Mumbai latency, Vercel edge runtime round-trips, and the 8-point origin shielding bypass test suite (direct `*.vercel.app`, spoofed headers, alias bypass) are **unverified pending empirical benchmark testing in Phase 2 & Phase 5**. |
+| **5. Database Migration Plan** | **`REVIEWED WITH ROLLBACK LIMITATIONS DOCUMENTED`** | Migration DDL schemas (4 forward migrations) and RLS security models have been fully authored. Migration reversibility is rigorously categorized into 6 operational classes; naive down-script assumptions have been eliminated; backup and restore verification is mandated prior to destructive changes. |
+| **6. Legal Counsel Approval** | **`PENDING INDEPENDENT COUNSEL REVIEW`** | Platform intermediary classifications, commercial terms, disclaimers under Consumer Protection Act 2019, Rule 4 notice texts, and grievance clock pause rules are documented but await formal written opinions from external Indian legal counsel (`APP-LEG-001` through `APP-LEG-006`). |
+| **7. Operator Approval** | **`PENDING OPERATOR SIGN-OFF`** | Final implementation authorization on branch `feature/m06-backend-persistence` remains strictly paused awaiting founder/operator countersignature of the Decision Register and G0 Approval Packet. |
 
 > [!NOTE]
 > **NEXT ACTION:**
-> The operator may grant approval by countersigning this block or by instructing the agent:
+> The operator may grant approval by countersigning the approval block or by instructing the agent:
 > *"I approve the M06 G0 Architecture Decision Approval Packet (DEC-M06-001 through DEC-M06-008). Proceed with creating branch `feature/m06-backend-persistence`."*

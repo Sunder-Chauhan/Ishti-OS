@@ -394,11 +394,11 @@ Scope & Gates:
   - [x] Recorded Architectural Decision Record ADR-036 in `docs/DECISION_LOG.md`
   - [x] Maintained strict zero-code, zero-migration, zero-remote-mutation boundary; halted awaiting operator authorization
 - [x] Milestone M06 G0: Final Architecture Decision Validation & Approval Preparation (ADR-037):
-  - [x] Reconciled IT Rules 2021 updated 10 February 2026: Rule 3(2)(b) emergency sexual/impersonation content action within 2 hours; Proviso to Rule 3(2)(a)(i) resolution within 36 hours; Rule 3(1)(d) court/government takedown within 36 hours; Rule 3(2)(a)(i) ordinary intermediary grievance 24h ack & 7d disposal
+  - [x] Reconciled IT Rules 2021 updated 10 February 2026: Rule 3(2)(b) emergency sexual/impersonation content action within 2 hours; Proviso to Rule 3(2)(a)(i) resolution within 36 hours; Rule 3(2)(a)(i) ordinary intermediary grievance 24h ack & 7d disposal
   - [x] Reassessed intermediary vs publisher classification across 6 product functions: user discussions (Intermediary), pandit profiles (Marketplace Intermediary), direct messaging (Intermediary Conduit), educational material (Editorial - excluded from Part III), Kundli interpretations (Algorithmic Output - excluded from Part III), and curated scriptures (Sacred Repository - excluded from Part III)
   - [x] Evaluated DEC-M06-001 (Distributed Rate Limiting): Upstash Redis primary, transaction-mode pooler advisory locking limits, strict fail-closed on sensitive routes (HTTP 503), zero silent local-memory fallback
   - [x] Evaluated DEC-M06-002 (Origin Shielding on Vercel): Cloudflare CIDR firewall allowlisting + shared proxy secret + direct `*.vercel.app` host header protection; acknowledged shared secret != mTLS; containerized Cloudflare Tunnel contingency
-  - [x] Evaluated DEC-M06-003 (Grievance Ingress): selected Next.js Route Handler `POST /api/compliance/triage` with REST contract over Server Actions; dual-clock timers (2h/24h/36h/7d)
+  - [x] Evaluated DEC-M06-003 (Grievance Ingress): selected Next.js Route Handler `POST /api/compliance/triage` with REST contract over Server Actions; dual-clock timers
   - [x] Evaluated DEC-M06-004 (Privacy Erasure): validated 15-point data copy inventory, DEK shredding, 30-day backup expiry policy as technical operational choice, tombstone replay runbook
   - [x] Evaluated DEC-M06-005 (Audit Evidence): 8-layer immutability defense, Merkle hash chaining, daily Ed25519 root signatures, Cloudflare R2 Object Lock in Compliance Mode, Record-Category Retention Matrix
   - [x] Evaluated DEC-M06-006 (Anonymous Public Intake): `SECURITY DEFINER` RPC `submit_anonymous_grievance` with `search_path = public, pg_temp`, `EXECUTE` granted strictly to `service_role` (revoked from `anon`), Zod bounds (max 32 KB)
@@ -406,5 +406,15 @@ Scope & Gates:
   - [x] Authored Milestone M06 Architecture Decision Approval Packet ([docs/M06_G0_ARCHITECTURE_APPROVAL_PACKET.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_G0_ARCHITECTURE_APPROVAL_PACKET.md)) with all 8 decisions in `PENDING OPERATOR APPROVAL` status
   - [x] Recorded Architectural Decision Record ADR-037 in `docs/DECISION_LOG.md`
   - [x] Maintained strict zero-code, zero-migration, zero-remote-mutation boundary; halted awaiting explicit operator approval
+- [x] Milestone M06 G0 Final Defect Correction (ADR-038):
+  - [x] Reconciled IT Rules 2021 statutory timelines under official consolidated rules updated 10 February 2026 (including corrigendum): corrected Rule 3(1)(d) to **3 hours** (removal / disabling access within 3 hours from receipt of qualifying actual-knowledge order/intimation within statutory scope); maintained Rule 3(2)(b) at 2 hours, Proviso to Rule 3(2)(a)(i) at 36 hours, and Rule 3(2)(a)(i) at 24h ack & 7d disposal
+  - [x] Clarified IT Act Section 69A as a separate confidential blocking procedure under 2009 Blocking Rules; cited specific penal consequences under Section 69A(3); confirmed zero pause permitted for Rule 3(2)(b) and Rule 3(1)(d), while ordinary grievance pause rules require formal counsel confirmation
+  - [x] Reclassified DEC-M06-002 (Origin Shielding on Vercel) as `RECOMMENDED — DEPLOYMENT VERIFICATION REQUIRED`; defined 8-point empirical test suite (direct `*.vercel.app` URLs, aliases, missing header, spoofed header from untrusted IPs, secret rotation, host-header validation, middleware bypass, unexpected paths)
+  - [x] Marked Upstash Mumbai Redis latency as `UNVERIFIED UNTIL EMPIRICALLY BENCHMARKED` in DEC-M06-001; specified benchmark requirements (p50/p95/p99 latency over 10,000 ops, cold vs warm starts, 1,000 concurrency, 150ms timeout abort, fail-closed 503 validation, volume budget validation)
+  - [x] Expanded database migration rollback architecture: classified changes into 6 operational classes (reversible schema-only, data-preserving rollback, irreversible data transformations, destructive migrations, backup restorations, forward-fix migrations); mandated backup/restore verification before state-altering production changes
+  - [x] Formulated multi-dimensional Milestone M06 G0 status breakdown: Architecture Recommendation `COMPLETE`, Statutory Mapping `CORRECTED`, Infrastructure Compatibility `PROPOSED`, Empirical Verification `PENDING BENCHMARKS`, Migration Plan `REVIEWED`, Legal Counsel `PENDING REVIEW`, Operator Approval `PENDING OPERATOR SIGN-OFF`
+  - [x] Recorded Architectural Decision Record ADR-038 in `docs/DECISION_LOG.md`
+  - [x] Maintained strict zero-code, zero-migration, zero-remote-mutation safety boundary; halted awaiting explicit operator authorization
+
 
 

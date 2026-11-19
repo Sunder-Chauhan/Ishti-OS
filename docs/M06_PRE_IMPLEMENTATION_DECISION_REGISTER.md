@@ -23,9 +23,9 @@ In accordance with strict M06 G0 gate rules:
 
 ```mermaid
 flowchart TD
-    D1["DEC-M06-001:\nDistributed Rate Limiting Engine"] --> R1["Recommended:\nUpstash Redis Primary + Fail-Closed Sensitive Routes"]
-    D2["DEC-M06-002:\nVercel Origin Shielding"] --> R2["Recommended:\nCloudflare CIDR Allowlisting + Shared Secret Header + Host Rewrite"]
-    D3["DEC-M06-003:\nGrievance Public Ingress"] --> R3["Recommended:\nRoute Handler /api/compliance/triage + Dual-Clock Timers (2h/24h/36h/7d)"]
+    D1["DEC-M06-001:\nDistributed Rate Limiting Engine"] --> R1["Recommended (Latency Unverified):\nUpstash Redis Primary + Fail-Closed Sensitive Routes"]
+    D2["DEC-M06-002:\nVercel Origin Shielding"] --> R2["Recommended — Verification Required:\nCloudflare CIDRs + Shared Secret Header + Host Protection"]
+    D3["DEC-M06-003:\nGrievance Public Ingress"] --> R3["Recommended:\nRoute Handler /api/compliance/triage + 5 Statutory Clocks (2h/3h/36h/24h/7d)"]
     D4["DEC-M06-004:\nPrivacy Erasure Lifecycle"] --> R4["Recommended:\n15-Point Multi-Copy Purge + DEK Shredding + 30d Backup Expiry Policy"]
     D5["DEC-M06-005:\nAudit Ledger Immutability"] --> R5["Recommended:\n8-Layer Defense (Merkle Chains + R2 Object Lock WORM + Category Matrix)"]
     D6["DEC-M06-006:\nAnonymous Intake RPC"] --> R6["Recommended:\nSECURITY DEFINER RPC (EXECUTE strictly to service_role)"]
@@ -57,14 +57,23 @@ flowchart TD
 - **Failure Modes & Circuit Breakers:** Bounded 150ms timeout; max 1 retry with 25ms backoff. Circuit trips to `OPEN` after 5 consecutive failures, emitting a P1 operational alert. Half-open probe resets circuit after 30 seconds.
 - **Evidence:** Tested in M02 with native PostgreSQL 18 advisory locks; proved that local process memory cannot synchronize across concurrent worker threads.
 - **Approval Owner:** Principal Software Architect & Application Security Engineer
+- **Latency Status:** **`UNVERIFIED UNTIL EMPIRICALLY BENCHMARKED`** (Upstash AWS `ap-south-1` Mumbai round-trip latency from Vercel edge/serverless runtime must be empirically benchmarked prior to production cutover).
+- **Future Benchmark Specification:**
+  * *Latency Percentiles:* p50, p95, and p99 round-trip latency measured over 10,000 atomic Lua operations (target: p50 <15ms, p95 <35ms, p99 <75ms).
+  * *Cold vs. Warm Execution:* Latency differentiation under cold-start initialization vs warm connection reuse.
+  * *Concurrency Scaling:* Sustained concurrent load testing at 100, 500, and 1,000 concurrent serverless requests.
+  * *Timeouts & Error Rates:* Validation of hard 150ms timeout abort, max 1 retry with 25ms backoff, and circuit breaker tripping after 5 consecutive failures.
+  * *Fail-Closed Validation:* Verifying 100% of sensitive mutation routes strictly return HTTP 503 `RATE_LIMIT_UNAVAILABLE` during simulated Redis severance without falling back to local memory.
+  * *Budget & Volume Assumptions:* Validation of daily/monthly command volume against actual peak burst factors (10k ops/day free tier vs 3.5M ops/mo launch tier).
 - **Status:** **`PENDING OPERATOR APPROVAL`**
 
 ---
 
 ### DEC-M06-002: Ingress Origin Shielding Mechanism on Hosting Platform
 - **Decision ID:** `DEC-M06-002`
+- **Classification Status:** **`RECOMMENDED — DEPLOYMENT VERIFICATION REQUIRED (PENDING OPERATOR APPROVAL)`**
 - **Exact Problem:** If malicious actors discover the underlying origin server IP or direct hosting URL, they can bypass Cloudflare Edge WAF, DDoS mitigation, and rate limiting by sending requests directly to the origin with forged `CF-Connecting-IP` or `X-Forwarded-For` headers.
-- **Recommended Approach (Vercel Production Baseline):**
+- **Recommended Approach (Vercel Production Baseline — Proposed Control):**
   * **Dual-Layer Application & Ingress Shielding:**
     1. *Cloudflare Transform Rules:* Edge proxy injects a 32-byte cryptographically secure random secret header `x-ishti-proxy-secret` on all proxied origin pulls.
     2. *Next.js Edge Middleware:* Validates `x-ishti-proxy-secret` against `process.env.REVERSE_PROXY_SHARED_SECRET`. Requests lacking this header are dropped immediately with HTTP 403 Forbidden.
@@ -72,8 +81,20 @@ flowchart TD
        - The Next.js middleware inspects `request.headers.get("host")`.
        - If the host ends with `.vercel.app`, the request is redirected to the canonical custom domain (`https://ishti.com`) or rejected with HTTP 403 unless accompanied by a Vercel deployment protection bypass secret.
     4. *Vercel Firewall CIDR Allowlisting:* In Vercel Project Settings $\to$ Security $\to$ Firewall, configure IP allowlist rules to restrict incoming HTTP traffic strictly to Cloudflare's published IPv4 and IPv6 CIDR blocks.
-  * **Explicit Distinction Regarding Mutual TLS (mTLS):** A shared secret header is **NOT equivalent to mutual TLS (mTLS)**. A shared secret is an application-layer check that executes after TCP connection establishment and HTTP parsing; mTLS drops unauthorized connections at the TLS handshake before any HTTP data is parsed. Full Cloudflare Authenticated Origin Pulls (AOP) with custom client certificates is **incompatible with standard Vercel Pro** and requires Vercel Enterprise or containerized hosting.
+  * **Critical Security Control Qualification:**
+    - Cloudflare CIDR allowlisting plus a shared secret header is currently a **proposed Vercel-compatible approach, NOT an empirically verified origin security control**.
+    - It must **NOT be claimed that Cloudflare blocks direct Vercel access** unless a deployment-level test demonstrates it.
+    - A shared secret header is **NOT equivalent to mutual TLS (mTLS)**. A shared secret is an application-layer check that executes after TCP connection establishment and HTTP parsing; mTLS drops unauthorized connections at the TLS handshake before any HTTP data is parsed. Full Cloudflare Authenticated Origin Pulls (AOP) with custom client certificates is **incompatible with standard Vercel Pro** and requires Vercel Enterprise or containerized hosting.
   * **Hosting-Compatible Alternative (Containerized Contingency):** If Vercel origin shielding proves insufficient or if secret leakage occurs, ISHTI will deploy the Next.js application as a Docker container on Fly.io / AWS ECS behind **Cloudflare Tunnel (`cloudflared`)**. Cloudflare Tunnel creates outbound-only connections to Cloudflare Edge, completely closing all public inbound firewall ports.
+- **Mandatory Empirical Verification Tests (Required Prior to Launch):**
+  1. *Direct `*.vercel.app` Deployment URL Access:* Send direct requests to deployment URLs; verify rejection (HTTP 403) or redirect.
+  2. *Direct Access to Alternative Vercel Aliases:* Probe branch and preview deployment aliases to verify firewall enforcement.
+  3. *Requests Without Expected Proxy Header:* Send direct HTTP requests lacking `x-ishti-proxy-secret`; verify immediate HTTP 403 rejection.
+  4. *Spoofed Proxy Header from Untrusted IPs:* Send requests containing forged `x-ishti-proxy-secret` from outside Cloudflare CIDRs; verify Vercel Firewall drops the connection at network layer.
+  5. *Secret Rotation Dual-Window Test:* Test dual-secret rollover window without service disruption.
+  6. *Host-Header Manipulation / Poisoning:* Send requests with spoofed `Host` headers; verify strict domain validation.
+  7. *Middleware Bypass or Unprotected Routes:* Audit static assets (`/_next/static/*`) and API paths for bypass vulnerabilities.
+  8. *Requests Reaching Origin Through Unexpected Paths:* Verify IPv6 vs IPv4 routing and internal peering boundaries.
 - **Alternatives Evaluated & Rejected:**
   1. *Cloudflare AOP (mTLS Client Certificates):* Rejected as unachievable on standard Vercel Pro plan without costly Enterprise contract.
   2. *Relying on Secret Header Alone:* Rejected because exposing the secret or allowing requests from non-Cloudflare IPs allows IP spoofing.
@@ -82,7 +103,7 @@ flowchart TD
 - **Operational Dependencies:** Cloudflare Transform Rule configuration; Vercel Firewall rule synchronization with Cloudflare IP lists.
 - **Failure Modes:** If Cloudflare IP ranges change without updating Vercel firewall rules, legitimate traffic could be dropped. Mitigated by automated monthly IP sync script.
 - **Approval Owner:** DevOps Lead & Infrastructure Security Lead
-- **Status:** **`PENDING OPERATOR APPROVAL`**
+- **Status:** **`RECOMMENDED — DEPLOYMENT VERIFICATION REQUIRED (PENDING OPERATOR APPROVAL)`**
 
 ---
 
@@ -92,19 +113,22 @@ flowchart TD
 - **Recommended Approach:**
   * **Single Public Ingress Interface:** Next.js **Route Handler (`POST /api/compliance/triage`)** with JSON REST request/response contracts is selected as the sole server-mediated public intake interface.
     - *Rationale:* Route Handlers provide standard WHATWG HTTP endpoints accessible by external web clients, mobile apps, and statutory escalation webhooks with standard HTTP status codes (`201 Created`, `400 Bad Request`, `413 Payload Too Large`, `429 Too Many Requests`, `503 Service Unavailable`). Server Actions are coupled to React component forms and use internal React flight protocol serialization, making them inappropriate for public external intake and webhook integrations.
-  * **IT Rules Updated Timeline Alignment (10 February 2026 Amendments):**
-    1. *Ordinary Intermediary Grievance (Rule 3(2)(a)(i)):* **Acknowledgement within 24 hours**; **resolution/disposal within 7 days** (reduced from 15 days by February 2026 amendment).
-    2. *Specific Removal Requests (Proviso to Rule 3(2)(a)(i)):* **Resolution within 36 hours** for content specified under relevant sub-clauses.
-    3. *Emergency Private Area, Nudity, Sexual Act, Impersonation Content (Rule 3(2)(b)):* **Action/takedown within 2 hours** (strictly 2 hours).
-    4. *Court Orders / Government Notifications (Rule 3(1)(d)):* **Removal within 36 hours** from receipt of official court order or government notice.
-    5. *Government Blocking Orders (IT Act §69A read with 2009 Blocking Rules):* **Immediate confidential compliance**.
-  * **Dual-Clock Architecture:** Statutory legal deadlines are decoupled from internal operational Service-Level Targets (SLTs). The database tracks both `statutory_disposal_deadline` (for legal compliance) and `internal_slt_disposal_deadline` (e.g. 48h resolution for standard complaints, 1h for emergency content) to alert staff before statutory windows expire.
+  * **Official Consolidated IT Rules Timeline Alignment (Updated 10 February 2026 including Corrigendum):**
+    1. *Emergency Private Area, Nudity, Sexual Act, Impersonation Content (Rule 3(2)(b)):* **Action / takedown within 2 hours** (strictly 2 hours; zero statutory pause permitted).
+    2. *Court Orders & Reasoned Government Intimations (Rule 3(1)(d)):* **Removal or disabling access within 3 hours** from receipt of qualifying actual-knowledge order/intimation within its statutory scope. *(Note: This is strictly 3 hours, NOT a general 36-hour deadline; zero statutory pause permitted).*
+    3. *Specific Removal Requests (Proviso to Rule 3(2)(a)(i)):* **Resolution within 36 hours** for content specified under relevant sub-clauses, subject to statutory exclusions. Pause rules require formal counsel confirmation.
+    4. *Ordinary Intermediary Grievance (Rule 3(2)(a)(i)):* **Acknowledgement within 24 hours**; **resolution/disposal within 7 days** (reduced from 15 days by February 2026 amendment). Pause rules require formal counsel confirmation.
+    5. *Government Blocking Directions (IT Act §69A read with 2009 Blocking Rules):* **Separate confidential blocking-order procedure**; immediate compliance as directed by Central Government Designated Officer. Failure to comply carries criminal liability under Section 69A(3). Not an ordinary grievance clock.
+  * **Clock Pause Rules Protocol:**
+    - Zero pause permitted under Rule 3(2)(b) and Rule 3(1)(d).
+    - Any pause conditions for ordinary grievances under Rule 3(2)(a)(i) (e.g. awaiting complainant response) are **strictly subject to formal legal counsel confirmation**; no informal pause rules may be coded without counsel approval.
+  * **Dual-Clock Architecture:** Statutory legal deadlines are decoupled from internal operational Service-Level Targets (SLTs). The database tracks both `statutory_disposal_deadline` (for legal compliance) and `internal_slt_disposal_deadline` (e.g. 48h resolution for standard complaints, 1h for emergency content and court orders) to alert staff before statutory windows expire.
 - **Alternatives Evaluated & Rejected:**
   1. *Server Action Ingress:* Rejected because it cannot serve mobile apps or external API consumers with standard REST contracts.
-  2. *Single 24h Blanket Clock:* Rejected as legally incorrect; conflated acknowledgement with final disposal and failed to meet the strict 2h requirement for Rule 3(2)(b).
-- **Security & Legal Trade-Offs:** The 2-hour window under Rule 3(2)(b) requires automated P0 alerting (SMS/phone notification to on-call Grievance Officers) to prevent forfeiture of intermediary safe harbour under IT Act §79.
+  2. *Single 24h Blanket Clock:* Rejected as legally incorrect; conflated acknowledgement with final disposal and failed to meet the strict 2h requirement for Rule 3(2)(b) and 3h requirement for Rule 3(1)(d).
+- **Security & Legal Trade-Offs:** The 2-hour window under Rule 3(2)(b) and 3-hour window under Rule 3(1)(d) require automated P0 alerting (SMS/phone notification to on-call Grievance Officers) to prevent forfeiture of intermediary safe harbour under IT Act §79.
 - **Cost Implications:** $0.00 (Core logic implemented in PostgreSQL triggers and Next.js Route Handler).
-- **Operational Dependencies:** Grievance Officer on-call rota for 24/7 coverage of Rule 3(2)(b) emergency takedowns.
+- **Operational Dependencies:** Grievance Officer on-call rota for 24/7 coverage of Rule 3(2)(b) and Rule 3(1)(d) emergency takedowns.
 - **Approval Owner:** Legal Engineering Lead & Compliance Officer
 - **Status:** **`PENDING OPERATOR APPROVAL`**
 
@@ -188,7 +212,7 @@ flowchart TD
     - Marked `SECURITY DEFINER` with a fixed `search_path = public, pg_temp` to prevent search_path hijacking.
     - Execution privilege is granted **STRICTLY TO `service_role`**; `REVOKE EXECUTE FROM PUBLIC, anon`.
     - Internal validation rejects payloads exceeding size limits.
-    - Automatically assigns statutory deadlines (2h for Rule 3(2)(b); 36h for Rule 3(1)(d); 7d for Rule 3(2)(a)(i)) and internal SLTs.
+    - Automatically assigns statutory deadlines (2h for Rule 3(2)(b); 3h for Rule 3(1)(d); 36h for proviso; 7d for Rule 3(2)(a)(i)) and internal SLTs.
     - Inserts immutable audit record with `actor_role = 'anonymous_public'`.
 - **Alternatives Evaluated & Rejected:**
   1. *Granting INSERT to anon in PostgREST:* Rejected as unsafe; exposes database schema to direct unmetered client injection.

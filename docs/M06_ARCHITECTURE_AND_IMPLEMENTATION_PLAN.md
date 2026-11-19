@@ -93,68 +93,74 @@ ISHTI does **NOT** treat all platform content under a single blanket publisher c
 > **LEGAL COUNSEL REQUIREMENT:**
 > The above classifications reflect engineering and preliminary statutory analysis. Formal written confirmation from qualified Indian legal counsel is required prior to commercial activation.
 
-### 3.2. Disaggregated Statutory Clocks (Official IT Rules Updated 10 February 2026)
-Statutory deadlines are strictly disaggregated. Acknowledgement, investigation, resolution, and takedown are distinct legal actions with independent start timestamps and conditions:
+### 3.2. Disaggregated Statutory Clocks (Official Consolidated IT Rules Updated 10 February 2026)
+Statutory deadlines are strictly disaggregated. Acknowledgement, investigation, resolution, and takedown are distinct legal actions with independent start timestamps, triggering events, statutory scopes, and conditions:
 
 ```mermaid
 flowchart TD
-    Grievance[Grievance Received via Route Handler /api/compliance/triage] --> Classify{Statutory Classification}
+    Grievance[Grievance / Notice Received via Route Handler /api/compliance/triage] --> Classify{Statutory Classification}
     
-    Classify -->|Emergency: Nudity / Sexual Act / Impersonation| ClockA["Rule 3(2)(b) Emergency Clock\nStatutory Action: WITHIN 2 HOURS\nInternal SLT: 1 Hour"]
-    Classify -->|Proviso to 3(2)(a)(i) Specified Removal| ClockB["Proviso to Rule 3(2)(a)(i) Removal Clock\nStatutory Resolution: WITHIN 36 HOURS\nInternal SLT: 12 Hours"]
-    Classify -->|Court Order / Govt Notice| ClockC["Rule 3(1)(d) Takedown Clock\nStatutory Removal: WITHIN 36 HOURS\nInternal SLT: 6 Hours"]
+    Classify -->|Emergency: Nudity / Sexual Act / Impersonation| ClockA["Rule 3(2)(b) Emergency Clock\nStatutory Action / Takedown: WITHIN 2 HOURS\nInternal SLT: 1 Hour (30m Ack)"]
+    Classify -->|Proviso to 3(2)(a)(i) Specified Removal| ClockB["Proviso to Rule 3(2)(a)(i) Removal Clock\nStatutory Resolution: WITHIN 36 HOURS\nInternal SLT: 12 Hours (6h Ack)"]
+    Classify -->|Court Order / Reasoned Govt Intimation| ClockC["Rule 3(1)(d) Actual Knowledge Clock\nStatutory Removal / Disabling Access: WITHIN 3 HOURS\nInternal SLT: 1 Hour (30m Ack)"]
     Classify -->|Standard User Grievance| ClockD["Rule 3(2)(a)(i) Standard Intermediary Clock\nStatutory Ack: 24 HOURS | Statutory Disposal: 7 DAYS\nInternal SLT: 12 Hours Ack | 48 Hours Disposal"]
-    Classify -->|Govt Confidential Blocking Order| ClockE["IT Act Section 69A Blocking Clock\nStatutory Execution: IMMEDIATE / CONFIDENTIAL\nInternal SLT: 2 Hours"]
+    Classify -->|Govt Confidential Blocking Direction| ClockE["IT Act Section 69A Blocking Procedure\nStatutory Execution: IMMEDIATE / CONFIDENTIAL\nInternal SLT: Immediate Execution"]
 ```
 
 #### Detailed Specification of the Five Statutory Clocks
 
 1. **Clock 1: Emergency Sexual Content, Private-Area & Impersonation Complaints (Rule 3(2)(b))**
-   - *Triggering Event:* Receipt of complaint alleging content depicting nudity, sexual acts, or impersonation of an individual.
+   - *Triggering Event:* Receipt of complaint alleging content depicting sexual acts, nudity, private areas, or impersonation of an individual.
    - *Applicable Rule:* Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, Rule 3(2)(b).
    - *Statutory Deadline:* **Action / Takedown within 2 Hours** from receipt of complaint.
    - *Start Timestamp:* Exact ISO 8601 timestamp of HTTP request reception at `/api/compliance/triage`.
    - *Pause Conditions:* **Zero statutory pause permitted.** Action must be taken to disable access or remove content within 2 hours.
-   - *Evidence Required:* Prima facie identifier of complainant, URL or screenshot of offending content, declaration of non-consent.
-   - *Escalation Procedure:* Automated P0 alert (SMS, push, phone webhook) dispatched immediately to designated Grievance Officer and Tech Lead.
+   - *Evidence Required:* Prima facie identifier of complainant, URL or screenshot of offending content, declaration of non-consent or impersonation.
+   - *Responsible Actor:* Grievance Officer on 24/7 on-call duty; automated P0 escalation dispatched immediately via SMS, push notification, and webhook.
    - *Applicability:* Applies strictly to intermediary user-generated forums and pandit profile photos.
 
 2. **Clock 2: Specified Removal Requests Under Proviso to Rule 3(2)(a)(i)**
    - *Triggering Event:* Grievance requesting removal of content referred to in sub-clause (b) of clause (1) of Rule 3.
    - *Applicable Rule:* IT Rules, 2021, Proviso to Rule 3(2)(a)(i) (as updated 10 February 2026).
-   - *Statutory Deadline:* **Resolution within 36 Hours** from receipt of complaint.
+   - *Statutory Deadline:* **Resolution within 36 Hours** from receipt of complaint, subject to statutory exclusions.
    - *Start Timestamp:* Timestamp of verified complaint ingestion.
-   - *Pause Conditions:* Legally permitted only if clarification is actively requested from complainant regarding content URL.
+   - *Pause Conditions:* **Subject to formal legal counsel confirmation.** No informal pause rules may be assumed in code without counsel sign-off.
    - *Evidence Required:* Content URL, exact violation description, legal standing of complainant.
+   - *Responsible Actor:* Designated Grievance Officer and Compliance Lead.
    - *Escalation Procedure:* P1 alert dispatched if ticket remains unreviewed at 12 hours.
 
-3. **Clock 3: Court Orders & Government Takedown Notifications (Rule 3(1)(d))**
-   - *Triggering Event:* Receipt of actual knowledge via court order or notification by the Appropriate Government or its agency.
-   - *Applicable Rule:* IT Rules, 2021, Rule 3(1)(d).
-   - *Statutory Deadline:* **Removal / Access Disablement within 36 Hours** of receipt of order.
-   - *Start Timestamp:* Official delivery timestamp of court order or government notice.
-   - *Pause Conditions:* None permitted without formal judicial stay or agency clarification.
-   - *Evidence Required:* Certified copy of court order or official government agency notice under signature.
-   - *Escalation Procedure:* Immediate P0 escalation to Legal Counsel, Compliance Officer, and Tech Lead.
+3. **Clock 3: Court Orders & Reasoned Government Takedown Intimations (Rule 3(1)(d))**
+   - *Triggering Event:* Receipt of actual knowledge via an order issued by a court of competent jurisdiction or reasoned notification by the Appropriate Government or its agency under IT Act §79(3)(b).
+   - *Applicable Rule:* Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, Rule 3(1)(d) (as amended 10 February 2026 including the February 2026 corrigendum).
+   - *Statutory Deadline:* **Removal or Disabling Access within 3 Hours** from receipt of qualifying actual-knowledge order/intimation within its statutory scope. *(Note: This is strictly a 3-hour statutory mandate, NOT a general 36-hour deadline).*
+   - *Statutory Scope:* Restricted to orders and reasoned intimations relating to the interests of the sovereignty and integrity of India, security of the State, friendly relations with foreign States, public order, decency, morality, contempt of court, defamation, incitement to an offence, or child sexual abuse material.
+   - *Start Timestamp:* Official delivery timestamp of court order or government intimation.
+   - *Pause Conditions:* **Zero statutory pause permitted within the 3-hour window.** Requires formal judicial stay or official agency withdrawal to halt.
+   - *Evidence Required:* Certified copy of court order or formally authenticated government agency notice with verifiable statutory citation.
+   - *Responsible Actor:* Grievance Officer, Platform Legal Counsel, and Tech Lead on immediate P0 response.
+   - *Internal SLT:* **30 minutes acknowledgement; 1 hour takedown/disablement**.
 
 4. **Clock 4: Ordinary Intermediary Grievances (Rule 3(2)(a)(i))**
-   - *Triggering Event:* General devotee complaint regarding privacy, community terms, or pandit conduct.
-   - *Applicable Rule:* IT Rules, 2021, Rule 3(2)(a)(i) (reflecting February 2026 amendment reducing disposal from 15d to 7d).
+   - *Triggering Event:* General devotee or user complaint regarding privacy, community terms, or pandit conduct.
+   - *Applicable Rule:* IT Rules, 2021, Rule 3(2)(a)(i) (reflecting February 2026 amendment reducing disposal from 15 days to 7 days).
    - *Statutory Deadlines:* **Acknowledgement within 24 Hours**; **Resolution / Disposal within 7 Days**.
    - *Start Timestamp:* Automated ticket creation timestamp (`submitted_at`).
-   - *Pause Conditions:* Clock pauses if complainant fails to supply requested clarifying evidence within 48 hours of formal notice.
-   - *Evidence Required:* Devotee account ID or complainant email, ticket narrative, supporting evidence.
+   - *Pause Conditions:* **Subject to formal legal counsel confirmation.** Clock pause mechanisms (e.g. awaiting complainant response) must be formally approved by legal counsel before activation.
+   - *Evidence Required:* Devotee account ID or complainant email, ticket narrative, supporting documentation.
    - *Internal SLT Target:* **12 Hours acknowledgement**; **48 Hours resolution**.
-   - *Escalation Procedure:* Warning at 72 hours; P1 escalation at 96 hours; Executive breach alert at 120 hours.
+   - *Responsible Actor:* Grievance Redressal Team and Assigned Compliance Officer.
+   - *Escalation Procedure:* Warning at 48 hours; P1 escalation at 72 hours; Executive breach alert at 96 hours.
 
 5. **Clock 5: Statutory Blocking Directions Under IT Act §69A**
-   - *Triggering Event:* Receipt of confidential blocking order issued by the Central Government Designated Officer under IT Act §69A read with the Information Technology (Procedure and Safeguards for Blocking for Access of Information by Public) Rules, 2009.
-   - *Applicable Rule:* Section 69A of Information Technology Act, 2000.
+   - *Triggering Event:* Receipt of confidential blocking order issued by the Central Government Designated Officer under Section 69A of the IT Act read with the Information Technology (Procedure and Safeguards for Blocking for Access of Information by Public) Rules, 2009.
+   - *Applicable Legal Regime:* Section 69A, Information Technology Act, 2000.
+   - *Procedural Nature:* **Separate, confidential government blocking procedure** — distinct from the ordinary due-diligence grievance redressal clocks under Rule 3.
    - *Statutory Deadline:* **Immediate execution** as specified in the confidential direction.
+   - *Statutory Penalties:* Governed strictly by Section 69A(3) of the IT Act (punishable with imprisonment for a term which may extend to seven years and fine for failure to comply).
    - *Start Timestamp:* Delivery timestamp to platform Designated Officer.
-   - *Pause Conditions:* Strictly prohibited; criminal liability attaches for non-compliance.
-   - *Evidence Required:* Formally authenticated direction from the Designated Officer, MeitY.
-   - *Escalation Procedure:* P0 confidential channel to Designated Officer, Founder, and Legal Counsel.
+   - *Pause Conditions:* Strictly inapplicable; execution is mandatory and confidential as directed by the Designated Officer.
+   - *Evidence Required:* Formally authenticated direction from the Designated Officer, Ministry of Electronics and Information Technology (MeitY).
+   - *Responsible Actor:* Platform Designated Officer, Founder, and External Legal Counsel via confidential emergency channel.
 
 ## 4. Distributed Rate Limiting & Abuse Prevention (Correction 3)
 
@@ -193,6 +199,19 @@ flowchart TD
   * *Closed (Normal):* 100% of traffic checks distributed cache.
   * *Open (Tripped):* Tripped after **5 consecutive connection failures or timeouts**. All sensitive mutation routes immediately fail closed; public reads enter degraded mode. Dispatches immediate **P1 alert to on-call engineers**.
   * *Half-Open (Probing):* After a **30-second reset timeout**, a single probe request checks Redis health. If successful, circuit resets to Closed; if it fails, reset timeout doubles (exponential backoff up to 5 minutes).
+
+### 4.4. Distributed Redis Latency Status & Empirical Benchmark Specification
+> [!WARNING]
+> **REDIS LATENCY STATUS: UNVERIFIED UNTIL EMPIRICALLY BENCHMARKED**  
+> While Upstash Redis Serverless hosted in AWS `ap-south-1` (Mumbai) is architecturally recommended to minimize round-trip latency to Indian users and Mumbai-hosted databases, its actual performance under production serverless cold starts and traffic surges is **unverified until empirically tested**. No claims of verified low latency may be made without execution of the benchmark suite.
+
+Prior to production activation in Milestone M06 Phase 2, a formal empirical benchmark harness (`scripts/benchmark-redis-latency.ts`) must be executed against the actual deployment environment (Next.js serverless on Vercel to Upstash Mumbai) testing:
+1. **Latency Percentiles:** Measure p50, p95, and p99 round-trip latency across 10,000 atomic Lua script executions (target: p50 <15ms, p95 <35ms, p99 <75ms).
+2. **Cold vs. Warm Starts:** Differentiate latency between cold serverless function initialization (including TLS handshake establishment) versus warm connection reuse.
+3. **High Concurrency:** Benchmark under sustained concurrent loads of 100, 500, and 1,000 concurrent requests across multiple serverless execution contexts to detect contention or rate capping.
+4. **Timeouts & Error Rates:** Verify behavior when round-trip latency exceeds the 150ms timeout threshold, confirming zero silent thread hangs and proper timeout cancellation.
+5. **Fail-Closed Verification:** Simulate network isolation / DNS failure to Upstash; verify that 100% of sensitive mutation routes strictly return HTTP 503 `RATE_LIMIT_SERVICE_UNAVAILABLE` without falling back to local memory.
+6. **Budget & Volume Assumptions:** Validate monthly request volume calculations against actual burst behavior (e.g. 10k ops/day free tier vs 3.5M ops/mo launch tier).
 
 ---
 
@@ -316,10 +335,25 @@ An evaluation of ISHTI's hosting architecture reveals that **standard Vercel Pro
 | **Option 3: Ingress Firewall IP CIDR Allowlisting** | **Supported across all platforms** (AWS Security Groups, DigitalOcean, Vercel Firewall) | High (Blocks direct IP connections outside Cloudflare's published CIDRs) | Low (Automated cron job updates Cloudflare IPv4/IPv6 CIDRs) | $0 | **Recommended for M06 Baseline** |
 | **Option 4: Shared Ingress Secret Header** | **Supported across all platforms** (Validated in Next.js middleware) | Medium-High (Requires secret header `x-ishti-proxy-secret` injected by Cloudflare Transform Rules) | Very Low (Managed via environment variables) | $0 | **Active M05 Baseline Safeguard** |
 
-### 8.3. M06 Origin Shielding Decision
-1. For Vercel deployments, enforce **Option 3 (Firewall IP CIDR Allowlisting)** paired with **Option 4 (Cryptographic Shared Secret Validation)**.
-2. If ISHTI migrates to containerized hosting (Fly.io / AWS ECS), transition to **Option 2 (Cloudflare Tunnel)** to completely eliminate public inbound ports.
-3. Mark Cloudflare AOP as **UNVERIFIED / REQUIRES PROTOTYPING** for Vercel; do not prescribe unsupported mTLS configurations.
+### 8.3. M06 Origin Shielding Status & Empirical Verification Requirements
+> [!IMPORTANT]
+> **ORIGIN SHIELDING STATUS: RECOMMENDED — DEPLOYMENT VERIFICATION REQUIRED**  
+> Cloudflare CIDR firewall allowlisting paired with a cryptographic shared secret header (`x-ishti-proxy-secret`) is currently a **proposed Vercel-compatible architecture, NOT an empirically verified origin security control**. It must NOT be claimed that Cloudflare blocks direct Vercel access unless a deployment-level test demonstrably proves it.
+
+#### Explicit Threat Vectors & Verification Tests Required Prior to Production Activation
+1. **Direct `*.vercel.app` Deployment URL Access Bypass:** An attacker discovers or enumerates the project deployment URL (e.g. `https://ishti-os-abc.vercel.app`) and attempts direct HTTP requests without traversing Cloudflare. *Verification Test:* Confirm edge middleware rejects request with HTTP 403 or redirects to canonical domain with proxy secret enforcement.
+2. **Alternative Vercel Aliases & Preview Deployments:** An attacker sends requests to branch or preview URLs (e.g. `https://ishti-git-preview-*.vercel.app`). *Verification Test:* Verify that preview URLs either enforce Vercel Deployment Protection authentication or execute the same origin proxy secret verification.
+3. **Requests Lacking Expected Proxy Header:** Requests routed directly to Vercel without `x-ishti-proxy-secret`. *Verification Test:* Verify immediate HTTP 403 rejection before route handler execution.
+4. **Spoofed Proxy Header from Untrusted IPs:** An external attacker crafts an HTTP request containing `x-ishti-proxy-secret: <known_secret>` directly against the Vercel origin IP from outside Cloudflare's IP range. *Verification Test:* Verify that Vercel Firewall IP CIDR allowlisting drops the connection at the TCP/firewall layer before reaching Next.js middleware.
+5. **Secret Rotation Dual-Window Validation:** Verify that rotating the proxy secret using a dual-window configuration (`x-ishti-proxy-secret-current` and `x-ishti-proxy-secret-previous`) permits zero-downtime secret rollover without dropping in-flight legitimate requests.
+6. **Host-Header Manipulation / Host Poisoning:** An attacker sends requests with `Host: malicious.com` or forged `X-Forwarded-Host` headers through or around the proxy. *Verification Test:* Validate that middleware strictly validates the Host against configured trusted domains (`ishti.com`, `api.ishti.com`).
+7. **Next.js Middleware Bypass & Unprotected Routes:** Verify whether static assets (`/_next/static/*`), public images, or health-check endpoints (`/api/health`) bypass middleware checks, and ensure no data mutation endpoints can be reached via alternate path representations (e.g. URI normalization vulnerabilities).
+8. **Requests Reaching Origin via Unexpected Network Paths:** Verify behavior when requests arrive via IPv6 vs IPv4, or through cloud provider internal peering.
+
+#### Architectural Roadmap
+1. For Vercel deployments, implement **Option 3 (Firewall IP CIDR Allowlisting)** paired with **Option 4 (Cryptographic Shared Secret Validation)**, subject to execution of the 8-point verification test suite above.
+2. If ISHTI migrates to containerized hosting (Fly.io / AWS ECS), transition to **Option 2 (Cloudflare Tunnel `cloudflared`)** to completely close all inbound public ports.
+3. Mark Cloudflare AOP (mTLS client certs) as **UNSUPPORTED on standard Vercel Pro**.
 
 ---
 
@@ -367,7 +401,7 @@ flowchart LR
 | Execution Phase | Focus Area & Concrete Deliverables | Non-Negotiable Gate Criteria |
 | :--- | :--- | :--- |
 | **Phase 1: Persistence Foundation** | Write migration files for `public.user_consents`, `public.consent_audit_history`, `public.privacy_requests`, `public.audit_ledger`, `public.grievance_tickets`, and `public.grievance_events`. Implement 100% RLS and `trg_audit_ledger_immutable`. | Zero schema drift; forward and rollback (`down/`) scripts execute with 100% parity in local PostgreSQL 18 sandbox. |
-| **Phase 2: Distributed Concurrency** | Implement `DistributedRateLimiter` with Upstash Redis and atomic sliding-window EVAL scripts. Configure 150ms timeout, circuit breaker, and strict fail-closed policy for sensitive routes. | Thundering herd test: 1,000 concurrent requests across 20 workers strictly enforced without quota bleed; zero local-memory fallback on sensitive routes. |
+| **Phase 2: Distributed Concurrency** | Implement `DistributedRateLimiter` with Upstash Redis and atomic sliding-window EVAL scripts. Configure 150ms timeout, circuit breaker, strict fail-closed policy for sensitive routes, and execute empirical latency benchmark suite (p50/p95/p99) against Upstash Mumbai. | Thundering herd test: 1,000 concurrent requests across 20 workers strictly enforced without quota bleed; empirical latency benchmark meets SLA (p50 <15ms, p99 <75ms); zero local-memory fallback on sensitive routes. |
 | **Phase 3: Privacy & Erasure Engine** | Implement multi-stage erasure state machine, per-profile DEK cryptographic shredding worker, and secure SAR archive generator. | Mathematical proof: ciphertext unrecoverable after DEK purge; database cascading deletes complete; backup retention expiry documented. |
-| **Phase 4: Grievance System & Intake** | Implement server-mediated anonymous grievance intake, Zod validation, and automated SLA dual-clock tracker enforcing 24h ack and 7d disposal under IT Rules. | Anonymous intake penetration test: zero SQL injection, zero unmetered bursts; SLA escalation alerts fire at configured thresholds. |
-| **Phase 5: Operational Shielding** | Configure Cloudflare CIDR firewall allowlisting, automated Merkle tree audit verification daemon, and OpenTelemetry logging. | Chaos testing: simulated Redis outage triggers circuit breaker and sensitive fail-closed behavior; audit tampering triggers immediate verification alert. |
+| **Phase 4: Grievance System & Intake** | Implement server-mediated anonymous grievance intake, Zod validation, and automated SLA dual-clock tracker enforcing 2h (Rule 3(2)(b)), 3h (Rule 3(1)(d)), 36h (proviso), and 24h ack / 7d disposal (Rule 3(2)(a)(i)) under official IT Rules. | Anonymous intake penetration test: zero SQL injection, zero unmetered bursts; statutory deadline calculations verified against all 5 legal clocks; SLA escalation alerts fire at configured thresholds. |
+| **Phase 5: Operational Shielding** | Configure Cloudflare CIDR firewall allowlisting, automated Merkle tree audit verification daemon, OpenTelemetry logging, and execute the 8-point origin shielding verification test suite. | Origin shielding tests confirm 0 direct bypass via `*.vercel.app` or spoofed headers; chaos testing confirms simulated Redis outage triggers circuit breaker and sensitive fail-closed behavior; audit tampering triggers immediate verification alert. |

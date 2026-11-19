@@ -31,7 +31,7 @@ In accordance with architectural review, database schemas are decoupled into foc
 2. **Strict RLS By Default:** Every newly created table must execute `ALTER TABLE <name> ENABLE ROW LEVEL SECURITY;` immediately following table creation.
 3. **No Direct Anonymous Table Grants (Correction 4):** The PostgREST API `anon` role is granted **zero direct INSERT, UPDATE, or DELETE permissions**. Controlled anonymous intake executes exclusively through server-mediated RPC functions with strict parameter sanitization.
 4. **Append-Only Immutability Defense-in-Depth (Correction 6):** Database triggers enforce append-only rules during normal operations (`prevent_audit_ledger_mutation`). Merkle hash chains and external WORM backups provide tamper-evidence against privileged database administrators.
-5. **Reversible Migrations:** Every forward DDL migration is paired with a verified rollback script (`down/`) that tears down objects safely without touching pre-existing tables.
+5. **Nuanced Migration Rollback Architecture:** Forward DDL migrations are categorized by reversibility (reversible schema-only, data-preserving rollback, irreversible data transformation, destructive, backup restoration, forward-fix). Naive assumptions that every production change can be cleanly reversed with a down script are rejected; backup and restore verification is mandatory before any state-altering operations.
 
 ---
 
@@ -187,9 +187,9 @@ CREATE TABLE public.grievance_tickets (
     complainant_phone TEXT,
     category TEXT NOT NULL CHECK (
         category IN (
-            'CONTENT_IMPERSONATION_SEXUAL', -- Rule 3(2)(b): Action within 2 hours
+            'CONTENT_IMPERSONATION_SEXUAL', -- Rule 3(2)(b): Action / takedown within 2 hours
             'SPECIFIED_REMOVAL_PROVISO',    -- Proviso to Rule 3(2)(a)(i): Resolution within 36 hours
-            'COURT_GOVT_TAKEDOWN_ORDER',    -- Rule 3(1)(d): Takedown within 36 hours
+            'COURT_GOVT_TAKEDOWN_ORDER',    -- Rule 3(1)(d): Removal / access disablement within 3 hours
             'PRIVACY_DATA_BREACH',          -- DPDP Act / IT Rules: 7d disposal
             'FRAUD_COMMERCE',               -- Consumer Protection / 7d disposal
             'PANDIT_CONDUCT',               -- Marketplace Quality / 7d disposal
@@ -205,15 +205,15 @@ CREATE TABLE public.grievance_tickets (
     
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     
-    -- Statutory Deadlines (IT Rules 2021 as amended 10 February 2026)
-    statutory_ack_deadline TIMESTAMPTZ NOT NULL,   -- submitted_at + 24 hours (or 2h for Rule 3(2)(b))
+    -- Statutory Deadlines (Official IT Rules Updated 10 February 2026 including corrigendum)
+    statutory_ack_deadline TIMESTAMPTZ NOT NULL,   -- submitted_at + 24 hours (or 1h for Rule 3(1)(d); 2h for Rule 3(2)(b))
     acknowledged_at TIMESTAMPTZ,
-    statutory_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 7 days (or 2h for Rule 3(2)(b); 36h for proviso/court orders)
+    statutory_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 7 days (or 2h for Rule 3(2)(b); 3h for Rule 3(1)(d); 36h for proviso)
     resolved_at TIMESTAMPTZ,
     
     -- Internal Operational Service-Level Targets (SLTs)
-    internal_slt_ack_deadline TIMESTAMPTZ NOT NULL,      -- submitted_at + 12 hours (30m for Rule 3(2)(b))
-    internal_slt_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 48 hours (1h for Rule 3(2)(b); 12h for 36h proviso)
+    internal_slt_ack_deadline TIMESTAMPTZ NOT NULL,      -- submitted_at + 12 hours (30m for Rule 3(2)(b) & Rule 3(1)(d))
+    internal_slt_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 48 hours (1h for Rule 3(2)(b) & Rule 3(1)(d); 12h for 36h proviso)
     
     resolution_summary TEXT,
     rejection_reason TEXT
@@ -263,27 +263,27 @@ BEGIN
         RAISE EXCEPTION 'Payload field limits exceeded' USING ERRCODE = '22001';
     END IF;
 
-    -- Dynamic Deadline Calculation based on Official IT Rules (Updated 10 February 2026)
+    -- Dynamic Deadline Calculation based on Official IT Rules (Updated 10 February 2026 including corrigendum)
     IF p_category = 'CONTENT_IMPERSONATION_SEXUAL' THEN
-        -- Rule 3(2)(b): Action within 2 hours; 1h internal SLT target
+        -- Rule 3(2)(b): Action / takedown within 2 hours; 1h internal SLT target (zero pause permitted)
         v_statutory_ack := now() + INTERVAL '2 hours';
         v_statutory_disposal := now() + INTERVAL '2 hours';
         v_internal_ack := now() + INTERVAL '30 minutes';
         v_internal_disposal := now() + INTERVAL '1 hour';
+    ELSIF p_category = 'COURT_GOVT_TAKEDOWN_ORDER' THEN
+        -- Rule 3(1)(d): Removal / disabling access within 3 hours from receipt of qualifying order/intimation (zero pause permitted)
+        v_statutory_ack := now() + INTERVAL '1 hour';
+        v_statutory_disposal := now() + INTERVAL '3 hours';
+        v_internal_ack := now() + INTERVAL '30 minutes';
+        v_internal_disposal := now() + INTERVAL '1 hour';
     ELSIF p_category = 'SPECIFIED_REMOVAL_PROVISO' THEN
-        -- Proviso to Rule 3(2)(a)(i): Resolution within 36 hours
+        -- Proviso to Rule 3(2)(a)(i): Resolution within 36 hours (pause rules require counsel confirmation)
         v_statutory_ack := now() + INTERVAL '24 hours';
         v_statutory_disposal := now() + INTERVAL '36 hours';
         v_internal_ack := now() + INTERVAL '6 hours';
         v_internal_disposal := now() + INTERVAL '12 hours';
-    ELSIF p_category = 'COURT_GOVT_TAKEDOWN_ORDER' THEN
-        -- Rule 3(1)(d): Takedown within 36 hours from receipt of order
-        v_statutory_ack := now() + INTERVAL '24 hours';
-        v_statutory_disposal := now() + INTERVAL '36 hours';
-        v_internal_ack := now() + INTERVAL '2 hours';
-        v_internal_disposal := now() + INTERVAL '6 hours';
     ELSE
-        -- Standard Intermediary Grievance under Rule 3(2)(a)(i): 24h ack, 7d disposal (Feb 2026 amendment)
+        -- Standard Intermediary Grievance under Rule 3(2)(a)(i): 24h ack, 7d disposal (Feb 2026 amendment; pause rules require counsel confirmation)
         v_statutory_ack := now() + INTERVAL '24 hours';
         v_statutory_disposal := now() + INTERVAL '7 days';
         v_internal_ack := now() + INTERVAL '12 hours';
@@ -402,5 +402,32 @@ CREATE TABLE public.tax_configuration_rules (
 3. `supabase/migrations/20261120000003_m06_audit_ledger.sql`: Creates `public.audit_ledger`, BRIN indexes, and `trg_audit_ledger_immutable`.
 4. `supabase/migrations/20261120000004_m06_grievance_system.sql`: Creates `public.grievance_tickets`, `public.grievance_events`, and `submit_anonymous_grievance()` RPC.
 
-### Rollback Runbook (`down/`)
-Each migration file has an exact reverse counterpart in `supabase/migrations/down/` that safely drops created triggers, functions, and tables in reverse dependency order without touching existing M02/M03 tables.
+## 5. Zero-Downtime Migration Sequence & Comprehensive Rollback Architecture
+
+### 5.1. Sequential DDL File Plan (Milestone M06 Execution)
+1. `supabase/migrations/20261120000001_m06_user_consents.sql`: Creates `public.user_consents` and `public.consent_audit_history` with RLS.
+2. `supabase/migrations/20261120000002_m06_privacy_requests.sql`: Creates `public.privacy_requests` with multi-copy tracking fields and RLS.
+3. `supabase/migrations/20261120000003_m06_audit_ledger.sql`: Creates `public.audit_ledger`, BRIN indexes, and `trg_audit_ledger_immutable`.
+4. `supabase/migrations/20261120000004_m06_grievance_system.sql`: Creates `public.grievance_tickets`, `public.grievance_events`, and `submit_anonymous_grievance()` RPC.
+
+### 5.2. Rigorous Migration Reversibility & Rollback Categorization
+> [!CAUTION]
+> **REJECTING NAIVE DOWN-SCRIPT ASSUMPTIONS:**  
+> A naive paired `down/` script approach (e.g. `DROP TABLE ...`) is dangerous if executed in production once live data has been written. Dropping tables destroys active devotee records, breaks foreign key integrity, and corrupts audit chains. ISHTI categorizes all database changes into six distinct operational regimes:
+
+| Migration Category | Definition & Technical Characteristics | Rollback Strategy | Production Safety Rules |
+| :--- | :--- | :--- | :--- |
+| **1. Reversible Schema-Only Changes** | Adding new tables, unlogged staging tables, standalone triggers, new nullable columns, or new RLS policies that do not alter pre-existing tables or rewrite table heaps. | **Safe Down Script:** Can be reversed cleanly via `supabase/migrations/down/` (e.g. `DROP TABLE IF EXISTS ...`, `DROP TRIGGER IF EXISTS ...`) if executed before application code writes production data. | Permitted in local and staging verification. In production, down scripts are permitted only during an active zero-traffic deployment window before traffic cutover. |
+| **2. Data-Preserving Rollbacks** | Schema alterations where existing row data is preserved in temporary staging tables or dual-write columns during transition. | **Preservation Script:** Reverses schema pointers while migrating written rows back to pre-migration column structures without data truncation. | Requires pre-tested data migration backfill and reverse-copy procedures verified in staging. |
+| **3. Irreversible Data Transformations** | Data modifications involving one-way transformations: column type casting, hash migrations, cryptographic key re-wrapping, DEK shredding, or data deduplication/consolidation. | **Cannot Be Reversed via Down Script:** A `down/` SQL script cannot mathematically reconstruct pre-transformation plaintext or destroyed keys once committed. | **Forward-fix only or point-in-time recovery.** Pre-transformation verification and cryptographic snapshot required prior to execution. |
+| **4. Destructive Migrations** | Dropping existing production tables, dropping columns with historical data, `TRUNCATE`, or column shrinkage. | **No SQL Rollback Possible:** Down script cannot resurrect destroyed table contents. | **STRICTLY PROHIBITED in Milestone M06.** Any future destructive migration requires explicit founder sign-off, dual-operator authorization, and mandatory verified physical backup restoration prior to execution. |
+| **5. Backup Restoration (Point-in-Time Recovery)** | For state-breaking failures, data corruption, or catastrophic schema corruption where forward-fixing is impossible. | **Disaster Recovery Restore:** Restore Supabase/PostgreSQL from WAL snapshot to point-in-time immediately preceding the faulty migration, then replay the **Deletion Tombstone Manifest** to uphold privacy erasures. | **Mandatory Backup & Restore Verification:** Before executing any state-altering production migration, operators must verify that a valid snapshot exists and test the restoration procedure. |
+| **6. Forward-Fix Migrations (Preferred Production Strategy)** | Correcting minor bugs, missing indexes, faulty trigger logic, or check constraint mismatches discovered post-cutover. | **Release Migration $v_{N+1}$:** Apply an additive forward migration rather than attempting risky `down/` rollbacks on live, concurrent production databases. | Standard operational pattern for production maintenance. Down scripts are relegated to local developer sandbox resets. |
+
+### 5.3. Pre-Migration Verification Protocol
+Prior to applying any production DDL migration:
+1. Confirm zero schema drift against base main schema.
+2. Execute forward migration in a temporary local PostgreSQL 18 sandbox.
+3. Test down script in sandbox to verify clean tear-down of schema-only changes.
+4. Verify physical database backup availability and corroborate point-in-time recovery readiness.
+5. In production, prefer forward-fixing ($v_{N+1}$) for all post-cutover corrections.

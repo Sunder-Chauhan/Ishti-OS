@@ -40,7 +40,7 @@ This registry establishes the formal human approval gates required prior to exec
 | **APP-LEG-002** | **DPDP §6(9) & Rule 4 Notice Compliance** | Validating notice form and manner for personal data collected prior to commencement, pursuant to DPDP Rules, 2025 Rule 4 (commenced 13 Nov 2026). | `PENDING COUNSEL REVIEW` | Pre-Public Launch |
 | **APP-LEG-003** | **DPDP 18-Month Engineering Controls** | Review of pre-launch technical controls for DPDP Act §§3–5, 6, 8, 9, 11–13 (scheduled for 13 May 2027), ensuring no claims of premature legal compliance. | `PENDING COUNSEL REVIEW` | Pre-Public Launch |
 | **APP-LEG-004** | **Parental Consent Gate Mechanism** | Review and approval of the verifiable parental consent mechanism under DPDP Act §9 for users under 18 years of age. | `PENDING COUNSEL REVIEW` | Pre-Public Launch |
-| **APP-LEG-005** | **IT Act §79 Intermediary Classification & Timelines** | Formal opinion classifying community forums as Intermediary and platform-authored content as Editorial; verifying IT Rules Rule 3(2) timelines under 10 Feb 2026 amendments: 2h Rule 3(2)(b) emergency action, 36h proviso resolution, 36h Rule 3(1)(d) order removal, and 24h ack / 7d disposal under Rule 3(2)(a)(i). | `PENDING COUNSEL REVIEW` | Pre-Public Launch |
+| **APP-LEG-005** | **IT Act §79 Intermediary Classification & Timelines** | Formal opinion classifying community forums as Intermediary and platform-authored content as Editorial; verifying IT Rules timelines under consolidated 10 Feb 2026 amendments (including corrigendum): Rule 3(1)(d) 3h removal/access disablement, Rule 3(2)(b) 2h emergency action, Proviso to Rule 3(2)(a)(i) 36h resolution, Rule 3(2)(a)(i) 24h ack / 7d disposal, IT Act §69A confidential blocking orders, and formal counsel verification of all clock pause rules. | `PENDING COUNSEL REVIEW` | Pre-Public Launch |
 | **APP-LEG-006** | **Statutory Retention Exceptions Matrix** | Approval of lawful retention exceptions (Income-tax Act §62, IT Rules, dispute defense) overriding statutory erasure requests under DPDP Act §12(3). | `PENDING COUNSEL REVIEW` | Pre-Public Launch |
 
 ### 2.3. Chartered Accountant / Tax Advisor Certifications
@@ -57,9 +57,11 @@ This registry establishes the formal human approval gates required prior to exec
 
 | Approval ID | Operational Domain | Security Verification Requirement | Status | Blocking Level |
 | :--- | :--- | :--- | :---: | :---: |
-| **APP-OPS-001** | **Ingress Origin Shielding Verification** | Execute automated origin bypass penetration test verifying that direct requests lacking `x-ishti-proxy-secret` or outside Cloudflare CIDRs return HTTP 403. | `PENDING DEVOPS REVIEW` | Pre-Beta |
+| **APP-OPS-001** | **Ingress Origin Shielding Empirical Verification** | Execute 8-point origin shielding verification suite on Vercel deployment testing direct `*.vercel.app` URLs, aliases, missing header, spoofed header from untrusted IPs, secret rotation, host-header validation, and unexpected paths. | `PENDING DEVOPS REVIEW` | Pre-Beta |
 | **APP-OPS-002** | **Distributed Rate Limiter Fail-Closed Test** | Execute chaos test verifying that severed Redis connectivity causes sensitive mutation routes to fail closed (HTTP 503) without falling back to local memory. | `PENDING SRE REVIEW` | Pre-M06 Merge |
 | **APP-OPS-003** | **External WORM Bucket Object Lock Verification** | Verify that the secondary cloud account holding audit ledger archives enforces AWS S3 / Cloudflare R2 Object Lock in Compliance Mode. | `PENDING SEC REVIEW` | Pre-Public Launch |
+| **APP-OPS-004** | **Distributed Redis Latency Benchmark** | Execute benchmark suite on Upstash Redis AWS `ap-south-1` Mumbai measuring p50/p95/p99 latency, cold vs warm execution, 1,000 concurrency, and fail-closed 503 enforcement. | `PENDING SRE BENCHMARK` | Pre-M06 Merge |
+| **APP-OPS-005** | **Database Backup & Point-in-Time Restore Verification** | Test physical database backup snapshot restoration and tombstone manifest replay in staging prior to applying state-altering production migrations. | `PENDING DBA REVIEW` | Pre-Production Migration |
 
 ---
 
