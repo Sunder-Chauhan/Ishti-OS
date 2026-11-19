@@ -67,100 +67,72 @@ As of **19 November 2026**, ISHTI's architectural requirements are reconciled ag
 
 ## 3. Grievance Redressal Architecture & IT Rules Compliance (Correction 2)
 
-### 3.1. Reassessed Intermediary vs. Publisher Classification
-ISHTI does **NOT** treat all platform content under a single blanket publisher classification. In accordance with the Information Technology Act, 2000 and the IT Rules, 2021 (as amended 10 February 2026), product functions are differentiated by their operational nature:
+## 3. Grievance Redressal Architecture & IT Rules Legal Compliance (Correction 2)
+
+### 3.1. Differentiated Platform Functions & Qualified Section 79 Safe-Harbour Analysis
+ISHTI does **NOT** treat all platform content under a single blanket intermediary or publisher classification. Nor does the platform broaden the definition of an intermediary or publisher beyond applicable statutory boundaries simply because ISHTI authors first-party material. In accordance with the Information Technology Act, 2000 and the IT Rules, 2021 (as amended 10 February 2026), product functions are differentiated by their operational nature:
 
 1. **User-Generated Community Discussions & Prayer Requests:**
    - *Classification:* **Intermediary Service** under IT Act §2(1)(w).
-   - *Legal Regime:* Part II of IT Rules, 2021 applies. ISHTI claims Section 79 safe harbour protection against third-party user posts, contingent upon strict adherence to due diligence and grievance mechanisms.
+   - *Legal Regime:* Part II of IT Rules, 2021 applies. ISHTI seeks Section 79 safe-harbour protection against third-party user posts, contingent upon strict adherence to due diligence and grievance redressal mechanisms. Legal availability of safe harbour is subject to statutory applicability, factual fulfillment of diligence, and judicial determination.
 2. **Pandit / Expert Marketplace Profiles & Listings:**
    - *Classification:* **Electronic Commerce Marketplace Intermediary**.
-   - *Legal Regime:* Facilitates independent spiritual practitioners. Section 79 safe harbour applies to pandit biographical submissions, subject to marketplace diligence rules and consumer protection regulations.
+   - *Legal Regime:* Facilitates independent spiritual practitioners. Intermediary safe-harbour provisions under Section 79 are asserted for pandit biographical submissions, subject to marketplace diligence rules and consumer protection regulations.
 3. **Marketplace Direct Communications (Devotee-Pandit Messaging):**
    - *Classification:* **Intermediary Communication Conduit**.
-   - *Legal Regime:* Private transactional messaging between devotees and pandits. Section 79 safe harbour applies.
+   - *Legal Regime:* Private transactional messaging between devotees and pandits. Safe-harbour protection is claimed under Section 79 as a network communication conduit.
 4. **Platform-Authored Educational Material (Vedic Culture & Festival Guides):**
    - *Classification:* **First-Party Editorial Content**.
-   - *Legal Regime:* ISHTI is the primary author. Section 79 safe harbour does **NOT** apply; direct publisher liability applies under general law. However, it does **NOT** fall under Part III of the IT Rules unless it constitutes news and current affairs or online curated audio-visual content (OTT under Rule 2(1)(v)).
+   - *Legal Regime:* ISHTI is the primary author. Section 79 safe harbour does **NOT** apply; direct publisher responsibility applies under general law. However, authoring religious educational content does not transform ISHTI into an online curated content publisher (OTT under Rule 2(1)(v)) or a news publisher under Part III of the IT Rules unless it provides curated audio-visual entertainment or news/current affairs programs.
 5. **Algorithmic Kundli Interpretations & Ephemeris Calculations:**
    - *Classification:* **Proprietary Algorithmic Service Output**.
-   - *Legal Regime:* Platform is the sole creator of the computational astrological synthesis. Section 79 does not apply; governed by standard Terms of Service and statutory religious/fortune-telling disclaimers under the Consumer Protection Act, 2019. Does NOT fall under Part III of IT Rules.
+   - *Legal Regime:* Platform is the sole creator of the computational astrological synthesis. Section 79 safe harbour does not apply; governed by standard Terms of Service and statutory religious/fortune-telling disclaimers under the Consumer Protection Act, 2019. Excluded from Part III of IT Rules.
 6. **Curated Sacred Vedic Scriptures (Sanskrit Recensions & Classical Commentary):**
    - *Classification:* **Curated Sacred Knowledge Repository**.
    - *Legal Regime:* Curated from historical public-domain texts by scholar reviewers. Direct publisher responsibility for scriptural fidelity; excluded from Part III OTT regulations.
 
 > [!IMPORTANT]
-> **LEGAL COUNSEL REQUIREMENT:**
-> The above classifications reflect engineering and preliminary statutory analysis. Formal written confirmation from qualified Indian legal counsel is required prior to commercial activation.
+> **LEGAL COUNSEL REQUIREMENT & SAFE-HARBOUR RISK QUALIFICATION:**
+> The above classifications reflect engineering and preliminary statutory analysis. Formal written confirmation from qualified Indian legal counsel is required prior to commercial activation. Claims regarding the availability or forfeiture of Section 79 safe harbour are legal assessments: failure to adhere to statutory timelines creates substantial legal exposure and may jeopardize the availability of Section 79 safe-harbour protection, subject to statutory applicability, intermediary status, specific obligations and facts, and judicial determination. Internal P0/P1 operational escalations serve as protective administrative safeguards, clearly distinguished from statutory legal consequences.
 
-### 3.2. Disaggregated Statutory Clocks (Official Consolidated IT Rules Updated 10 February 2026)
-Statutory deadlines are strictly disaggregated. Acknowledgement, investigation, resolution, and takedown are distinct legal actions with independent start timestamps, triggering events, statutory scopes, and conditions:
+### 3.2. Seven Distinct Complaint Categories & Mandatory Classification Gate
+The architecture strictly separates incoming user submissions into seven distinct legal and operational categories. **A user-selected category or intake label cannot unilaterally bind a statutory legal clock upon the platform.** All incoming submissions enter a human-review queue (`PENDING_CLASSIFICATION`), and statutory clocks are populated **only after a documented legal applicability determination**:
+
+1. **Statutory Intermediary Grievances (Rule 3(2)(a)(i)):** Complaints from users or devotees alleging failure of intermediary due diligence under Rule 3(1).
+2. **Voluntary Platform Complaints:** Non-statutory feedback, UI defects, account dissatisfaction, or spiritual app feature suggestions. (Zero statutory IT Rules clock; governed by internal operational SLAs).
+3. **Expert / Pandit Service Disputes:** Commercial booking quality disputes, pandit no-shows, cancellation disputes, and refund claims. (Consumer Protection Act & contractual marketplace terms; zero statutory IT Rules clock).
+4. **Privacy-Rights Requests:** Data Principal rights requests under DPDP Act §§11–13 (access summary, correction, erasure). (Handled by the dedicated Privacy Rights Engine `public.privacy_requests`, not content grievance clocks).
+5. **Qualifying Content Removal Requests:**
+   - *5a: Emergency Non-Consensual Sexual / Impersonation Content (Rule 3(2)(b)):* Complaints alleging content depicting sexual acts, nudity, private areas, or impersonation.
+   - *5b: Expedited Content Removal Requests (Proviso to Rule 3(2)(a)(i)):* Complaints requesting removal of content specifically referred to in Rule 3(1)(b) sub-clauses (i) through (x).
+6. **Court Orders & Reasoned Government Intimations (Rule 3(1)(d)):** Orders issued by a court of competent jurisdiction or reasoned notifications by the Appropriate Government or its agency under Section 79(3)(b).
+7. **Statutory Confidential Blocking Directions (IT Act §69A):** Confidential directions issued by the Central Government Designated Officer under Section 69A read with the 2009 Blocking Rules. (Handled via secure external legal channel; separate from public ticketing).
 
 ```mermaid
 flowchart TD
-    Grievance[Grievance / Notice Received via Route Handler /api/compliance/triage] --> Classify{Statutory Classification}
+    Ingress[Public Ingress: POST /api/compliance/triage] --> IntakeQueue["Intake Review Queue\n(status: PENDING_CLASSIFICATION)\nInternal SLT: Triage within 30m / 2h"]
     
-    Classify -->|Emergency: Nudity / Sexual Act / Impersonation| ClockA["Rule 3(2)(b) Emergency Clock\nStatutory Action / Takedown: WITHIN 2 HOURS\nInternal SLT: 1 Hour (30m Ack)"]
-    Classify -->|Proviso to 3(2)(a)(i) Specified Removal| ClockB["Proviso to Rule 3(2)(a)(i) Removal Clock\nStatutory Resolution: WITHIN 36 HOURS\nInternal SLT: 12 Hours (6h Ack)"]
-    Classify -->|Court Order / Reasoned Govt Intimation| ClockC["Rule 3(1)(d) Actual Knowledge Clock\nStatutory Removal / Disabling Access: WITHIN 3 HOURS\nInternal SLT: 1 Hour (30m Ack)"]
-    Classify -->|Standard User Grievance| ClockD["Rule 3(2)(a)(i) Standard Intermediary Clock\nStatutory Ack: 24 HOURS | Statutory Disposal: 7 DAYS\nInternal SLT: 12 Hours Ack | 48 Hours Disposal"]
-    Classify -->|Govt Confidential Blocking Direction| ClockE["IT Act Section 69A Blocking Procedure\nStatutory Execution: IMMEDIATE / CONFIDENTIAL\nInternal SLT: Immediate Execution"]
+    IntakeQueue --> Determination{Documented Classification Determination}
+    
+    Determination -->|Category 5a: Verified Sexual / Impersonation| ClockA["Rule 3(2)(b) Emergency Removal Clock\nStatutory Removal: WITHIN 2 HOURS\n(Zero Statutory Ack Clock | Internal Ack: 30m)"]
+    Determination -->|Category 6: Verified Court / Govt Order| ClockC["Rule 3(1)(d) Actual Knowledge Clock\nStatutory Removal / Disablement: WITHIN 3 HOURS\n(Zero Statutory Ack / Disposal Clock | Internal Review: 30m)"]
+    Determination -->|Category 5b: Verified Rule 3(1)(b) Removal Request| ClockB["Proviso to Rule 3(2)(a)(i) Expedited Removal Clock\nStatutory Expedited Removal: WITHIN 36 HOURS\nStatutory Ack: 24h | Internal Removal SLT: 12h"]
+    Determination -->|Category 1: Verified Intermediary Grievance| ClockD["Rule 3(2)(a)(i) Standard Intermediary Clock\nStatutory Ack: 24 HOURS | Statutory Disposal: 7 DAYS\nInternal SLTs: 12h Ack | 48h Disposal"]
+    Determination -->|Category 2: Voluntary Platform Feedback| RouteV["Voluntary Complaint Queue\nStatutory Clocks: NONE\nInternal SLT: Resolution within 5 Days"]
+    Determination -->|Category 3: Pandit Marketplace Dispute| RouteP["Marketplace Dispute Queue\nStatutory Clocks: NONE\nCommercial SLT: Resolution within 72 Hours"]
+    Determination -->|Category 4: Privacy Rights Request| RouteDSR["Routed to Privacy Rights Engine (M06.3)\nDPDP Act Statutory Timeline: Prompt / 30 Days"]
 ```
 
-#### Detailed Specification of the Five Statutory Clocks
+### 3.3. Statutory Clock Provenance & Rigorous Legal Specification Matrix
+Every statutory clock is documented with exact statutory text, triggering event, scope, required action, deadline, exclusions, and counsel verification status:
 
-1. **Clock 1: Emergency Sexual Content, Private-Area & Impersonation Complaints (Rule 3(2)(b))**
-   - *Triggering Event:* Receipt of complaint alleging content depicting sexual acts, nudity, private areas, or impersonation of an individual.
-   - *Applicable Rule:* Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, Rule 3(2)(b).
-   - *Statutory Deadline:* **Action / Takedown within 2 Hours** from receipt of complaint.
-   - *Start Timestamp:* Exact ISO 8601 timestamp of HTTP request reception at `/api/compliance/triage`.
-   - *Pause Conditions:* **Zero statutory pause permitted.** Action must be taken to disable access or remove content within 2 hours.
-   - *Evidence Required:* Prima facie identifier of complainant, URL or screenshot of offending content, declaration of non-consent or impersonation.
-   - *Responsible Actor:* Grievance Officer on 24/7 on-call duty; automated P0 escalation dispatched immediately via SMS, push notification, and webhook.
-   - *Applicability:* Applies strictly to intermediary user-generated forums and pandit profile photos.
-
-2. **Clock 2: Specified Removal Requests Under Proviso to Rule 3(2)(a)(i)**
-   - *Triggering Event:* Grievance requesting removal of content referred to in sub-clause (b) of clause (1) of Rule 3.
-   - *Applicable Rule:* IT Rules, 2021, Proviso to Rule 3(2)(a)(i) (as updated 10 February 2026).
-   - *Statutory Deadline:* **Resolution within 36 Hours** from receipt of complaint, subject to statutory exclusions.
-   - *Start Timestamp:* Timestamp of verified complaint ingestion.
-   - *Pause Conditions:* **Subject to formal legal counsel confirmation.** No informal pause rules may be assumed in code without counsel sign-off.
-   - *Evidence Required:* Content URL, exact violation description, legal standing of complainant.
-   - *Responsible Actor:* Designated Grievance Officer and Compliance Lead.
-   - *Escalation Procedure:* P1 alert dispatched if ticket remains unreviewed at 12 hours.
-
-3. **Clock 3: Court Orders & Reasoned Government Takedown Intimations (Rule 3(1)(d))**
-   - *Triggering Event:* Receipt of actual knowledge via an order issued by a court of competent jurisdiction or reasoned notification by the Appropriate Government or its agency under IT Act §79(3)(b).
-   - *Applicable Rule:* Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, Rule 3(1)(d) (as amended 10 February 2026 including the February 2026 corrigendum).
-   - *Statutory Deadline:* **Removal or Disabling Access within 3 Hours** from receipt of qualifying actual-knowledge order/intimation within its statutory scope. *(Note: This is strictly a 3-hour statutory mandate, NOT a general 36-hour deadline).*
-   - *Statutory Scope:* Restricted to orders and reasoned intimations relating to the interests of the sovereignty and integrity of India, security of the State, friendly relations with foreign States, public order, decency, morality, contempt of court, defamation, incitement to an offence, or child sexual abuse material.
-   - *Start Timestamp:* Official delivery timestamp of court order or government intimation.
-   - *Pause Conditions:* **Zero statutory pause permitted within the 3-hour window.** Requires formal judicial stay or official agency withdrawal to halt.
-   - *Evidence Required:* Certified copy of court order or formally authenticated government agency notice with verifiable statutory citation.
-   - *Responsible Actor:* Grievance Officer, Platform Legal Counsel, and Tech Lead on immediate P0 response.
-   - *Internal SLT:* **30 minutes acknowledgement; 1 hour takedown/disablement**.
-
-4. **Clock 4: Ordinary Intermediary Grievances (Rule 3(2)(a)(i))**
-   - *Triggering Event:* General devotee or user complaint regarding privacy, community terms, or pandit conduct.
-   - *Applicable Rule:* IT Rules, 2021, Rule 3(2)(a)(i) (reflecting February 2026 amendment reducing disposal from 15 days to 7 days).
-   - *Statutory Deadlines:* **Acknowledgement within 24 Hours**; **Resolution / Disposal within 7 Days**.
-   - *Start Timestamp:* Automated ticket creation timestamp (`submitted_at`).
-   - *Pause Conditions:* **Subject to formal legal counsel confirmation.** Clock pause mechanisms (e.g. awaiting complainant response) must be formally approved by legal counsel before activation.
-   - *Evidence Required:* Devotee account ID or complainant email, ticket narrative, supporting documentation.
-   - *Internal SLT Target:* **12 Hours acknowledgement**; **48 Hours resolution**.
-   - *Responsible Actor:* Grievance Redressal Team and Assigned Compliance Officer.
-   - *Escalation Procedure:* Warning at 48 hours; P1 escalation at 72 hours; Executive breach alert at 96 hours.
-
-5. **Clock 5: Statutory Blocking Directions Under IT Act §69A**
-   - *Triggering Event:* Receipt of confidential blocking order issued by the Central Government Designated Officer under Section 69A of the IT Act read with the Information Technology (Procedure and Safeguards for Blocking for Access of Information by Public) Rules, 2009.
-   - *Applicable Legal Regime:* Section 69A, Information Technology Act, 2000.
-   - *Procedural Nature:* **Separate, confidential government blocking procedure** — distinct from the ordinary due-diligence grievance redressal clocks under Rule 3.
-   - *Statutory Deadline:* **Immediate execution** as specified in the confidential direction.
-   - *Statutory Penalties:* Governed strictly by Section 69A(3) of the IT Act (punishable with imprisonment for a term which may extend to seven years and fine for failure to comply).
-   - *Start Timestamp:* Delivery timestamp to platform Designated Officer.
-   - *Pause Conditions:* Strictly inapplicable; execution is mandatory and confidential as directed by the Designated Officer.
-   - *Evidence Required:* Formally authenticated direction from the Designated Officer, Ministry of Electronics and Information Technology (MeitY).
-   - *Responsible Actor:* Platform Designated Officer, Founder, and External Legal Counsel via confidential emergency channel.
+| Clock Identifier | Governing Statutory Provision & Official Text | Triggering Event & Ingress Channel | Covered Request / Content Category | Required Legal Action | Statutory Deadline & Field Name | Applicable Statutory Exclusions | Timing Assumptions | Statutory vs. Internal Distinction | Counsel Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **Clock 1: Rule 3(2)(b) Emergency Removal** | **IT Rules 2021, Rule 3(2)(b):** Intermediary shall *"take all reasonable and practicable measures to remove or disable access to such content which is hosted, stored, published or transmitted by it"* | Verified complaint receipt alleging non-consensual sexual content, private areas, or impersonation via `/api/compliance/triage`. | Visual or text content depicting individual in sexual act, nudity, exposed private areas, or impersonation. | Removal or access disablement of offending content. | **WITHIN 2 HOURS** from receipt.<br>`statutory_removal_deadline` | Applies strictly to third-party intermediary content (forums, user bios, pandit photos). Does not apply to non-content complaints. | Clock begins at exact verified HTTP intake timestamp. Zero pause permitted. | **Statutory:** 2h removal.<br>**Internal:** 30m ack SLT, 1h removal SLT. Zero statutory ack clock. | `PENDING COUNSEL CONFIRMATION` |
+| **Clock 2: Proviso to Rule 3(2)(a)(i) Expedited Removal** | **IT Rules 2021, Proviso to Rule 3(2)(a)(i):** *"where a complaint is received regarding removal of any content referred to in sub-clause (b) of clause (1) of rule 3, the intermediary shall... remove such content... in no case later than thirty-six hours"* | Verified complaint specifically requesting removal of content violating Rule 3(1)(b) sub-clauses. | Content violating Rule 3(1)(b)(i)–(x) (unlawful, defamatory, child-harming, infringing, sovereign threat). | Removal or access disablement of the specific infringing content. | **WITHIN 36 HOURS** from receipt.<br>`statutory_expedited_removal_deadline`<br>(Plus 24h ack: `statutory_ack_deadline`) | Applies strictly to content removal requests under Rule 3(1)(b). Excludes general service disputes, UI complaints, or privacy access requests. | Begins upon verified intake. Any clock-pause conditions (e.g. clarification) require formal counsel approval. | **Statutory:** 24h ack, 36h expedited removal.<br>**Internal:** 6h ack SLT, 12h removal SLT. NOT a generic 36h disposal clock. | `PENDING COUNSEL CONFIRMATION` |
+| **Clock 3: Rule 3(1)(d) Actual Knowledge Takedown** | **IT Rules 2021, Rule 3(1)(d) (as amended 10 Feb 2026 + corrigendum):** *"remove or disable access as expeditiously as possible, but in no case later than three hours from the receipt of the order of the court or on being notified by the Appropriate Government"* | Receipt of actual knowledge via court order or reasoned intimation from Appropriate Government / authorized agency under IT Act §79(3)(b). | Content prohibited under statutory grounds of Article 19(2) (sovereignty, integrity, public order, decency, morality, defamation, CSAM). | Complete removal or access disablement across platform servers. | **WITHIN 3 HOURS** from receipt.<br>`statutory_removal_deadline` | Restricted to qualifying court orders or reasoned government notifications within Article 19(2) scope. Excludes private user grievances. | Begins at verified delivery timestamp to platform Designated Officer / legal counsel. Zero statutory pause. | **Statutory:** 3h removal/disablement.<br>**Internal:** 30m review SLT, 1h removal SLT.<br>**Zero statutory ack or generic disposal deadline.** | `PENDING COUNSEL CONFIRMATION` |
+| **Clock 4: Rule 3(2)(a)(i) Standard Intermediary Grievance** | **IT Rules 2021, Rule 3(2)(a)(i) (as amended 10 Feb 2026):** Intermediary shall *"acknowledge the complaint within twenty-four hours and resolve such complaint within a period of seven days from the date of its receipt"* | Receipt of general grievance regarding platform due diligence or community terms from devotee/user. | General user complaints regarding intermediary due diligence, community moderation, or user conduct. | Issue formal ticket reference, investigate grievance, communicate reasoned decision to complainant. | **Acknowledgement: 24 HOURS**<br>`statutory_ack_deadline`<br>**Disposal: 7 DAYS**<br>`statutory_disposal_deadline` | Excludes content removal requests governed by specific expedited provisos or emergency clauses. | Begins at ticket creation timestamp. Clock pauses subject strictly to formal legal counsel approval. | **Statutory:** 24h ack, 7d disposal.<br>**Internal:** 12h ack SLT, 48h resolution SLT. | `PENDING COUNSEL CONFIRMATION` |
+| **Clock 5: IT Act §69A Confidential Blocking** | **Information Technology Act, 2000, Section 69A read with 2009 Blocking Rules:** Power to issue directions for blocking for access of information by public. | Receipt of confidential direction from Central Government Designated Officer (MeitY). | Content specified in confidential direction under statutory grounds of Section 69A(1). | Immediate confidential blocking of access to specified computer resource. | **IMMEDIATE EXECUTION** as specified in direction.<br>`statutory_removal_deadline` | Non-public, confidential procedure outside ordinary grievance mechanisms. | Begins upon service on Designated Officer. Strict statutory confidentiality under Rule 16 of 2009 Rules. | **Statutory:** Immediate compliance.<br>**Penal:** Non-compliance punishable under §69A(3) with imprisonment up to 7 years and fine. | `PENDING COUNSEL CONFIRMATION` |
 
 ## 4. Distributed Rate Limiting & Abuse Prevention (Correction 3)
 
@@ -403,5 +375,5 @@ flowchart LR
 | **Phase 1: Persistence Foundation** | Write migration files for `public.user_consents`, `public.consent_audit_history`, `public.privacy_requests`, `public.audit_ledger`, `public.grievance_tickets`, and `public.grievance_events`. Implement 100% RLS and `trg_audit_ledger_immutable`. | Zero schema drift; forward and rollback (`down/`) scripts execute with 100% parity in local PostgreSQL 18 sandbox. |
 | **Phase 2: Distributed Concurrency** | Implement `DistributedRateLimiter` with Upstash Redis and atomic sliding-window EVAL scripts. Configure 150ms timeout, circuit breaker, strict fail-closed policy for sensitive routes, and execute empirical latency benchmark suite (p50/p95/p99) against Upstash Mumbai. | Thundering herd test: 1,000 concurrent requests across 20 workers strictly enforced without quota bleed; empirical latency benchmark meets SLA (p50 <15ms, p99 <75ms); zero local-memory fallback on sensitive routes. |
 | **Phase 3: Privacy & Erasure Engine** | Implement multi-stage erasure state machine, per-profile DEK cryptographic shredding worker, and secure SAR archive generator. | Mathematical proof: ciphertext unrecoverable after DEK purge; database cascading deletes complete; backup retention expiry documented. |
-| **Phase 4: Grievance System & Intake** | Implement server-mediated anonymous grievance intake, Zod validation, and automated SLA dual-clock tracker enforcing 2h (Rule 3(2)(b)), 3h (Rule 3(1)(d)), 36h (proviso), and 24h ack / 7d disposal (Rule 3(2)(a)(i)) under official IT Rules. | Anonymous intake penetration test: zero SQL injection, zero unmetered bursts; statutory deadline calculations verified against all 5 legal clocks; SLA escalation alerts fire at configured thresholds. |
+| **Phase 4: Grievance System & Intake** | Implement server-mediated anonymous grievance intake, human classification gate, Zod validation, and automated SLA clock tracker enforcing 2h removal (Rule 3(2)(b)), 3h removal/disablement (Rule 3(1)(d)), 36h expedited removal (proviso to Rule 3(2)(a)(i)), and 24h ack / 7d disposal (Rule 3(2)(a)(i)) following verified legal determination. | Anonymous intake penetration test: zero SQL injection, zero unmetered bursts; statutory deadline calculations verified against all 5 legal clocks; unverified complaints enter PENDING_CLASSIFICATION queue; SLA escalation alerts fire at configured thresholds. |
 | **Phase 5: Operational Shielding** | Configure Cloudflare CIDR firewall allowlisting, automated Merkle tree audit verification daemon, OpenTelemetry logging, and execute the 8-point origin shielding verification test suite. | Origin shielding tests confirm 0 direct bypass via `*.vercel.app` or spoofed headers; chaos testing confirms simulated Redis outage triggers circuit breaker and sensitive fail-closed behavior; audit tampering triggers immediate verification alert. |

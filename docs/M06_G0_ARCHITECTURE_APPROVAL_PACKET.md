@@ -92,21 +92,26 @@ flowchart TD
 
 ### DEC-M06-003: Grievance Architecture & IT Rules Timeline Realignment
 - **Decision ID:** `DEC-M06-003`
-- **Recommended Option:** **Next.js Route Handler (`POST /api/compliance/triage`) with IT Rules Five Statutory Clocks (2h / 3h / 36h / 24h / 7d)**
+- **Recommended Option:** **Next.js Route Handler (`POST /api/compliance/triage`) with Seven Request Categories, Human Classification Gate & Disaggregated Legal Clocks**
   * Next.js Route Handler selected as the sole public intake interface over Server Actions due to REST standard contract, HTTP status codes, mobile app compatibility, and bounded stream reading.
-  * Reconcile statutory deadlines to official consolidated IT Rules updated 10 February 2026 including the February 2026 corrigendum:
-    - *Rule 3(2)(b) Sexual Content / Impersonation:* **Action / takedown within 2 hours** (automated P0 alert; zero pause permitted).
-    - *Rule 3(1)(d) Court Orders / Reasoned Government Takedown Intimations:* **Removal or access disablement within 3 hours** from receipt of qualifying actual-knowledge order/intimation within its statutory scope. *(Note: Strictly 3 hours, NOT a general 36-hour deadline; zero pause permitted within the 3-hour window).*
-    - *Proviso to Rule 3(2)(a)(i) Specified Removal Requests:* **Resolution within 36 hours** for content specified under relevant sub-clauses, subject to statutory exclusions. Pause rules require formal counsel confirmation.
-    - *Rule 3(2)(a)(i) Ordinary Intermediary Grievance:* **24 hours acknowledgement; 7 days resolution/disposal** (reduced from 15d by Feb 2026 amendment). Pause rules require formal counsel confirmation.
-    - *IT Act §69A Blocking Directions:* **Separate confidential blocking procedure** under 2009 Blocking Rules; immediate compliance as directed by Central Government Designated Officer. Failure to comply carries criminal liability under Section 69A(3). Not an ordinary grievance clock.
+  * **Seven Distinct Categories & Classification Gate:** Intake enters a human-review queue (`PENDING_CLASSIFICATION`). Statutory clocks are bound **strictly upon verified legal determination** by a Compliance Officer:
+    1. *Statutory Intermediary Grievance (Rule 3(2)(a)(i)):* 24h statutory ack (`statutory_ack_deadline`), 7d statutory disposal (`statutory_disposal_deadline`).
+    2. *Voluntary Platform Complaint:* General feedback/bugs. Zero statutory clock; internal operational SLTs only.
+    3. *Expert / Pandit Service Dispute:* Commercial booking quality, cancellations, refunds. Zero statutory clock.
+    4. *Privacy-Rights Request:* DPDP Act §§11–13 rights (access, correction, erasure). Routed to `public.privacy_requests`.
+    5. *Qualifying Content Removal Request:*
+       - *5a (Rule 3(2)(b)):* Emergency sexual content / impersonation. **Action / takedown within 2 hours** (`statutory_removal_deadline`). Zero statutory ack clock.
+       - *5b (Proviso to Rule 3(2)(a)(i)):* **Expedited removal within 36 hours** (`statutory_expedited_removal_deadline`) for content specifically referred to in Rule 3(1)(b), plus 24h statutory ack (`statutory_ack_deadline`). *(Not a generic 36-hour grievance disposal clock).*
+    6. *Court Orders & Reasoned Government Intimations (Rule 3(1)(d)):* **Removal or access disablement within 3 hours** (`statutory_removal_deadline`) from receipt of qualifying actual-knowledge order/intimation within statutory Article 19(2) scope. *(Zero statutory acknowledgement deadline; zero generic grievance disposal deadline).*
+    7. *Statutory Confidential Blocking Directions (IT Act §69A):* **Immediate confidential compliance** under 2009 Blocking Rules; penal consequences under Section 69A(3).
   * **Clock Pause Rules Protocol:** Zero pause permitted under Rule 3(2)(b) and Rule 3(1)(d); pause rules for ordinary grievances under Rule 3(2)(a)(i) require formal legal counsel confirmation.
-  * Decouple statutory deadlines from internal operational targets (SLTs: 12h ack, 48h resolution for standard complaints; 30m ack, 1h resolution for Rule 3(2)(b) emergency content and Rule 3(1)(d) court orders).
+  * Decouple statutory deadlines from internal operational targets (SLTs: 30m triage SLT for emergency/court claims, 2h standard; 12h ack, 48h resolution for standard complaints; 30m review, 1h removal for Rule 3(1)(d) and Rule 3(2)(b)).
 - **Alternatives Rejected & Why:**
   1. *Server Actions for Public Ingress:* Rejected because Server Actions use React flight protocol serialization, preventing standard REST integration for mobile apps or external complainants.
   2. *Single 24h Blanket Timeline:* Rejected as legally incorrect; failed to meet the strict 2-hour takedown mandate for Rule 3(2)(b) content and 3-hour mandate for Rule 3(1)(d) court orders.
+  3. *Unverified User-Driven Statutory Clock Binding:* Rejected because untrusted external input cannot unilaterally bind statutory deadlines without legal applicability verification.
 - **Risks Accepted:** The 2-hour window under Rule 3(2)(b) and 3-hour window under Rule 3(1)(d) require an active Grievance Officer on-call alerting rotation.
-- **Risks Still Open:** Formal written opinion from Indian legal counsel required to verify applicability classifications and pause rules before commercial launch.
+- **Risks Still Open:** Formal written opinion from Indian legal counsel required to verify applicability classifications, safe-harbour risk posture, and pause rules before commercial launch.
 - **Owner:** Legal Engineering Lead & Compliance Officer
 - **Required Approval:** Founder & Legal Counsel
 - **Status:** **`PENDING OPERATOR APPROVAL`**
@@ -225,7 +230,7 @@ flowchart TD
 | Evaluation Dimension | Current Formal Status | Audit Evidence & Detailed Findings |
 | :--- | :---: | :--- |
 | **1. Architecture Recommendation** | **`COMPLETE`** | All 8 core architectural decisions (DEC-M06-001 through DEC-M06-008) have been comprehensively specified, alternatives evaluated, failure modes modeled, and trade-offs documented across 7 M06 planning deliverables. |
-| **2. Statutory Mapping** | **`CORRECTED`** | Fully reconciled against official Gazette Notification G.S.R. 843(E) (DPDP Act phased commencement) and the consolidated IT Rules 2021 as amended 10 February 2026 (including corrigendum): Rule 3(2)(b) emergency action within 2h, Rule 3(1)(d) takedown within 3h, Proviso to Rule 3(2)(a)(i) resolution within 36h, Rule 3(2)(a)(i) 24h ack & 7d disposal, IT Act §69A confidential blocking orders. Pause rules marked as requiring counsel confirmation. |
+| **2. Statutory Mapping** | **`CORRECTED`** | Fully reconciled against official Gazette Notification G.S.R. 843(E) (DPDP Act phased commencement) and the consolidated IT Rules 2021 as amended 10 February 2026 (including corrigendum): Rule 3(2)(b) emergency removal within 2h, Rule 3(1)(d) court/govt actual-knowledge removal/disablement within 3h (zero statutory ack/disposal clock), Proviso to Rule 3(2)(a)(i) expedited content removal within 36h for Rule 3(1)(b) violations, Rule 3(2)(a)(i) 24h ack & 7d disposal, and IT Act §69A confidential blocking orders. Seven request categories separated; human classification gate mandated; pause rules marked as requiring counsel confirmation. |
 | **3. Infrastructure Compatibility** | **`PROPOSED (NOT EMPIRICALLY VERIFIED)`** | Ingress shielding via Cloudflare CIDR firewall allowlisting + shared proxy secret (`x-ishti-proxy-secret`) and host-header protection is architecturally proposed for Vercel Pro. However, it is **not yet verified in a live deployment environment**. |
 | **4. Infrastructure Empirical Verification** | **`PENDING DEPLOYMENT BENCHMARKS`** | Upstash Redis `ap-south-1` Mumbai latency, Vercel edge runtime round-trips, and the 8-point origin shielding bypass test suite (direct `*.vercel.app`, spoofed headers, alias bypass) are **unverified pending empirical benchmark testing in Phase 2 & Phase 5**. |
 | **5. Database Migration Plan** | **`REVIEWED WITH ROLLBACK LIMITATIONS DOCUMENTED`** | Migration DDL schemas (4 forward migrations) and RLS security models have been fully authored. Migration reversibility is rigorously categorized into 6 operational classes; naive down-script assumptions have been eliminated; backup and restore verification is mandated prior to destructive changes. |

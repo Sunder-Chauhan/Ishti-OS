@@ -178,42 +178,69 @@ FOR EACH ROW EXECUTE FUNCTION public.prevent_audit_ledger_mutation();
 
 ```sql
 -- Table: public.grievance_tickets
--- Purpose: Stores complaints and enforces IT Rules Rule 3(2) statutory timelines
+-- Purpose: Stores complaints, enforces human classification gates, and tracks disaggregated statutory deadlines
 CREATE TABLE public.grievance_tickets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ticket_reference TEXT NOT NULL UNIQUE, -- 'ISHTI-GRV-YYYY-XXXX'
     complainant_user_id UUID REFERENCES auth.users(id), -- NULL for anonymous public intake
     complainant_email TEXT NOT NULL,
     complainant_phone TEXT,
-    category TEXT NOT NULL CHECK (
-        category IN (
-            'CONTENT_IMPERSONATION_SEXUAL', -- Rule 3(2)(b): Action / takedown within 2 hours
-            'SPECIFIED_REMOVAL_PROVISO',    -- Proviso to Rule 3(2)(a)(i): Resolution within 36 hours
-            'COURT_GOVT_TAKEDOWN_ORDER',    -- Rule 3(1)(d): Removal / access disablement within 3 hours
-            'PRIVACY_DATA_BREACH',          -- DPDP Act / IT Rules: 7d disposal
-            'FRAUD_COMMERCE',               -- Consumer Protection / 7d disposal
-            'PANDIT_CONDUCT',               -- Marketplace Quality / 7d disposal
-            'EDITORIAL_FIRST_PARTY',        -- First-party content publisher issue
-            'OTHER_FEEDBACK'
+    
+    -- Intake Claim vs. Verified Legal Determination
+    intake_category TEXT NOT NULL CHECK (
+        intake_category IN (
+            'STATUTORY_INTERMEDIARY_GRIEVANCE', -- Devotee complaint alleging breach of intermediary due diligence
+            'VOLUNTARY_PLATFORM_COMPLAINT',     -- General feedback / platform service dissatisfaction
+            'EXPERT_PANDIT_SERVICE_DISPUTE',    -- Marketplace quality, booking dispute, refunds
+            'PRIVACY_RIGHTS_REQUEST',           -- DPDP Act / privacy enquiry (routed to privacy_requests)
+            'QUALIFYING_CONTENT_REMOVAL',       -- Complainant requests content removal (Rule 3(1)(b) / 3(2)(b))
+            'COURT_GOVT_ORDER_SUBMISSION',      -- Purported court order or government intimation (requires verification)
+            'OTHER_INQUIRY'
         )
     ),
-    priority TEXT NOT NULL DEFAULT 'STANDARD' CHECK (priority IN ('STANDARD', 'EXPEDITED_RULE_3_2_B', 'CRITICAL_LEGAL')),
+    verified_legal_category TEXT CHECK (
+        verified_legal_category IN (
+            'RULE_3_2_A_I_INTERMEDIARY_GRIEVANCE',    -- 24h ack / 7d disposal
+            'RULE_3_2_A_I_PROVISO_EXPEDITED_REMOVAL', -- 24h ack / 36h expedited removal
+            'RULE_3_2_B_EMERGENCY_TAKEDOWN',          -- 2h removal / disablement
+            'RULE_3_1_D_COURT_GOVT_ORDER',            -- 3h removal / disablement
+            'SECTION_69A_BLOCKING_DIRECTION',         -- Confidential statutory execution
+            'VOLUNTARY_FEEDBACK_NON_STATUTORY',       -- Internal operational SLTs only
+            'PANDIT_SERVICE_COMMERCIAL_DISPUTE',      -- Commercial dispute resolution
+            'PRIVACY_RIGHTS_REFERRED_TO_DSR',         -- Routed to public.privacy_requests
+            'REJECTED_OUT_OF_SCOPE'
+        )
+    ),
+    classification_status TEXT NOT NULL DEFAULT 'PENDING_CLASSIFICATION' CHECK (
+        classification_status IN ('PENDING_CLASSIFICATION', 'VERIFIED_STATUTORY', 'DETERMINED_NON_STATUTORY', 'DISPUTED')
+    ),
+    classification_notes TEXT,
+    classified_by UUID REFERENCES auth.users(id),
+    classified_at TIMESTAMPTZ,
+
+    priority TEXT NOT NULL DEFAULT 'STANDARD' CHECK (priority IN ('STANDARD', 'EXPEDITED_RULE_3_2_B', 'CRITICAL_LEGAL', 'HIGH_PRIORITY')),
     status TEXT NOT NULL DEFAULT 'SUBMITTED' CHECK (status IN ('SUBMITTED', 'ACKNOWLEDGED', 'UNDER_INVESTIGATION', 'RESOLVED', 'REJECTED')),
     description TEXT NOT NULL,
     evidence_urls TEXT[],
     assigned_officer_id UUID REFERENCES auth.users(id),
     
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    
-    -- Statutory Deadlines (Official IT Rules Updated 10 February 2026 including corrigendum)
-    statutory_ack_deadline TIMESTAMPTZ NOT NULL,   -- submitted_at + 24 hours (or 1h for Rule 3(1)(d); 2h for Rule 3(2)(b))
     acknowledged_at TIMESTAMPTZ,
-    statutory_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 7 days (or 2h for Rule 3(2)(b); 3h for Rule 3(1)(d); 36h for proviso)
     resolved_at TIMESTAMPTZ,
+    action_taken_at TIMESTAMPTZ, -- Exact timestamp of content removal or disablement
     
-    -- Internal Operational Service-Level Targets (SLTs)
-    internal_slt_ack_deadline TIMESTAMPTZ NOT NULL,      -- submitted_at + 12 hours (30m for Rule 3(2)(b) & Rule 3(1)(d))
-    internal_slt_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 48 hours (1h for Rule 3(2)(b) & Rule 3(1)(d); 12h for 36h proviso)
+    -- Disaggregated Statutory Deadlines (NULL until applicability & category are legally verified)
+    statutory_ack_deadline TIMESTAMPTZ,               -- Rule 3(2)(a)(i): submitted_at + 24 hours (NULL for Rule 3(1)(d) & Rule 3(2)(b))
+    statutory_disposal_deadline TIMESTAMPTZ,          -- Rule 3(2)(a)(i): submitted_at + 7 days (NULL for Rule 3(1)(d))
+    statutory_expedited_removal_deadline TIMESTAMPTZ, -- Proviso to Rule 3(2)(a)(i): verified_at + 36 hours (Rule 3(1)(b) removals)
+    statutory_removal_deadline TIMESTAMPTZ,           -- Rule 3(1)(d): 3 hours from receipt; Rule 3(2)(b): 2 hours from receipt
+    
+    -- Internal Operational Service-Level Targets (SLTs) — Strictly Distinguished from Statutory Mandates
+    internal_slt_triage_deadline TIMESTAMPTZ NOT NULL, -- Operational triage target: 30m (emergency/court claims) or 2h (standard)
+    internal_slt_ack_deadline TIMESTAMPTZ,             -- Platform operational ack target: 12h general, 30m emergency
+    internal_slt_review_deadline TIMESTAMPTZ,          -- Internal legal review target: 30m for court orders
+    internal_slt_removal_deadline TIMESTAMPTZ,         -- Internal removal target: 1h for Rule 3(1)(d) / Rule 3(2)(b)
+    internal_slt_disposal_deadline TIMESTAMPTZ,        -- Internal target for general resolution: 48 hours
     
     resolution_summary TEXT,
     rejection_reason TEXT
@@ -226,25 +253,28 @@ CREATE TABLE public.grievance_events (
     actor_id UUID REFERENCES auth.users(id), -- NULL for anonymous complainant update
     actor_role TEXT NOT NULL DEFAULT 'grievance_officer',
     event_type TEXT NOT NULL CHECK (
-        event_type IN ('ACKNOWLEDGED', 'INTERNAL_NOTE', 'STATUS_CHANGE', 'COMMUNICATION_SENT', 'RESOLVED', 'REJECTED')
+        event_type IN ('SUBMITTED', 'CLASSIFIED', 'ACKNOWLEDGED', 'INTERNAL_NOTE', 'STATUS_CHANGE', 'COMMUNICATION_SENT', 'RESOLVED', 'REJECTED')
     ),
     event_details JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_grievance_tickets_status ON public.grievance_tickets(status);
-CREATE INDEX idx_grievance_tickets_deadlines ON public.grievance_tickets(statutory_disposal_deadline);
+CREATE INDEX idx_grievance_tickets_classification ON public.grievance_tickets(classification_status);
+CREATE INDEX idx_grievance_tickets_removal_deadline ON public.grievance_tickets(statutory_removal_deadline);
+CREATE INDEX idx_grievance_tickets_disposal_deadline ON public.grievance_tickets(statutory_disposal_deadline);
 ```
 
-### 2.5. Server-Mediated Anonymous Intake RPC Function (Correction 4)
+### 2.5. Server-Mediated Anonymous Intake & Classification RPC Functions (Correction 4)
 
 ```sql
 -- Security Definer RPC: submit_anonymous_grievance
 -- Accepts sanitized grievance payload from server action; ZERO direct client insert access
+-- Enforces intake triage SLTs; does NOT silently bind statutory deadlines prior to human classification
 CREATE OR REPLACE FUNCTION public.submit_anonymous_grievance(
     p_complainant_email TEXT,
     p_complainant_phone TEXT,
-    p_category TEXT,
+    p_intake_category TEXT,
     p_description TEXT,
     p_evidence_urls TEXT[],
     p_ip_hash TEXT,
@@ -253,74 +283,51 @@ CREATE OR REPLACE FUNCTION public.submit_anonymous_grievance(
 RETURNS UUID AS $$
 DECLARE
     v_ticket_id UUID;
-    v_statutory_ack TIMESTAMPTZ;
-    v_statutory_disposal TIMESTAMPTZ;
-    v_internal_ack TIMESTAMPTZ;
-    v_internal_disposal TIMESTAMPTZ;
+    v_priority TEXT := 'STANDARD';
+    v_internal_triage TIMESTAMPTZ;
 BEGIN
     -- Input Length Sanitization
     IF length(p_complainant_email) > 255 OR length(p_description) > 4000 THEN
         RAISE EXCEPTION 'Payload field limits exceeded' USING ERRCODE = '22001';
     END IF;
 
-    -- Dynamic Deadline Calculation based on Official IT Rules (Updated 10 February 2026 including corrigendum)
-    IF p_category = 'CONTENT_IMPERSONATION_SEXUAL' THEN
-        -- Rule 3(2)(b): Action / takedown within 2 hours; 1h internal SLT target (zero pause permitted)
-        v_statutory_ack := now() + INTERVAL '2 hours';
-        v_statutory_disposal := now() + INTERVAL '2 hours';
-        v_internal_ack := now() + INTERVAL '30 minutes';
-        v_internal_disposal := now() + INTERVAL '1 hour';
-    ELSIF p_category = 'COURT_GOVT_TAKEDOWN_ORDER' THEN
-        -- Rule 3(1)(d): Removal / disabling access within 3 hours from receipt of qualifying order/intimation (zero pause permitted)
-        v_statutory_ack := now() + INTERVAL '1 hour';
-        v_statutory_disposal := now() + INTERVAL '3 hours';
-        v_internal_ack := now() + INTERVAL '30 minutes';
-        v_internal_disposal := now() + INTERVAL '1 hour';
-    ELSIF p_category = 'SPECIFIED_REMOVAL_PROVISO' THEN
-        -- Proviso to Rule 3(2)(a)(i): Resolution within 36 hours (pause rules require counsel confirmation)
-        v_statutory_ack := now() + INTERVAL '24 hours';
-        v_statutory_disposal := now() + INTERVAL '36 hours';
-        v_internal_ack := now() + INTERVAL '6 hours';
-        v_internal_disposal := now() + INTERVAL '12 hours';
+    -- Operational Triage Target Assignment (Statutory clocks assigned ONLY upon legal verification)
+    IF p_intake_category IN ('QUALIFYING_CONTENT_REMOVAL', 'COURT_GOVT_ORDER_SUBMISSION') THEN
+        v_priority := CASE WHEN p_intake_category = 'COURT_GOVT_ORDER_SUBMISSION' THEN 'CRITICAL_LEGAL' ELSE 'EXPEDITED_RULE_3_2_B' END;
+        v_internal_triage := now() + INTERVAL '30 minutes'; -- Immediate triage SLT
     ELSE
-        -- Standard Intermediary Grievance under Rule 3(2)(a)(i): 24h ack, 7d disposal (Feb 2026 amendment; pause rules require counsel confirmation)
-        v_statutory_ack := now() + INTERVAL '24 hours';
-        v_statutory_disposal := now() + INTERVAL '7 days';
-        v_internal_ack := now() + INTERVAL '12 hours';
-        v_internal_disposal := now() + INTERVAL '48 hours';
+        v_priority := 'STANDARD';
+        v_internal_triage := now() + INTERVAL '2 hours';
     END IF;
 
-    -- Insert Grievance Ticket
+    -- Insert Grievance Ticket with PENDING_CLASSIFICATION status
+    -- Statutory deadline fields remain NULL until verified determination is made
     INSERT INTO public.grievance_tickets (
         ticket_reference,
         complainant_user_id,
         complainant_email,
         complainant_phone,
-        category,
+        intake_category,
+        classification_status,
         priority,
         status,
         description,
         evidence_urls,
         submitted_at,
-        statutory_ack_deadline,
-        statutory_disposal_deadline,
-        internal_slt_ack_deadline,
-        internal_slt_disposal_deadline
+        internal_slt_triage_deadline
     ) VALUES (
         p_ticket_ref,
         NULL, -- Anonymous public intake
         p_complainant_email,
         p_complainant_phone,
-        p_category,
-        CASE WHEN p_category = 'CONTENT_IMPERSONATION_SEXUAL' THEN 'EXPEDITED_RULE_3_2_B' ELSE 'STANDARD' END,
+        p_intake_category,
+        'PENDING_CLASSIFICATION',
+        v_priority,
         'SUBMITTED',
         p_description,
         p_evidence_urls,
         now(),
-        v_statutory_ack,
-        v_statutory_disposal,
-        v_internal_ack,
-        v_internal_disposal
+        v_internal_triage
     ) RETURNING id INTO v_ticket_id;
 
     -- Record Event
@@ -334,9 +341,99 @@ BEGIN
         v_ticket_id,
         NULL,
         'anonymous_public',
-        'STATUS_CHANGE',
-        jsonb_build_object('status', 'SUBMITTED', 'ip_hash', p_ip_hash)
+        'SUBMITTED',
+        jsonb_build_object('status', 'SUBMITTED', 'intake_category', p_intake_category, 'ip_hash', p_ip_hash)
     );
+
+    RETURN v_ticket_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+-- Security Definer RPC: classify_and_bind_statutory_clock
+-- Executed strictly by authorized Compliance / Legal Officers to record verified applicability determination
+CREATE OR REPLACE FUNCTION public.classify_and_bind_statutory_clock(
+    p_ticket_id UUID,
+    p_verified_category TEXT,
+    p_officer_id UUID,
+    p_notes TEXT
+)
+RETURNS VOID AS $$
+DECLARE
+    v_stat_ack TIMESTAMPTZ := NULL;
+    v_stat_disp TIMESTAMPTZ := NULL;
+    v_stat_exp_rem TIMESTAMPTZ := NULL;
+    v_stat_rem TIMESTAMPTZ := NULL;
+    v_int_ack TIMESTAMPTZ := NULL;
+    v_int_rev TIMESTAMPTZ := NULL;
+    v_int_rem TIMESTAMPTZ := NULL;
+    v_int_disp TIMESTAMPTZ := NULL;
+BEGIN
+    IF p_verified_category = 'RULE_3_2_B_EMERGENCY_TAKEDOWN' THEN
+        -- Rule 3(2)(b): 2 Hours Removal (Zero statutory ack or disposal clock)
+        v_stat_rem := now() + INTERVAL '2 hours';
+        v_int_ack := now() + INTERVAL '30 minutes';
+        v_int_rem := now() + INTERVAL '1 hour';
+    ELSIF p_verified_category = 'RULE_3_1_D_COURT_GOVT_ORDER' THEN
+        -- Rule 3(1)(d): 3 Hours Removal/Disablement (Zero statutory ack or generic disposal clock)
+        v_stat_rem := now() + INTERVAL '3 hours';
+        v_int_rev := now() + INTERVAL '30 minutes';
+        v_int_rem := now() + INTERVAL '1 hour';
+    ELSIF p_verified_category = 'RULE_3_2_A_I_PROVISO_EXPEDITED_REMOVAL' THEN
+        -- Proviso to Rule 3(2)(a)(i): 24h statutory ack, 36h statutory expedited removal
+        v_stat_ack := now() + INTERVAL '24 hours';
+        v_stat_exp_rem := now() + INTERVAL '36 hours';
+        v_int_ack := now() + INTERVAL '6 hours';
+        v_int_rem := now() + INTERVAL '12 hours';
+    ELSIF p_verified_category = 'RULE_3_2_A_I_INTERMEDIARY_GRIEVANCE' THEN
+        -- Standard Intermediary Grievance under Rule 3(2)(a)(i): 24h ack, 7d disposal
+        v_stat_ack := now() + INTERVAL '24 hours';
+        v_stat_disp := now() + INTERVAL '7 days';
+        v_int_ack := now() + INTERVAL '12 hours';
+        v_int_disp := now() + INTERVAL '48 hours';
+    ELSE
+        -- Non-statutory categories (voluntary feedback, pandit disputes)
+        v_int_ack := now() + INTERVAL '24 hours';
+        v_int_disp := now() + INTERVAL '72 hours';
+    END IF;
+
+    UPDATE public.grievance_tickets
+    SET verified_legal_category = p_verified_category,
+        classification_status = 'VERIFIED_STATUTORY',
+        classification_notes = p_notes,
+        classified_by = p_officer_id,
+        classified_at = now(),
+        statutory_ack_deadline = v_stat_ack,
+        statutory_disposal_deadline = v_stat_disp,
+        statutory_expedited_removal_deadline = v_stat_exp_rem,
+        statutory_removal_deadline = v_stat_rem,
+        internal_slt_ack_deadline = v_int_ack,
+        internal_slt_review_deadline = v_int_rev,
+        internal_slt_removal_deadline = v_int_rem,
+        internal_slt_disposal_deadline = v_int_disp
+    WHERE id = p_ticket_id;
+
+    INSERT INTO public.grievance_events (
+        ticket_id,
+        actor_id,
+        actor_role,
+        event_type,
+        event_details
+    ) VALUES (
+        p_ticket_id,
+        p_officer_id,
+        'compliance_officer',
+        'CLASSIFIED',
+        jsonb_build_object(
+            'verified_category', p_verified_category,
+            'statutory_removal_deadline', v_stat_rem,
+            'statutory_expedited_removal_deadline', v_stat_exp_rem,
+            'statutory_ack_deadline', v_stat_ack,
+            'statutory_disposal_deadline', v_stat_disp,
+            'notes', p_notes
+        )
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
     RETURN v_ticket_id;
 END;
@@ -346,6 +443,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 REVOKE EXECUTE ON FUNCTION public.submit_anonymous_grievance FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.submit_anonymous_grievance FROM anon;
 GRANT EXECUTE ON FUNCTION public.submit_anonymous_grievance TO service_role;
+
+REVOKE EXECUTE ON FUNCTION public.classify_and_bind_statutory_clock FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.classify_and_bind_statutory_clock FROM anon;
+GRANT EXECUTE ON FUNCTION public.classify_and_bind_statutory_clock TO service_role;
 ```
 
 ---
@@ -394,21 +495,13 @@ CREATE TABLE public.tax_configuration_rules (
 
 ---
 
-## 5. Zero-Downtime Migration Sequence & Rollback Plan
-
-### Sequential DDL File Plan (Milestone M06 Execution)
-1. `supabase/migrations/20261120000001_m06_user_consents.sql`: Creates `public.user_consents` and `public.consent_audit_history` with RLS.
-2. `supabase/migrations/20261120000002_m06_privacy_requests.sql`: Creates `public.privacy_requests` with multi-copy tracking fields and RLS.
-3. `supabase/migrations/20261120000003_m06_audit_ledger.sql`: Creates `public.audit_ledger`, BRIN indexes, and `trg_audit_ledger_immutable`.
-4. `supabase/migrations/20261120000004_m06_grievance_system.sql`: Creates `public.grievance_tickets`, `public.grievance_events`, and `submit_anonymous_grievance()` RPC.
-
 ## 5. Zero-Downtime Migration Sequence & Comprehensive Rollback Architecture
 
 ### 5.1. Sequential DDL File Plan (Milestone M06 Execution)
 1. `supabase/migrations/20261120000001_m06_user_consents.sql`: Creates `public.user_consents` and `public.consent_audit_history` with RLS.
 2. `supabase/migrations/20261120000002_m06_privacy_requests.sql`: Creates `public.privacy_requests` with multi-copy tracking fields and RLS.
 3. `supabase/migrations/20261120000003_m06_audit_ledger.sql`: Creates `public.audit_ledger`, BRIN indexes, and `trg_audit_ledger_immutable`.
-4. `supabase/migrations/20261120000004_m06_grievance_system.sql`: Creates `public.grievance_tickets`, `public.grievance_events`, and `submit_anonymous_grievance()` RPC.
+4. `supabase/migrations/20261120000004_m06_grievance_system.sql`: Creates `public.grievance_tickets`, `public.grievance_events`, and `submit_anonymous_grievance()` / `classify_and_bind_statutory_clock()` RPCs.
 
 ### 5.2. Rigorous Migration Reversibility & Rollback Categorization
 > [!CAUTION]

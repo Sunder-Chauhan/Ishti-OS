@@ -72,18 +72,28 @@ pyramid
   6. *Lawful Retention Documentation:* Inspect `public.privacy_requests.retained_records_summary`.
      * *Assertion:* Documents financial transaction IDs retained pursuant to Income-tax Act, 2025 §62 (7-year retention exception).
 
-### 2.4. Grievance Redressal IT Rules Dual-Clock SLA Verification (Correction 2)
-- **Objective:** Verify that grievance tickets correctly calculate statutory legal deadlines vs internal operational targets based on classification under official consolidated IT Rules updated 10 February 2026 including the February 2026 corrigendum.
+### 2.4. Grievance Redressal IT Rules Disaggregated SLA & Classification Verification (Correction 2)
+- **Objective:** Verify that grievance tickets correctly enforce human classification gates and disaggregated statutory deadlines vs internal operational targets based on classification under official consolidated IT Rules updated 10 February 2026 including the February 2026 corrigendum.
 - **Harness:** `scripts/test-grievance-slas.ts`.
 - **Test Scenarios:**
-  1. Submit Rule 3(2)(b) emergency complaint (non-consensual imagery / sexual acts / impersonation).
-     * *Assertion:* `statutory_ack_deadline` = +2h, `statutory_disposal_deadline` = **+2 Hours**; `internal_slt_disposal_deadline` = **+1 Hour** (30m ack); zero pause permitted.
-  2. Submit Proviso to Rule 3(2)(a)(i) specified content removal request.
-     * *Assertion:* `statutory_ack_deadline` = +24h, `statutory_disposal_deadline` = **+36 Hours**; `internal_slt_disposal_deadline` = **+12 Hours** (6h ack); pause rules require counsel confirmation.
-  3. Submit Rule 3(1)(d) government/court takedown notification.
-     * *Assertion:* `statutory_ack_deadline` = +1h, `statutory_disposal_deadline` = **+3 Hours**; `internal_slt_disposal_deadline` = **+1 Hour** (30m ack); zero pause permitted.
-  4. Submit standard devotee privacy/service grievance under Rule 3(2)(a)(i).
-     * *Assertion:* `statutory_ack_deadline` = +24 Hours, `statutory_disposal_deadline` = **+7 Days** (reflecting Feb 2026 amendment); `internal_slt_disposal_deadline` = **+48 Hours** (12h ack); pause rules require counsel confirmation.
+  1. *Intake Review Queue & Classification Gate:*
+     * Submit ticket with intake claim `QUALIFYING_CONTENT_REMOVAL` via `submit_anonymous_grievance`.
+     * *Assertion:* Ticket is created with `classification_status` = `'PENDING_CLASSIFICATION'`, `internal_slt_triage_deadline` = +30m, and all statutory deadline fields (`statutory_removal_deadline`, `statutory_expedited_removal_deadline`, `statutory_ack_deadline`, `statutory_disposal_deadline`) are strictly `NULL`.
+  2. *Verified Rule 3(2)(b) Emergency Removal Determination:*
+     * Execute `classify_and_bind_statutory_clock(ticketId, 'RULE_3_2_B_EMERGENCY_TAKEDOWN', officerId, notes)`.
+     * *Assertion:* `statutory_removal_deadline` = **+2 Hours**; `statutory_ack_deadline` = `NULL`; `statutory_disposal_deadline` = `NULL`; `internal_slt_removal_deadline` = **+1 Hour**; `internal_slt_ack_deadline` = **+30 Minutes**; zero pause permitted.
+  3. *Verified Proviso to Rule 3(2)(a)(i) Expedited Removal Determination:*
+     * Execute `classify_and_bind_statutory_clock(ticketId, 'RULE_3_2_A_I_PROVISO_EXPEDITED_REMOVAL', officerId, notes)`.
+     * *Assertion:* `statutory_ack_deadline` = **+24 Hours**; `statutory_expedited_removal_deadline` = **+36 Hours**; `statutory_disposal_deadline` = `NULL`; `internal_slt_ack_deadline` = **+6 Hours**; `internal_slt_removal_deadline` = **+12 Hours**; pause rules require counsel confirmation.
+  4. *Verified Rule 3(1)(d) Court / Government Takedown Determination:*
+     * Execute `classify_and_bind_statutory_clock(ticketId, 'RULE_3_1_D_COURT_GOVT_ORDER', officerId, notes)`.
+     * *Assertion:* `statutory_removal_deadline` = **+3 Hours**; `statutory_ack_deadline` = `NULL` (no statutory ack obligation under 3(1)(d)); `statutory_disposal_deadline` = `NULL` (not a generic grievance disposal); `internal_slt_review_deadline` = **+30 Minutes**; `internal_slt_removal_deadline` = **+1 Hour**; zero pause permitted.
+  5. *Verified Rule 3(2)(a)(i) Standard Intermediary Grievance:*
+     * Execute `classify_and_bind_statutory_clock(ticketId, 'RULE_3_2_A_I_INTERMEDIARY_GRIEVANCE', officerId, notes)`.
+     * *Assertion:* `statutory_ack_deadline` = **+24 Hours**; `statutory_disposal_deadline` = **+7 Days** (reflecting Feb 2026 amendment); `statutory_removal_deadline` = `NULL`; `statutory_expedited_removal_deadline` = `NULL`; `internal_slt_ack_deadline` = **+12 Hours**; `internal_slt_disposal_deadline` = **+48 Hours**; pause rules require counsel confirmation.
+  6. *Voluntary Platform Complaint / Service Dispute:*
+     * Execute `classify_and_bind_statutory_clock(ticketId, 'VOLUNTARY_FEEDBACK_NON_STATUTORY', officerId, notes)`.
+     * *Assertion:* All statutory deadlines remain `NULL`; `internal_slt_ack_deadline` = +24 Hours; `internal_slt_disposal_deadline` = +72 Hours.
 
 ### 2.5. Merkle Hash Chain Corruption & Tamper Detection (Correction 6)
 - **Objective:** Prove that manual modification of an audit record by a rogue database administrator is immediately detected by the integrity daemon.
