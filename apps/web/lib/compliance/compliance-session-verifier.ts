@@ -876,6 +876,7 @@ export interface BoundedBodyResult<T = Record<string, unknown>> {
     | "BAD_REQUEST"
     | "EMPTY_BODY"
     | "STREAM_READ_ERROR"
+    | "INVALID_MAX_BYTES"
     | string;
   statusCode?: number;
 }
@@ -885,22 +886,26 @@ export interface BoundedBodyResult<T = Record<string, unknown>> {
  * Content-Length verification, UTF-8 safety, and JSON object validation.
  *
  * Security Invariants:
- * 1. Requires a ReadableStream: Consumes request.body as a ReadableStream chunk by chunk, tracking byte length.
+ * 1. maxBytes Validation: Validates that maxBytes is a finite positive integer; rejects NaN,
+ *    Infinity, zero, negative, and fractional values with 400 INVALID_MAX_BYTES.
+ * 2. Requires a ReadableStream: Consumes request.body as a ReadableStream chunk by chunk, tracking byte length.
  *    If no readable stream is available, rejects immediately with 400 MISSING_REQUEST_STREAM.
- * 2. No Unbounded Buffering: There is NO text() fallback or unbounded memory buffering.
- * 3. Early Abort / Cancel on Max Bytes: Cancels the stream reader immediately if total bytes exceed maxBytes (default 64 KB),
+ * 3. Protected Reader Acquisition: Acquires stream reader inside a protected error boundary. If reader
+ *    acquisition fails (e.g. stream is locked or invalid), safely returns 400 STREAM_READ_ERROR.
+ * 4. No Unbounded Buffering: There is NO text() fallback, arrayBuffer() fallback, or unbounded memory buffering.
+ * 5. Early Abort / Cancel on Max Bytes: Cancels the stream reader immediately if total bytes exceed maxBytes (default 64 KB),
  *    preventing memory exhaustion from unbounded requests.
- * 4. Content-Length Header Validation & Mismatch Detection:
+ * 6. Content-Length Header Validation & Mismatch Detection:
  *    - If present, verifies it consists strictly of decimal digits.
  *    - Rejects malformed Content-Length (non-numeric, negative, float, NaN) with 400 MALFORMED_CONTENT_LENGTH.
  *    - Rejects oversized Content-Length (> maxBytes) with 413 PAYLOAD_TOO_LARGE before reading stream.
  *    - If actual streamed bytes exceed declared Content-Length, cancels the stream immediately and rejects with 400 CONTENT_LENGTH_MISMATCH.
  *    - If stream ends with fewer bytes than declared Content-Length, rejects with 400 CONTENT_LENGTH_MISMATCH.
- * 5. Zero Trust in Content-Length Alone:
+ * 7. Zero Trust in Content-Length Alone:
  *    - Even if Content-Length is missing or claims to be small (e.g. chunked transfer),
  *      the stream reader enforces the hard byte cap while reading.
- * 6. Safe UTF-8 Decoding: Uses TextDecoder("utf-8", { fatal: true }) to reject invalid byte sequences with 400 INVALID_ENCODING.
- * 7. Safe JSON Object Validation: Ensures body parses to a non-null, non-array object with 400 MALFORMED_JSON or 400 BAD_REQUEST.
+ * 8. Safe UTF-8 Decoding: Uses TextDecoder("utf-8", { fatal: true }) to reject invalid byte sequences with 400 INVALID_ENCODING.
+ * 9. Safe JSON Object Validation: Ensures body parses to a non-null, non-array object with 400 MALFORMED_JSON or 400 BAD_REQUEST.
  */
 export async function readBoundedJsonBody<T = Record<string, unknown>>(
   request: {
@@ -909,7 +914,22 @@ export async function readBoundedJsonBody<T = Record<string, unknown>>(
   },
   maxBytes = 65536
 ): Promise<BoundedBodyResult<T>> {
-  // 1. Content-Length header verification if present
+  // 1. Validate maxBytes parameter (Pass 8.3)
+  if (
+    typeof maxBytes !== "number" ||
+    !Number.isFinite(maxBytes) ||
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes <= 0
+  ) {
+    return {
+      ok: false,
+      error: "Invalid maxBytes parameter. Must be a finite positive integer.",
+      code: "INVALID_MAX_BYTES",
+      statusCode: 400,
+    };
+  }
+
+  // 2. Content-Length header verification if present
   let declaredContentLength: number | null = null;
   const contentLengthHeader = request.headers.get("content-length");
   if (contentLengthHeader !== null && contentLengthHeader !== undefined && contentLengthHeader.trim() !== "") {
@@ -942,7 +962,7 @@ export async function readBoundedJsonBody<T = Record<string, unknown>>(
     declaredContentLength = parsedLength;
   }
 
-  // 2. Require a readable request stream (Pass 8.2: No text() fallback)
+  // 3. Require a readable request stream (Pass 8.2: No text() fallback)
   if (!request.body || typeof request.body.getReader !== "function") {
     return {
       ok: false,
@@ -952,8 +972,20 @@ export async function readBoundedJsonBody<T = Record<string, unknown>>(
     };
   }
 
-  // 3. Stream consumption with chunk-by-chunk bounded counting
-  const reader = request.body.getReader();
+  // 4. Acquire stream reader within protected error boundary (Pass 8.3)
+  let reader: ReadableStreamDefaultReader<Uint8Array>;
+  try {
+    reader = request.body.getReader();
+  } catch {
+    return {
+      ok: false,
+      error: "Error acquiring request stream reader.",
+      code: "STREAM_READ_ERROR",
+      statusCode: 400,
+    };
+  }
+
+  // 5. Stream consumption with chunk-by-chunk bounded counting
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
 

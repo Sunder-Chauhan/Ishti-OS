@@ -233,3 +233,16 @@ The **ISHTI Legal Decision Log (LDL)** records formal architectural decisions th
   2. *Content-Length Mismatch Immediate Abort:* If actual streamed bytes exceed declared `Content-Length`, the stream reader is cancelled immediately (`await reader.cancel("CONTENT_LENGTH_MISMATCH")`) and rejected with 400 `CONTENT_LENGTH_MISMATCH`.
   3. *Regression Verification:* 10 comprehensive tests in `scripts/run-m05-tests.ts` verify all scenarios (159/159 M05 tests passing, 110/110 security regression tests passing, clean typecheck, clean Next.js 31/31 build).
 - **Status:** APPROVED & IMPLEMENTED LOCALLY. Production Supabase (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) strictly quarantined. Distributed rate limiting retained as launch dependency.
+
+---
+
+### 2026-11-19: LDL-017 — Pass 8.3: Bounded Stream Reader Defensive Hardening & Parameter Validation
+- **Statutory Context:** DPDP Act, 2023 Section 8(5) (Obligation to implement reasonable security safeguards against operational failures and denial of service); IT Act, 2000 Section 43 & Section 66; CERT-In Cyber Security Directions 2022 (System resilience, error boundary defense, and parameter validation).
+- **Legal & Technical Finding:**
+  1. *Unprotected Stream Reader Boundary:* In Pass 8.2, `request.body.getReader()` was called outside a try/catch block. If an attacker supplied a stream that had already been locked by an earlier reader or threw on acquisition, the resulting unhandled exception could disrupt endpoint processing rather than returning a deterministic HTTP 400 error.
+  2. *Byte Parameter Weakening:* Missing validation of `maxBytes` meant non-positive, NaN, Infinity, or fractional numbers could weaken byte limit enforcement.
+- **Architectural Decision:**
+  1. *Protected Reader Acquisition Boundary:* `request.body.getReader()` is now wrapped in a dedicated error boundary. Stream acquisition failure safely returns 400 `STREAM_READ_ERROR` without falling back to unmetered reading methods.
+  2. *Strict Parameter Pre-Flight Validation:* `maxBytes` is verified to be a finite positive integer (`typeof === "number" && Number.isFinite() && Number.isSafeInteger() && > 0`). Invalid values are rejected with 400 `INVALID_MAX_BYTES`.
+  3. *Invariants Maintained:* Zero changes to rate limiting (no LRU, active entries preserved), zero changes to proxy policy, zero changes to 64 KB limit.
+- **Status:** APPROVED & IMPLEMENTED LOCALLY. Production Supabase (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) strictly quarantined. Distributed rate limiting retained as launch dependency.

@@ -355,4 +355,12 @@ Scope & Gates:
   - [x] Security regression suite 110/110 passing (269 tests total across suites, 0 failures); TypeScript clean (0 errors); Next.js 31/31 routes compiled
   - [x] Decision log updated (ADR-033 in `docs/DECISION_LOG.md`; LDL-016 in `docs/legal/ISHTI_LEGAL_DECISION_LOG.md`)
   - [x] Final review report completed: `docs/M05_PASS_8_2_FINAL_REVIEW_REPORT.md` with status `READY FOR INDEPENDENT COUNSEL REVIEW`
+- [x] Milestone M05 Pass 8.3: Bounded Stream Reader Defensive Hardening (ADR-034):
+  - [x] Wrapped `request.body.getReader()` inside protected error boundary; locked/invalid stream acquisition safely returns 400 `STREAM_READ_ERROR` without fallback
+  - [x] Added strict pre-flight validation on `maxBytes`: rejects 0, negative, NaN, Infinity, and fractional numbers with 400 `INVALID_MAX_BYTES`
+  - [x] Preserved all existing security invariants: no LRU eviction, active rate limits preserved, no legacy proxy fallback, no `request.text()`, 64 KB default preserved
+  - [x] Expanded test suite to 169/169 M05 tests (10 dedicated Pass 8.3 tests covering locked stream, invalid stream object, maxBytes = 0, negative maxBytes, maxBytes = NaN, maxBytes = Infinity, fractional maxBytes, normal stream, oversized stream cancellation, and text fallback rejection)
+  - [x] Security regression suite 110/110 passing (279 tests total across suites, 0 failures); TypeScript clean (0 errors); Next.js 31/31 routes compiled
+  - [x] Decision log updated (ADR-034 in `docs/DECISION_LOG.md`; LDL-017 in `docs/legal/ISHTI_LEGAL_DECISION_LOG.md`)
+  - [x] Hardening report completed: `docs/M05_PASS_8_3_DEFENSIVE_HARDENING_REPORT.md` with status `READY FOR INDEPENDENT COUNSEL REVIEW`
 

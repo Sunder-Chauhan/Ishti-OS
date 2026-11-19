@@ -1755,6 +1755,210 @@ async function runM05Tests() {
   );
 
   // --------------------------------------------------------------------------
+  // Pass 8.3: Bounded Stream Reader Defensive Hardening Suite (Tests 1-10)
+  // --------------------------------------------------------------------------
+  console.log("\n[PASS 8.3] Executing Bounded Stream Reader Defensive Hardening Suite...");
+
+  // Test 1: Locked ReadableStream acquisition failure returns 400 STREAM_READ_ERROR
+  const p83LockedStream = new ReadableStream<Uint8Array>();
+  const p83PreExistingReader = p83LockedStream.getReader(); // Locks the stream!
+  const p83Test1 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: p83LockedStream,
+    },
+    65536
+  );
+  assert(
+    p83Test1.ok === false &&
+      p83Test1.statusCode === 400 &&
+      p83Test1.code === "STREAM_READ_ERROR",
+    "G5",
+    "Pass 8.3 Test 1: Locked ReadableStream acquisition failure returns 400 STREAM_READ_ERROR"
+  );
+  p83PreExistingReader.releaseLock();
+
+  // Test 2: Invalid stream object throwing on getReader returns 400 STREAM_READ_ERROR
+  const p83InvalidStreamObj = {
+    getReader() {
+      throw new Error("Corrupted stream descriptor");
+    },
+  } as unknown as ReadableStream<Uint8Array>;
+  const p83Test2 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: p83InvalidStreamObj,
+    },
+    65536
+  );
+  assert(
+    p83Test2.ok === false &&
+      p83Test2.statusCode === 400 &&
+      p83Test2.code === "STREAM_READ_ERROR",
+    "G5",
+    "Pass 8.3 Test 2: Invalid stream object throwing on getReader returns 400 STREAM_READ_ERROR"
+  );
+
+  // Test 3: maxBytes = 0 rejected with 400 INVALID_MAX_BYTES
+  const p83Test3 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: new ReadableStream<Uint8Array>(),
+    },
+    0
+  );
+  assert(
+    p83Test3.ok === false &&
+      p83Test3.statusCode === 400 &&
+      p83Test3.code === "INVALID_MAX_BYTES",
+    "G5",
+    "Pass 8.3 Test 3: maxBytes = 0 rejected with 400 INVALID_MAX_BYTES"
+  );
+
+  // Test 4: Negative maxBytes rejected with 400 INVALID_MAX_BYTES
+  const p83Test4 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: new ReadableStream<Uint8Array>(),
+    },
+    -1024
+  );
+  assert(
+    p83Test4.ok === false &&
+      p83Test4.statusCode === 400 &&
+      p83Test4.code === "INVALID_MAX_BYTES",
+    "G5",
+    "Pass 8.3 Test 4: Negative maxBytes rejected with 400 INVALID_MAX_BYTES"
+  );
+
+  // Test 5: maxBytes = NaN rejected with 400 INVALID_MAX_BYTES
+  const p83Test5 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: new ReadableStream<Uint8Array>(),
+    },
+    NaN
+  );
+  assert(
+    p83Test5.ok === false &&
+      p83Test5.statusCode === 400 &&
+      p83Test5.code === "INVALID_MAX_BYTES",
+    "G5",
+    "Pass 8.3 Test 5: maxBytes = NaN rejected with 400 INVALID_MAX_BYTES"
+  );
+
+  // Test 6: maxBytes = Infinity rejected with 400 INVALID_MAX_BYTES
+  const p83Test6 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: new ReadableStream<Uint8Array>(),
+    },
+    Infinity
+  );
+  assert(
+    p83Test6.ok === false &&
+      p83Test6.statusCode === 400 &&
+      p83Test6.code === "INVALID_MAX_BYTES",
+    "G5",
+    "Pass 8.3 Test 6: maxBytes = Infinity rejected with 400 INVALID_MAX_BYTES"
+  );
+
+  // Test 7: Fractional maxBytes rejected with 400 INVALID_MAX_BYTES
+  const p83Test7 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: new ReadableStream<Uint8Array>(),
+    },
+    65536.5
+  );
+  assert(
+    p83Test7.ok === false &&
+      p83Test7.statusCode === 400 &&
+      p83Test7.code === "INVALID_MAX_BYTES",
+    "G5",
+    "Pass 8.3 Test 7: Fractional maxBytes rejected with 400 INVALID_MAX_BYTES"
+  );
+
+  // Test 8: Normal valid stream still works
+  const p83ValidPayload = JSON.stringify({ incidentType: "UNAUTHORIZED_ACCESS", severity: "HIGH" });
+  let p83ValidRead = false;
+  const p83ValidStream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (!p83ValidRead) {
+        p83ValidRead = true;
+        controller.enqueue(new TextEncoder().encode(p83ValidPayload));
+      } else {
+        controller.close();
+      }
+    },
+  });
+  const p83Test8 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: p83ValidStream,
+    },
+    65536
+  );
+  assert(
+    p83Test8.ok === true &&
+      (p83Test8.data as Record<string, unknown>)?.incidentType === "UNAUTHORIZED_ACCESS",
+    "G5",
+    "Pass 8.3 Test 8: Normal valid stream parses successfully"
+  );
+
+  // Test 9: Oversized stream still cancels
+  let p83CancelReason: unknown = null;
+  const p83Chunk = new Uint8Array(40000).fill(65);
+  let p83ChunkIdx = 0;
+  const p83OverStream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (p83ChunkIdx < 3) {
+        p83ChunkIdx++;
+        controller.enqueue(p83Chunk); // 120 KB > 64 KB
+      } else {
+        controller.close();
+      }
+    },
+    cancel(reason) {
+      p83CancelReason = reason;
+    },
+  });
+  const p83Test9 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: p83OverStream,
+    },
+    65536
+  );
+  assert(
+    p83Test9.ok === false &&
+      p83Test9.statusCode === 413 &&
+      p83Test9.code === "PAYLOAD_TOO_LARGE" &&
+      p83CancelReason === "PAYLOAD_TOO_LARGE",
+    "G5",
+    "Pass 8.3 Test 9: Oversized stream cancels reader and returns 413 PAYLOAD_TOO_LARGE"
+  );
+
+  // Test 10: Text-only request still cannot invoke text()
+  let p83TextInvoked = false;
+  const p83TextOnlyReq = {
+    headers: { get: () => null },
+    text: async () => {
+      p83TextInvoked = true;
+      return JSON.stringify({ exploit: "unbounded_text" });
+    },
+  };
+  const p83Test10 = await readBoundedJsonBody(p83TextOnlyReq as any, 65536);
+  assert(
+    p83Test10.ok === false &&
+      p83Test10.statusCode === 400 &&
+      p83Test10.code === "MISSING_REQUEST_STREAM" &&
+      !p83TextInvoked,
+    "G5",
+    "Pass 8.3 Test 10: Text-only request still cannot invoke text() and returns 400 MISSING_REQUEST_STREAM"
+  );
+
+  // --------------------------------------------------------------------------
   // Summary
   // --------------------------------------------------------------------------
   console.log("\n================================================================================");

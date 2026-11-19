@@ -755,3 +755,30 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Hosted Environment Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and untouched.
 - **Release Verdict:** **`READY FOR INDEPENDENT COUNSEL REVIEW`** (Technical safeguards and legal baselines verified; distributed rate limiting retained as M06 launch dependency).
 
+---
+
+## 2026-11-19: ADR-034 — Pass 8.3: Bounded Stream Reader Defensive Hardening & Argument Validation
+- **Status:** APPROVED & IMPLEMENTED LOCALLY
+- **Context:** Following independent code review of Pass 8.2 (commit `dedf922`), two residual defensive hardening items were identified in `readBoundedJsonBody()`:
+  1. *Unprotected Reader Acquisition:* `request.body.getReader()` was invoked outside of the helper's `try...catch` boundary. If reader acquisition threw an error (e.g. stream already locked by another reader or corrupted stream descriptor), it caused an unhandled runtime exception rather than a structured HTTP 400 rejection.
+  2. *Unvalidated `maxBytes` Argument:* The helper accepted `maxBytes` without validating that it was a finite positive integer. Passing `NaN`, `Infinity`, zero, negative values, or fractional floats could weaken byte-limit enforcement.
+- **Decision:**
+  1. **Protected Reader Acquisition:**
+     - Wrapped `request.body.getReader()` in a dedicated `try...catch` block.
+     - On failure (locked stream, invalid stream object), returns structured rejection `{ ok: false, statusCode: 400, code: "STREAM_READ_ERROR", error: "Error acquiring request stream reader." }`.
+     - Never falls back to `request.text()`, `arrayBuffer()`, or any unbounded reading mechanism.
+  2. **Strict `maxBytes` Argument Validation:**
+     - Added strict pre-flight validation: `typeof maxBytes === "number" && Number.isFinite(maxBytes) && Number.isSafeInteger(maxBytes) && maxBytes > 0`.
+     - Rejects `0`, negative numbers, `NaN`, `Infinity`, and fractional floats with structured error `{ ok: false, statusCode: 400, code: "INVALID_MAX_BYTES" }`.
+  3. **Preservation of Invariants:**
+     - No reintroduction of LRU eviction; active rate-limit state preserved.
+     - No reintroduction of `TRUSTED_PROXY="true"` fallback or `request.text()`.
+     - 64 KB default limit strictly preserved.
+- **Verification Evidence:**
+  - Automated M05 Suite (`scripts/run-m05-tests.ts`): **169/169 PASSED** (0 failures; 10 dedicated Pass 8.3 tests covering locked stream, invalid stream object, maxBytes = 0, negative maxBytes, maxBytes = NaN, maxBytes = Infinity, fractional maxBytes, normal stream, oversized stream cancellation, and text-only fallback attempt rejection).
+  - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all workspaces.
+  - Production Web Application Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** cleanly.
+  - Hosted Environment Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and untouched.
+- **Release Verdict:** **`READY FOR INDEPENDENT COUNSEL REVIEW`** (Technical safeguards and legal baselines verified; distributed rate limiting retained as M06 launch dependency).
+
