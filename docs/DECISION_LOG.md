@@ -782,3 +782,40 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Hosted Environment Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and untouched.
 - **Release Verdict:** **`READY FOR INDEPENDENT COUNSEL REVIEW`** (Technical safeguards and legal baselines verified; distributed rate limiting retained as M06 launch dependency).
 
+---
+
+## 2026-11-19: ADR-035 — Milestone M06: Backend Persistence, Distributed Invariants & Production Infrastructure Architecture Framework
+- **Status:** APPROVED & DOCUMENTED (TRANSITION PHASE)
+- **Context:** Following the completion of Milestone M05 (Passes 1 through 8.3), an exhaustive consolidated acceptance review was performed. While M05 successfully established statutory alignment (G.S.R. 843(E)), tax law reconciliation (0.5% GST TCS, 0.1% TDS), zero-LRU rate limiter saturation safety, and bounded streaming body consumption (169/169 M05 tests, 110/110 security tests passing), it left operational gaps: rate limiting is process-local, grievance tickets and audit events reside in memory, and privacy erasure workflows are simulated prototypes. Milestone M06 is chartered to implement production-grade backend persistence and distributed invariants.
+- **Decision:**
+  1. **Modular Monolith Target Architecture:**
+     - Maintain a clean Modular Monolith in the Next.js 15 App Router backed by Supabase PostgreSQL 18, edge caching, and Cloudflare Authenticated Origin Pulls (AOP).
+     - Partition M06 into 7 isolated workstreams: M06.1 (Distributed Rate Limiting & Abuse Prevention), M06.2 (Durable Consent & Subject Rights Engine), M06.3 (Tamper-Resistant Audit Trail & WORM Storage), M06.4 (Production Grievance Redressal System), M06.5 (Financial Ledger, Invoicing & Tax Engine), M06.6 (Scripture Catalog Persistence & Search), and M06.7 (Operational Hardening & Observability).
+  2. **Database Invariants & Schema Baseline:**
+     - Author schemas for `public.user_consents`, `public.consent_audit_history`, `public.privacy_requests`, `public.audit_ledger`, `public.grievance_tickets`, `public.grievance_events`, `public.financial_transactions`, and `public.refund_records`.
+     - Enforce 100% Row Level Security (RLS) on all newly created tables.
+     - Implement database trigger `trg_audit_ledger_immutable` on `public.audit_ledger` to strictly prevent `UPDATE` and `DELETE` queries, even by administrative roles.
+     - Utilize BRIN indexing on append-only audit timestamps and partial unique indexes for atomic booking slots and active privacy requests.
+     - Enforce minor-unit integer arithmetic (`gross_amount_paise`, `gst_amount_paise`, `tcs_amount_paise`, `tds_amount_paise`) across all commerce tables.
+  3. **Distributed Concurrency & Rate Limiting Strategy:**
+     - Adopted **Option A (Managed Serverless Stack)**: Upstash Redis Serverless for sub-millisecond sliding-window rate limiting and distributed locks, paired with Supabase Pro PostgreSQL and Cloudflare R2 WORM storage.
+     - Maintained automated fallback to local `BoundedRateLimiter` (with safe saturation quota preservation) and PostgreSQL advisory locking (`public.check_rate_limit()`) when Redis is unavailable.
+  4. **Cryptographic Shredding for Statutory Privacy Erasure:**
+     - Implemented an asynchronous erasure worker architecture that cryptographically shreds per-profile AES-256 Data Encryption Keys (DEKs), rendering encrypted astrological birth records mathematically irrecoverable under DPDP Act §12(3) / GDPR Art 17.
+  5. **Strict Governance & Zero-Code-Change Boundary:**
+     - Approved the 8 comprehensive planning deliverables: `M05_CONSOLIDATED_ACCEPTANCE_REVIEW.md`, `M05_FINAL_GAP_REGISTER.md`, `M06_ARCHITECTURE_AND_IMPLEMENTATION_PLAN.md`, `M06_DATABASE_AND_MIGRATION_PLAN.md`, `M06_SECURITY_AND_FAILURE_MODE_PLAN.md`, `M06_TEST_AND_VERIFICATION_STRATEGY.md`, `M06_COST_AND_INFRASTRUCTURE_OPTIONS.md`, and `M06_HUMAN_APPROVALS_REQUIRED.md`.
+     - Strictly enforced zero database mutation and zero application code modification during the review and planning phase.
+- **Verification Evidence:**
+  - Automated M05 Compliance Suite (`scripts/run-m05-tests.ts`): **169/169 PASSED** (0 failures).
+  - Security & Cryptography Regression Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across `@spiritual-os/mobile` and `@spiritual-os/web`.
+  - Production Web Application Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** cleanly.
+  - Hosted Database Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase instances strictly quarantined, untouched, and un-mutated.
+- **Formal Acceptance Verdicts:**
+  - Architecture: **`PASS`**
+  - Implementation: **`PASS WITH LIMITATIONS`** (Ingress & math verified; persistence simulated)
+  - Security Engineering: **`PASS`**
+  - Operational Readiness: **`NOT READY`** (Requires M06 distributed persistence & origin shielding)
+  - Legal Readiness: **`NOT READY`** (Requires formal legal counsel & CA written sign-offs)
+  - Commercial Launch Readiness: **`NOT READY`** (Blocked on M06 implementation and statutory approvals)
+

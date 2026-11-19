@@ -14,6 +14,18 @@
 
 This report represents the comprehensive technical, security, regulatory, and architectural release audit of ISHTI Milestone M05 (**Legal, Privacy & Trust Foundation**).
 
+> [!NOTE]
+> **CONSOLIDATED ACCEPTANCE REVIEW & M06 PLANNING CROSS-REFERENCE:**
+> For the authoritative pillar-by-pillar audit, itemized gap register, and M06 planning deliverables, refer to:
+> - **Consolidated Acceptance Review:** [docs/M05_CONSOLIDATED_ACCEPTANCE_REVIEW.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M05_CONSOLIDATED_ACCEPTANCE_REVIEW.md)
+> - **Final Gap Register:** [docs/M05_FINAL_GAP_REGISTER.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M05_FINAL_GAP_REGISTER.md)
+> - **M06 Architecture & Implementation Plan:** [docs/M06_ARCHITECTURE_AND_IMPLEMENTATION_PLAN.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_ARCHITECTURE_AND_IMPLEMENTATION_PLAN.md)
+> - **M06 Database & Migration Plan:** [docs/M06_DATABASE_AND_MIGRATION_PLAN.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_DATABASE_AND_MIGRATION_PLAN.md)
+> - **M06 Security & Failure Mode Plan:** [docs/M06_SECURITY_AND_FAILURE_MODE_PLAN.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_SECURITY_AND_FAILURE_MODE_PLAN.md)
+> - **M06 Test & Verification Strategy:** [docs/M06_TEST_AND_VERIFICATION_STRATEGY.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_TEST_AND_VERIFICATION_STRATEGY.md)
+> - **M06 Cost & Infrastructure Options:** [docs/M06_COST_AND_INFRASTRUCTURE_OPTIONS.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_COST_AND_INFRASTRUCTURE_OPTIONS.md)
+> - **M06 Human Approvals Registry:** [docs/M06_HUMAN_APPROVALS_REQUIRED.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_HUMAN_APPROVALS_REQUIRED.md)
+
 > [!CRITICAL]
 > **GOVERNANCE & STATUTORY DISCLAIMER:**
 > Automated test passage and architectural verification demonstrate **technical implementation correctness only**.

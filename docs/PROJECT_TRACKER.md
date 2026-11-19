@@ -363,4 +363,20 @@ Scope & Gates:
   - [x] Security regression suite 110/110 passing (279 tests total across suites, 0 failures); TypeScript clean (0 errors); Next.js 31/31 routes compiled
   - [x] Decision log updated (ADR-034 in `docs/DECISION_LOG.md`; LDL-017 in `docs/legal/ISHTI_LEGAL_DECISION_LOG.md`)
   - [x] Hardening report completed: `docs/M05_PASS_8_3_DEFENSIVE_HARDENING_REPORT.md` with status `READY FOR INDEPENDENT COUNSEL REVIEW`
+- [x] Milestone M05 Consolidated Acceptance Review & M06 Implementation Planning (ADR-035):
+  - [x] Conducted exhaustive, evidence-based consolidated acceptance review across all 8 trust pillars (Pillar 1: Jurisdiction Resolver, Pillar 2: Policy Management, Pillar 3: Consent Engine, Pillar 4: Privacy Rights, Pillar 5: Commerce Trust, Pillar 6: AI & Content Governance, Pillar 7: Compliance Operations, Pillar 8: Audit Ledger)
+  - [x] Re-corroborated test evidence: Gate 1 Typecheck 0 errors, Gate 2 Security Suite 110/110 passed, Gate 3 M05 Suite 169/169 passed, Gate 4 Next.js Build 31/31 routes compiled, Gate 5 Hosted Supabase quarantined and untouched
+  - [x] Assessed Pass 8.3 theoretical throwing getter edge case: confirmed non-blocking in standard WHATWG Request / Node HTTP runtime
+  - [x] Issued formal 6-dimension verdicts: Architecture PASS, Implementation PASS WITH LIMITATIONS, Security Engineering PASS, Operational Readiness NOT READY, Legal Readiness NOT READY, Launch Readiness NOT READY
+  - [x] Authored M05 Consolidated Acceptance Review ([docs/M05_CONSOLIDATED_ACCEPTANCE_REVIEW.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M05_CONSOLIDATED_ACCEPTANCE_REVIEW.md))
+  - [x] Itemized all partial, simulated, unverified, or blocked items with risk, severity, target milestone, and responsible owner in M05 Final Gap Register ([docs/M05_FINAL_GAP_REGISTER.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M05_FINAL_GAP_REGISTER.md))
+  - [x] Authored Milestone M06 Architecture & Implementation Plan ([docs/M06_ARCHITECTURE_AND_IMPLEMENTATION_PLAN.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_ARCHITECTURE_AND_IMPLEMENTATION_PLAN.md)) spanning Workstreams M06.1 through M06.7
+  - [x] Authored Milestone M06 Database & Migration Plan ([docs/M06_DATABASE_AND_MIGRATION_PLAN.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_DATABASE_AND_MIGRATION_PLAN.md)) with complete DDL schemas, RLS policies, triggers, BRIN indexes, and zero-downtime rollback sequences
+  - [x] Authored Milestone M06 Security & Failure Mode Plan ([docs/M06_SECURITY_AND_FAILURE_MODE_PLAN.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_SECURITY_AND_FAILURE_MODE_PLAN.md)) with threat models, fail-open vs fail-closed matrix, secret rotation runbooks, and origin shielding
+  - [x] Authored Milestone M06 Test & Verification Strategy ([docs/M06_TEST_AND_VERIFICATION_STRATEGY.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_TEST_AND_VERIFICATION_STRATEGY.md)) detailing multi-tier hierarchy, chaos harnesses, and acceptance gates
+  - [x] Authored Milestone M06 Cost & Infrastructure Options ([docs/M06_COST_AND_INFRASTRUCTURE_OPTIONS.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_COST_AND_INFRASTRUCTURE_OPTIONS.md)) comparing Serverless Upstash + Supabase vs Valkey vs PostgreSQL Advisory Locks across 3 growth tiers
+  - [x] Authored Milestone M06 Human Approvals Registry ([docs/M06_HUMAN_APPROVALS_REQUIRED.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_HUMAN_APPROVALS_REQUIRED.md)) cataloging founder decisions, legal opinions, CA tax certifications, and scholar reviews
+  - [x] Recorded Architectural Decision Record ADR-035 in `docs/DECISION_LOG.md`
+  - [x] Maintained strict zero-code-change boundary during audit and planning phase; halted awaiting operator authorization prior to executing M06 code
+
 
