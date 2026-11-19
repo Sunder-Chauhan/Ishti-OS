@@ -56,6 +56,7 @@ import {
   resetComplianceRateLimiter,
   configureComplianceRateLimiter,
   BoundedRateLimiter,
+  readBoundedJsonBody,
   type SessionVerificationProvider,
   type VerificationInput,
   type CookieItem,
@@ -688,6 +689,19 @@ async function runM05Tests() {
       "Server admin check: 18c. Proxy trust is NOT automatically granted merely based on NODE_ENV===production"
     );
 
+    // 18c2. Pass 8.1: Bare boolean TRUSTED_PROXY="true" without strategy does NOT activate proxy trust
+    process.env.TRUSTED_PROXY = "true";
+    delete process.env.TRUSTED_PROXY_STRATEGY;
+    const legacyProxyBoolIp = getClientIp({
+      get: (h: string) => (h === "x-real-ip" ? "203.0.113.195" : h === "cf-connecting-ip" ? "203.0.113.196" : null),
+    });
+    assert(
+      legacyProxyBoolIp === "direct-client" && getTrustedProxyStrategy() === "none" && !isTrustedProxyConfigured(),
+      "G5",
+      "Server admin check: 18c2. Legacy TRUSTED_PROXY='true' without explicit strategy does NOT activate proxy trust"
+    );
+    delete process.env.TRUSTED_PROXY;
+
     // 18d. Missing headers -> direct-client
     const fallbackIp = getClientIp({
       get: () => null,
@@ -1205,16 +1219,20 @@ async function runM05Tests() {
     else delete process.env.TRUSTED_PROXY;
   }
 
-  // Adversarial Test 10: Map saturation -> Maximum cardinality preserved
+  // Adversarial Test 10: Map saturation -> Maximum cardinality preserved (Safe saturation rejection, zero active eviction)
   const satLimiter = new BoundedRateLimiter({ maxEntries: 100, defaultWindowMs: 60000 });
+  let satAllowed = 0;
+  let satBlocked = 0;
   for (let i = 0; i < 1000; i++) {
-    satLimiter.check(`ip:${Math.floor(i / 256)}.${i % 256}.1.1`, 10, 60000);
+    const res = satLimiter.check(`ip:${Math.floor(i / 256)}.${i % 256}.1.1`, 10, 60000);
+    if (res) satAllowed++;
+    else satBlocked++;
   }
   const satStats = satLimiter.getStats();
   assert(
-    satStats.size <= 100 && satStats.totalEvicted >= 900,
+    satStats.size <= 100 && satAllowed === 100 && satBlocked === 900 && satStats.totalEvicted === 0,
     "G5",
-    "Pass 8 Adversarial 10: Map saturation stress test strictly bounds size (<= 100) and executes LRU eviction"
+    "Pass 8 Adversarial 10: Map saturation strictly bounds size (<= 100), rejects new identities, and preserves active entries (0 evicted)"
   );
 
   // Adversarial Test 11: Expired entries -> Correct cleanup
@@ -1312,16 +1330,304 @@ async function runM05Tests() {
   // High-Cardinality Stress Test: 12,000 insertions against 10,000 capacity
   const stressLimiter = new BoundedRateLimiter({ maxEntries: 10000, defaultWindowMs: 60000 });
   let peakSize = 0;
+  let stressAllowed = 0;
+  let stressBlocked = 0;
   for (let i = 0; i < 12000; i++) {
-    stressLimiter.check(`key-stress-${i}`, 10, 60000);
+    const ok = stressLimiter.check(`key-stress-${i}`, 10, 60000);
+    if (ok) stressAllowed++;
+    else stressBlocked++;
     const currSize = stressLimiter.getStats().size;
     if (currSize > peakSize) peakSize = currSize;
   }
   const finalStressStats = stressLimiter.getStats();
   assert(
-    peakSize <= 10000 && finalStressStats.size === 10000 && finalStressStats.totalEvicted === 2000,
+    peakSize <= 10000 &&
+      finalStressStats.size === 10000 &&
+      stressAllowed === 10000 &&
+      stressBlocked === 2000 &&
+      finalStressStats.totalEvicted === 0,
     "G5",
-    "Pass 8 High-Cardinality Stress Test: Limiter Map size never exceeds configured maxEntries (10,000) during 12,000 key flood"
+    "Pass 8 High-Cardinality Stress Test: Limiter Map size never exceeds configured maxEntries (10,000) during 12,000 key flood without active eviction"
+  );
+
+  // --------------------------------------------------------------------------
+  // Pass 8.1: Mandatory Active-Entry Preservation Test Scenario
+  // --------------------------------------------------------------------------
+  console.log("\n[PASS 8.1] Executing Active-Entry Preservation & Safe Saturation Suite...");
+
+  // 1. Fill a small limiter to capacity (capacity = 5)
+  const smallLimiter = new BoundedRateLimiter({ maxEntries: 5, defaultWindowMs: 60000 });
+  for (let i = 1; i <= 4; i++) {
+    assert(smallLimiter.check(`existing-identity-${i}`, 10, 60000) === true, "G5", `Pass 8.1: Insert active identity ${i}`);
+  }
+
+  // 2. Exhaust one existing identity's quota (identityA, limit = 2)
+  const hit1 = smallLimiter.check("identityA", 2, 60000); // hit 1: allowed
+  const hit2 = smallLimiter.check("identityA", 2, 60000); // hit 2: allowed
+  const hit3 = smallLimiter.check("identityA", 2, 60000); // hit 3: blocked (exhausted)
+  assert(
+    hit1 === true && hit2 === true && hit3 === false,
+    "G5",
+    "Pass 8.1: identityA successfully exhausts quota (allowed 2, 3rd blocked)"
+  );
+  assert(
+    smallLimiter.getStats().size === 5,
+    "G5",
+    "Pass 8.1: Limiter is now at full capacity (5 of 5 entries occupied)"
+  );
+
+  // 3. Generate hundreds of new identities (500 distinct keys)
+  let floodAllowed = 0;
+  let floodBlocked = 0;
+  for (let i = 0; i < 500; i++) {
+    const res = smallLimiter.check(`attacker-flood-key-${i}`, 10, 60000);
+    if (res) floodAllowed++;
+    else floodBlocked++;
+  }
+
+  // 4. Confirm the original exhausted identity remains blocked (NOT evicted or reset)
+  const identityAAfterFlood = smallLimiter.check("identityA", 2, 60000);
+  assert(
+    identityAAfterFlood === false,
+    "G5",
+    "Pass 8.1 Test 1: Exhausted identityA remains strictly blocked after 500-key flood (active state preserved)"
+  );
+
+  // 5. Confirm Map size never exceeds capacity
+  assert(
+    smallLimiter.getStats().size === 5,
+    "G5",
+    "Pass 8.1 Test 2: Map size strictly remains at capacity ceiling (size === 5)"
+  );
+
+  // 6. Confirm new identities are rejected while no capacity is available
+  assert(
+    floodAllowed === 0 && floodBlocked === 500,
+    "G5",
+    "Pass 8.1 Test 3: All 500 new identities were rejected while capacity was exhausted with active entries"
+  );
+
+  // Confirm other active identities in the map still function
+  const existingId1Hit = smallLimiter.check("existing-identity-1", 10, 60000);
+  assert(
+    existingId1Hit === true,
+    "G5",
+    "Pass 8.1 Test 4: Existing active identity-1 remains functional and tracked"
+  );
+
+  // 7. Confirm expired entries are reclaimed and new identities can then enter
+  const nowForReclaim = Date.now();
+  const purgedEntries = smallLimiter.cleanupExpired(nowForReclaim + 70000);
+  assert(
+    purgedEntries === 5 && smallLimiter.getStats().size === 0,
+    "G5",
+    "Pass 8.1 Test 5: Expired entries are cleanly reclaimed (purged === 5, size === 0)"
+  );
+  const newIdentityAllowed = smallLimiter.check("fresh-identity-after-expiry", 10, 60000);
+  assert(
+    newIdentityAllowed === true && smallLimiter.getStats().size === 1,
+    "G5",
+    "Pass 8.1 Test 6: New identity successfully enters after expired entries are reclaimed"
+  );
+
+  // --------------------------------------------------------------------------
+  // Pass 8.1: Mandatory Bounded Request-Body Streaming & Size Limits Suite
+  // --------------------------------------------------------------------------
+  console.log("\n[PASS 8.1] Executing Bounded Request-Body Streaming Suite...");
+
+  // Test 1: Oversized body WITH Content-Length header (> 64 KB) rejected with 413
+  const oversizedWithHeader = await readBoundedJsonBody(
+    {
+      headers: {
+        get: (h: string) => (h === "content-length" ? "70000" : null),
+      },
+      text: async () => JSON.stringify({ data: "x".repeat(70000) }),
+    },
+    65536
+  );
+  assert(
+    oversizedWithHeader.ok === false &&
+      oversizedWithHeader.statusCode === 413 &&
+      oversizedWithHeader.code === "PAYLOAD_TOO_LARGE",
+    "G5",
+    "Pass 8.1 Body 1: Oversized body with Content-Length rejected early with 413 PAYLOAD_TOO_LARGE"
+  );
+
+  // Test 2: Oversized body WITHOUT Content-Length (streamed chunks exceeding 64 KB) rejected with 413 and cancelled
+  let streamCancelledReason: unknown = null;
+  const chunk64k = new Uint8Array(40000).fill(65); // 40 KB
+  let chunkCount = 0;
+  const oversizedStream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (chunkCount < 3) {
+        chunkCount++;
+        controller.enqueue(chunk64k); // 40KB * 3 = 120 KB
+      } else {
+        controller.close();
+      }
+    },
+    cancel(reason) {
+      streamCancelledReason = reason;
+    },
+  });
+
+  const oversizedWithoutHeader = await readBoundedJsonBody(
+    {
+      headers: {
+        get: () => null, // No Content-Length (chunked)
+      },
+      body: oversizedStream,
+    },
+    65536
+  );
+  assert(
+    oversizedWithoutHeader.ok === false &&
+      oversizedWithoutHeader.statusCode === 413 &&
+      oversizedWithoutHeader.code === "PAYLOAD_TOO_LARGE" &&
+      streamCancelledReason === "PAYLOAD_TOO_LARGE",
+    "G5",
+    "Pass 8.1 Body 2: Chunked stream exceeding 64 KB without Content-Length is aborted and cancelled with 413"
+  );
+
+  // Test 3: Malformed Content-Length header (non-numeric / negative) rejected with 400
+  const malformedClAlpha = await readBoundedJsonBody(
+    {
+      headers: {
+        get: (h: string) => (h === "content-length" ? "70kb; injection" : null),
+      },
+      text: async () => JSON.stringify({ test: "val" }),
+    },
+    65536
+  );
+  const malformedClNegative = await readBoundedJsonBody(
+    {
+      headers: {
+        get: (h: string) => (h === "content-length" ? "-500" : null),
+      },
+      text: async () => JSON.stringify({ test: "val" }),
+    },
+    65536
+  );
+  assert(
+    malformedClAlpha.ok === false &&
+      malformedClAlpha.statusCode === 400 &&
+      malformedClAlpha.code === "MALFORMED_CONTENT_LENGTH" &&
+      malformedClNegative.ok === false &&
+      malformedClNegative.code === "MALFORMED_CONTENT_LENGTH",
+    "G5",
+    "Pass 8.1 Body 3: Malformed Content-Length headers (non-numeric, negative) rejected with 400"
+  );
+
+  // Test 4: Valid chunked stream within 64 KB limit decodes and parses cleanly
+  const validPayload = JSON.stringify({ incidentType: "TEST_INCIDENT", severity: "HIGH" });
+  const validBytes = new TextEncoder().encode(validPayload);
+  let validStreamRead = false;
+  const validStream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (!validStreamRead) {
+        validStreamRead = true;
+        controller.enqueue(validBytes);
+      } else {
+        controller.close();
+      }
+    },
+  });
+  const validStreamResult = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: validStream,
+    },
+    65536
+  );
+  assert(
+    validStreamResult.ok === true &&
+      (validStreamResult.data as Record<string, unknown>)?.incidentType === "TEST_INCIDENT",
+    "G5",
+    "Pass 8.1 Body 4: Valid streamed payload within limit parses successfully"
+  );
+
+  // Test 5: Invalid UTF-8 bytes rejected with 400 INVALID_ENCODING
+  const invalidUtf8Bytes = new Uint8Array([0x80, 0xbf, 0xff, 0xfe]); // Invalid UTF-8 sequence
+  let invalidUtf8Read = false;
+  const invalidUtf8Stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (!invalidUtf8Read) {
+        invalidUtf8Read = true;
+        controller.enqueue(invalidUtf8Bytes);
+      } else {
+        controller.close();
+      }
+    },
+  });
+  const invalidUtf8Result = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: invalidUtf8Stream,
+    },
+    65536
+  );
+  assert(
+    invalidUtf8Result.ok === false &&
+      invalidUtf8Result.statusCode === 400 &&
+      invalidUtf8Result.code === "INVALID_ENCODING",
+    "G5",
+    "Pass 8.1 Body 5: Invalid UTF-8 byte stream safely rejected with 400 INVALID_ENCODING"
+  );
+
+  // Test 6: Malformed JSON syntax rejected with 400 MALFORMED_JSON
+  const malformedJsonBytes = new TextEncoder().encode("{ incidentType: unquoted, ");
+  let malformedJsonRead = false;
+  const malformedJsonStream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (!malformedJsonRead) {
+        malformedJsonRead = true;
+        controller.enqueue(malformedJsonBytes);
+      } else {
+        controller.close();
+      }
+    },
+  });
+  const malformedJsonResult = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: malformedJsonStream,
+    },
+    65536
+  );
+  assert(
+    malformedJsonResult.ok === false &&
+      malformedJsonResult.statusCode === 400 &&
+      malformedJsonResult.code === "MALFORMED_JSON",
+    "G5",
+    "Pass 8.1 Body 6: Malformed JSON syntax rejected with 400 MALFORMED_JSON"
+  );
+
+  // Test 7: Non-object JSON (array, primitive) rejected with 400 BAD_REQUEST
+  const arrayBytes = new TextEncoder().encode('["not", "a", "json", "object"]');
+  let arrayRead = false;
+  const arrayStream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (!arrayRead) {
+        arrayRead = true;
+        controller.enqueue(arrayBytes);
+      } else {
+        controller.close();
+      }
+    },
+  });
+  const arrayResult = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: arrayStream,
+    },
+    65536
+  );
+  assert(
+    arrayResult.ok === false &&
+      arrayResult.statusCode === 400 &&
+      arrayResult.code === "BAD_REQUEST",
+    "G5",
+    "Pass 8.1 Body 7: Non-object JSON array rejected with 400 BAD_REQUEST"
   );
 
   // --------------------------------------------------------------------------

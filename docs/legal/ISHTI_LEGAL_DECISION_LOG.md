@@ -206,3 +206,17 @@ The **ISHTI Legal Decision Log (LDL)** records formal architectural decisions th
   3. *Adversarial Verification:*
      - Added 18 automated tests in `scripts/run-m05-tests.ts` (135/135 passing) proving resistance against 10,000 rotating tokens, 10,000 rotating cookies, rotating fingerprints, and 12,000-key stress floods.
 - **Status:** APPROVED & IMPLEMENTED LOCALLY. Production Supabase (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) strictly quarantined. Distributed rate limiting retained as launch dependency.
+
+---
+
+### 2026-11-19: LDL-015 — Pass 8.1: Active-Entry Quota Preservation, Strict Ingress Provenance & Bounded Request-Body Bounds
+- **Statutory Context:** DPDP Act, 2023 Section 8(5) (Duty to implement reasonable security safeguards); IT Act, 2000 Section 43 & Section 66 (Protection against resource starvation and unauthorized state reset); CERT-In Cyber Security Directions 2022 (Incident prevention and infrastructure availability).
+- **Legal & Technical Finding:**
+  1. *Cache Eviction as an Anti-Security Mechanism:* In Pass 8, evicting least-recently-accessed entries upon Map saturation permitted an attacker to reset their exhausted quota by generating unrelated keys, undermining Section 8(5) safeguard obligations.
+  2. *Ambiguous Proxy Configuration Risk:* Bare boolean `TRUSTED_PROXY=true` failed to declare authoritative ingress headers or verify proxy sanitization, risking proxy header injection attacks.
+  3. *Unbounded Payload Memory Vulnerability:* Buffering unconstrained request bodies via `request.text()` before checking length exposed administrative compliance routes to memory exhaustion via chunked transfer encoding.
+- **Architectural Decision:**
+  1. *Safe Saturation Policy:* Eliminated active-entry eviction (`evictLru()`). When capacity is exhausted with active unexpired entries, new unmapped identities are rejected (`return false`), while all active quotas are preserved until expiry.
+  2. *Strict Ingress Configuration:* Removed `TRUSTED_PROXY=true` fallback. Proxy trust is activated exclusively via explicit `TRUSTED_PROXY_STRATEGY` (`"cloudflare"` or `"reverse_proxy"`). Missing strategies default to untrusted `"none"`.
+  3. *Bounded Streaming Body Bounds:* Implemented `readBoundedJsonBody()`, reading `request.body` chunk by chunk with an immediate abort and cancel at 64 KB, early `Content-Length` validation, fatal UTF-8 decoding, and safe JSON object parsing.
+- **Status:** APPROVED & IMPLEMENTED LOCALLY. Production Supabase (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) strictly quarantined. Distributed rate limiting retained as launch dependency.

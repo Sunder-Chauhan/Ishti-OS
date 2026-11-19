@@ -701,3 +701,32 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Hosted Environment Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and untouched.
 - **Release Verdict:** **`READY FOR INDEPENDENT COUNSEL REVIEW`** (Technical safeguards and legal baselines verified; distributed rate limiting retained as M06 launch dependency).
 
+---
+
+## 2026-11-19: ADR-032 — Pass 8.1: Elimination of Active-Entry LRU Eviction, Removal of Legacy Proxy Fallback & Bounded Streaming Request-Body Bounds
+- **Status:** APPROVED & IMPLEMENTED LOCALLY
+- **Context:** Following independent code review of Pass 8 (commit `738782d`), three critical residual vulnerabilities were identified and resolved:
+  1. *Active-Entry LRU Eviction Enabling Quota Reset:* Pass 8 evicted the least-recently-accessed entry when Map capacity was reached. An attacker whose rate-limit was exhausted could generate hundreds of random keys to force eviction of their entry, resetting their counter upon re-entry.
+  2. *Legacy Proxy Trust Fallback:* `getTrustedProxyStrategy()` included a fallback where `TRUSTED_PROXY === "true"` activated reverse-proxy mode without declaring which header was authoritative or verifying ingress sanitization.
+  3. *Unbounded Request Body Buffering:* `/api/compliance/triage` called `request.text()` before checking payload size, buffering unbounded payloads into memory during chunked transfer attacks.
+- **Decision:**
+  1. **Elimination of Active-Entry Eviction & Safe Saturation Policy:**
+     - Removed `evictLru()`. When Map capacity (`10,000` entries) is reached, `BoundedRateLimiter` sweeps expired entries via `enforceCapacity(now)`.
+     - If capacity remains exhausted because all entries are active and unexpired, the limiter **rejects new identities without deleting active counters** (`return false`).
+     - Guarantees that an attacker cannot evict or reset existing rate-limit state by flooding new keys.
+     - Preserves all active quotas until natural window expiry; reclaimed slots allow new identities to enter.
+  2. **Strict Proxy Configuration Invariant:**
+     - Removed `TRUSTED_PROXY === "true"` fallback from `getTrustedProxyStrategy()`.
+     - Proxy trust is activated **only** by explicit `TRUSTED_PROXY_STRATEGY` (`"cloudflare"` or `"reverse_proxy"`). Missing strategy or bare boolean flags default strictly to untrusted `"none"`.
+  3. **Bounded Streaming Request-Body Bounds (`readBoundedJsonBody`):**
+     - Consumes `request.body` as a `ReadableStream` with a hard 64 KB limit. Cancels stream immediately upon overflow (`reader.cancel()`) and returns 413 `PAYLOAD_TOO_LARGE`.
+     - Early Content-Length validation: rejects malformed headers (non-numeric, negative) with 400 `MALFORMED_CONTENT_LENGTH` and oversized values with 413 before reading stream.
+     - Enforces fatal UTF-8 decoding (`new TextDecoder("utf-8", { fatal: true })`) and safe JSON object validation.
+- **Verification Evidence:**
+  - Automated M05 Suite (`scripts/run-m05-tests.ts`): **155/155 PASSED** (0 failures; 6 dedicated active-counter preservation tests, 7 dedicated streaming body tests, 1 legacy proxy rejection test).
+  - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all workspaces.
+  - Production Web Application Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** cleanly.
+  - Hosted Environment Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and untouched.
+- **Release Verdict:** **`READY FOR INDEPENDENT COUNSEL REVIEW`** (Technical safeguards and legal baselines verified; distributed rate limiting retained as M06 launch dependency).
+

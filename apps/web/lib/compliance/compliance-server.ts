@@ -19,6 +19,7 @@ import {
   configureComplianceRateLimiter,
   globalComplianceRateLimiter,
   BoundedRateLimiter,
+  readBoundedJsonBody,
   type RateLimitEntry,
   type RateLimiterStats,
   type AdminSessionCheckResult,
@@ -26,6 +27,7 @@ import {
   type CookieItem,
   type VerificationInput,
   type TrustedProxyStrategy,
+  type BoundedBodyResult,
   defaultSupabaseProvider,
 } from "./compliance-session-verifier";
 
@@ -45,6 +47,7 @@ export {
   configureComplianceRateLimiter,
   globalComplianceRateLimiter,
   BoundedRateLimiter,
+  readBoundedJsonBody,
 };
 export type {
   RateLimitEntry,
@@ -54,6 +57,7 @@ export type {
   CookieItem,
   VerificationInput,
   TrustedProxyStrategy,
+  BoundedBodyResult,
 };
 
 /**

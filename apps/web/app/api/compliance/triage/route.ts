@@ -6,6 +6,7 @@ import {
   getClientIp,
   getNetworkRateLimitKey,
   getAccountRateLimitKey,
+  readBoundedJsonBody,
 } from "../../../../lib/compliance/compliance-server";
 import { triageSecurityIncident } from "../../../../lib/compliance/security-governance";
 
@@ -21,20 +22,36 @@ const ALLOWED_SEVERITIES = new Set(["CRITICAL", "HIGH", "MEDIUM", "LOW"]);
  * 2. Unauthorized callers cannot trigger incident assessment or CERT-In reporting analysis.
  * 3. Client-supplied role claims are strictly ignored.
  * 4. CSRF protection on mutations.
- * 5. Input payload size and schema validation enforced.
+ * 5. Input payload size and schema validation enforced via bounded streaming body consumption.
  * 6. Layered rate limiting enforced:
  *    - Layer 1: Network-level pre-auth rate limiting (30 req/min).
  *    - Layer 2: Account-level post-auth rate limiting (10 req/min).
  */
 
 export async function POST(request: NextRequest) {
-  // 1. Content-Length payload size check
+  // 1. Early Content-Length validation if header is present
   const contentLength = request.headers.get("content-length");
-  if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_BYTES) {
-    return NextResponse.json(
-      { error: "Payload too large. Maximum allowed size is 64 KB.", code: "PAYLOAD_TOO_LARGE" },
-      { status: 413 }
-    );
+  if (contentLength !== null && contentLength !== undefined && contentLength.trim() !== "") {
+    const trimmed = contentLength.trim();
+    if (!/^\d+$/.test(trimmed)) {
+      return NextResponse.json(
+        { error: "Malformed Content-Length header.", code: "MALFORMED_CONTENT_LENGTH" },
+        { status: 400 }
+      );
+    }
+    const parsedLength = parseInt(trimmed, 10);
+    if (!Number.isSafeInteger(parsedLength) || parsedLength < 0) {
+      return NextResponse.json(
+        { error: "Malformed Content-Length header.", code: "MALFORMED_CONTENT_LENGTH" },
+        { status: 400 }
+      );
+    }
+    if (parsedLength > MAX_PAYLOAD_BYTES) {
+      return NextResponse.json(
+        { error: "Payload too large. Maximum allowed size is 64 KB.", code: "PAYLOAD_TOO_LARGE" },
+        { status: 413 }
+      );
+    }
   }
 
   // 2. CSRF validation for cookie-authenticated mutations
@@ -79,29 +96,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 5. Schema validation & safe JSON parsing
-  let body: Record<string, unknown>;
-  try {
-    const rawText = await request.text();
-    if (rawText.length > MAX_PAYLOAD_BYTES) {
-      return NextResponse.json(
-        { error: "Payload too large. Maximum allowed size is 64 KB.", code: "PAYLOAD_TOO_LARGE" },
-        { status: 413 }
-      );
-    }
-    body = JSON.parse(rawText);
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
-      return NextResponse.json(
-        { error: "Malformed request body. JSON object expected.", code: "BAD_REQUEST" },
-        { status: 400 }
-      );
-    }
-  } catch {
+  // 6. Bounded streaming body consumption & validation (max 64 KB, aborts stream early on overflow)
+  const bodyResult = await readBoundedJsonBody<Record<string, unknown>>(request, MAX_PAYLOAD_BYTES);
+  if (!bodyResult.ok || !bodyResult.data) {
     return NextResponse.json(
-      { error: "Invalid JSON request body for incident triage.", code: "MALFORMED_JSON" },
-      { status: 400 }
+      { error: bodyResult.error || "Bad request", code: bodyResult.code || "BAD_REQUEST" },
+      { status: bodyResult.statusCode || 400 }
     );
   }
+  const body = bodyResult.data;
 
   // Field validation
   const incidentType = typeof body.incidentType === "string" && body.incidentType.length <= 100

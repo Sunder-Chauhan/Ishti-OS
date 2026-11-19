@@ -166,12 +166,10 @@ export class BoundedRateLimiter {
         this.enforceCapacity(now);
       }
 
-      // If still at capacity after sweeping expired keys, evict the least-recently-accessed (LRU) entry
-      if (this.map.size >= this.maxEntries) {
-        this.evictLru();
-      }
-
-      // Final safety guard: ensure size never exceeds maxEntries
+      // SAFE SATURATION BEHAVIOR (Pass 8.1):
+      // If capacity remains exhausted because all existing entries are unexpired and active,
+      // REJECT the new identity without evicting or deleting existing active counters!
+      // This guarantees that an attacker cannot evict or reset another identity's quota by generating new keys.
       if (this.map.size >= this.maxEntries) {
         this.totalBlocked += 1;
         return false;
@@ -196,23 +194,6 @@ export class BoundedRateLimiter {
         this.map.delete(key);
         this.totalExpired += 1;
       }
-    }
-  }
-
-  private evictLru(): void {
-    let oldestKey: string | null = null;
-    let oldestTime = Infinity;
-
-    for (const [key, entry] of this.map.entries()) {
-      if (entry.lastAccessed < oldestTime) {
-        oldestTime = entry.lastAccessed;
-        oldestKey = key;
-      }
-    }
-
-    if (oldestKey !== null) {
-      this.map.delete(oldestKey);
-      this.totalEvicted += 1;
     }
   }
 
@@ -317,11 +298,9 @@ export function getTrustedProxyStrategy(): TrustedProxyStrategy {
   if (strategy === "cloudflare" || strategy === "reverse_proxy" || strategy === "direct" || strategy === "none") {
     return strategy;
   }
-  // If legacy TRUSTED_PROXY="true" is set without strategy, default to reverse_proxy
-  // with strict sanitization requirements, but explicit TRUSTED_PROXY_STRATEGY is required.
-  if (process.env.TRUSTED_PROXY === "true") {
-    return "reverse_proxy";
-  }
+  // Pass 8.1: Legacy TRUSTED_PROXY="true" fallback is completely removed.
+  // A bare boolean TRUSTED_PROXY does NOT activate proxy trust.
+  // Missing or unrecognized strategy defaults strictly to untrusted "none".
   return "none";
 }
 
@@ -874,4 +853,208 @@ export async function verifyAdminSession(
         error: "FORBIDDEN: Authorization failed.",
       };
   }
+}
+
+export interface BoundedBodyResult<T = Record<string, unknown>> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+  code?: string;
+  statusCode?: number;
+}
+
+/**
+ * Consumes and validates a request body with strict byte bounds, streaming limits,
+ * Content-Length verification, UTF-8 safety, and JSON object validation.
+ *
+ * Security Invariants:
+ * 1. Bounded Streaming: Consumes request.body as a ReadableStream chunk by chunk, tracking byte length.
+ * 2. Early Abort / Cancel: Cancels the stream immediately if total bytes exceed maxBytes (default 64 KB),
+ *    preventing memory exhaustion from unbounded requests.
+ * 3. Content-Length Header Handling:
+ *    - If present, verifies it consists strictly of decimal digits.
+ *    - Rejects malformed Content-Length (non-numeric, negative, float, NaN) with 400 MALFORMED_CONTENT_LENGTH.
+ *    - Rejects oversized Content-Length (> maxBytes) with 413 PAYLOAD_TOO_LARGE before reading stream.
+ * 4. Zero Trust in Content-Length Alone:
+ *    - Even if Content-Length is missing or claims to be small (e.g. chunked transfer),
+ *      the stream reader enforces the hard byte cap while reading.
+ * 5. Safe UTF-8 Decoding: Uses TextDecoder("utf-8", { fatal: true }) to reject invalid byte sequences.
+ * 6. Safe JSON Object Validation: Ensures body parses to a non-null, non-array object.
+ */
+export async function readBoundedJsonBody<T = Record<string, unknown>>(
+  request: {
+    headers: { get(name: string): string | null | undefined };
+    body?: ReadableStream<Uint8Array> | null;
+    text?: () => Promise<string>;
+  },
+  maxBytes = 65536
+): Promise<BoundedBodyResult<T>> {
+  // 1. Content-Length header verification if present
+  const contentLengthHeader = request.headers.get("content-length");
+  if (contentLengthHeader !== null && contentLengthHeader !== undefined && contentLengthHeader.trim() !== "") {
+    const trimmed = contentLengthHeader.trim();
+    if (!/^\d+$/.test(trimmed)) {
+      return {
+        ok: false,
+        error: "Malformed Content-Length header.",
+        code: "MALFORMED_CONTENT_LENGTH",
+        statusCode: 400,
+      };
+    }
+    const parsedLength = parseInt(trimmed, 10);
+    if (!Number.isSafeInteger(parsedLength) || parsedLength < 0) {
+      return {
+        ok: false,
+        error: "Malformed Content-Length header.",
+        code: "MALFORMED_CONTENT_LENGTH",
+        statusCode: 400,
+      };
+    }
+    if (parsedLength > maxBytes) {
+      return {
+        ok: false,
+        error: `Payload too large. Maximum allowed size is ${Math.round(maxBytes / 1024)} KB.`,
+        code: "PAYLOAD_TOO_LARGE",
+        statusCode: 413,
+      };
+    }
+  }
+
+  // 2. Stream consumption
+  if (request.body && typeof request.body.getReader === "function") {
+    const reader = request.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          totalBytes += value.byteLength;
+          if (totalBytes > maxBytes) {
+            try {
+              await reader.cancel("PAYLOAD_TOO_LARGE");
+            } catch {
+              // Ignore cancel error
+            }
+            return {
+              ok: false,
+              error: `Payload too large. Maximum allowed size is ${Math.round(maxBytes / 1024)} KB.`,
+              code: "PAYLOAD_TOO_LARGE",
+              statusCode: 413,
+            };
+          }
+          chunks.push(value);
+        }
+      }
+    } catch {
+      return {
+        ok: false,
+        error: "Error reading request stream.",
+        code: "STREAM_READ_ERROR",
+        statusCode: 400,
+      };
+    }
+
+    if (totalBytes === 0) {
+      return {
+        ok: false,
+        error: "Empty request body.",
+        code: "EMPTY_BODY",
+        statusCode: 400,
+      };
+    }
+
+    // Assemble buffer
+    const fullBuffer = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      fullBuffer.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    // Strict UTF-8 decoding
+    let rawText: string;
+    try {
+      const decoder = new TextDecoder("utf-8", { fatal: true });
+      rawText = decoder.decode(fullBuffer);
+    } catch {
+      return {
+        ok: false,
+        error: "Invalid UTF-8 encoding in request body.",
+        code: "INVALID_ENCODING",
+        statusCode: 400,
+      };
+    }
+
+    // Safe JSON parsing
+    try {
+      const parsed = JSON.parse(rawText);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return {
+          ok: false,
+          error: "Malformed request body. JSON object expected.",
+          code: "BAD_REQUEST",
+          statusCode: 400,
+        };
+      }
+      return { ok: true, data: parsed as T };
+    } catch {
+      return {
+        ok: false,
+        error: "Invalid JSON request body.",
+        code: "MALFORMED_JSON",
+        statusCode: 400,
+      };
+    }
+  }
+
+  // Fallback for requests that provide text() instead of a ReadableStream
+  if ("text" in request && typeof request.text === "function") {
+    try {
+      const rawText = await request.text();
+      if (!rawText || rawText.trim().length === 0) {
+        return {
+          ok: false,
+          error: "Empty request body.",
+          code: "EMPTY_BODY",
+          statusCode: 400,
+        };
+      }
+      const byteLength = Buffer.byteLength(rawText, "utf-8");
+      if (byteLength > maxBytes) {
+        return {
+          ok: false,
+          error: `Payload too large. Maximum allowed size is ${Math.round(maxBytes / 1024)} KB.`,
+          code: "PAYLOAD_TOO_LARGE",
+          statusCode: 413,
+        };
+      }
+      const parsed = JSON.parse(rawText);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return {
+          ok: false,
+          error: "Malformed request body. JSON object expected.",
+          code: "BAD_REQUEST",
+          statusCode: 400,
+        };
+      }
+      return { ok: true, data: parsed as T };
+    } catch {
+      return {
+        ok: false,
+        error: "Invalid JSON request body.",
+        code: "MALFORMED_JSON",
+        statusCode: 400,
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    error: "Empty request body.",
+    code: "EMPTY_BODY",
+    statusCode: 400,
+  };
 }

@@ -336,4 +336,12 @@ Scope & Gates:
   - [x] TypeScript clean (0 errors) across all packages; Next.js web build clean (31/31 routes prerendered)
   - [x] Decision log updated (ADR-031 in `docs/DECISION_LOG.md`; LDL-014 in `docs/legal/ISHTI_LEGAL_DECISION_LOG.md`)
   - [x] Remediation report completed: `docs/M05_PASS_8_RATE_LIMITER_REMEDIATION_REPORT.md` with status `READY FOR INDEPENDENT COUNSEL REVIEW`
+- [x] Milestone M05 Pass 8.1: Final Rate-Limiter Security Corrections & Streaming Body Bounds (ADR-032):
+  - [x] Eliminated active-entry LRU eviction: unexpired rate-limit counters are preserved; saturated Map rejects new unmapped identities without deleting active state
+  - [x] Removed legacy `TRUSTED_PROXY="true"` fallback: proxy trust is activated strictly through explicit `TRUSTED_PROXY_STRATEGY` (`cloudflare` or `reverse_proxy`)
+  - [x] Enforced bounded streaming request-body consumption (`readBoundedJsonBody`): early `Content-Length` validation, 64 KB stream cap with immediate abort and cancel, fatal UTF-8 decoding, and safe JSON object parsing
+  - [x] Expanded test suite to 155/155 M05 tests (adding 6 active-entry preservation tests, 7 streaming body tests, and 1 proxy rejection test); 110/110 security regression tests passing (265 tests total, 0 failures)
+  - [x] TypeScript clean (0 errors) across all workspaces; Next.js web build clean (31/31 routes prerendered)
+  - [x] Decision log updated (ADR-032 in `docs/DECISION_LOG.md`; LDL-015 in `docs/legal/ISHTI_LEGAL_DECISION_LOG.md`)
+  - [x] Remediation report completed: `docs/M05_PASS_8_1_SECURITY_CORRECTIONS_REPORT.md` with status `READY FOR INDEPENDENT COUNSEL REVIEW`
 

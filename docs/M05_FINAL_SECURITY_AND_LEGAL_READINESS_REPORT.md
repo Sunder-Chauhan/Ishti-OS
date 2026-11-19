@@ -239,9 +239,9 @@ To safeguard the platform, individual promoters, and consumers, the following ca
   Gate 2: Sovereign Consent & Cryptographic Evidence:       7 passed, 0 failed
   Gate 3: Privacy Rights, SAR & 7-Stage Deletion:          14 passed, 0 failed
   Gate 4: Commerce Trust & Minor-Unit Refund Arithmetic:   21 passed, 0 failed
-  Gate 5: Compliance Operations, Grievances & Security:    83 passed, 0 failed
+  Gate 5: Compliance Operations, Grievances & Security:   103 passed, 0 failed
 ================================================================================
-TOTAL M05 TESTS: 135 | PASSED: 135 | FAILED: 0 | EXIT CODE: 0
+TOTAL M05 TESTS: 155 | PASSED: 155 | FAILED: 0 | EXIT CODE: 0
 ================================================================================
 
 ================================================================================
