@@ -73,15 +73,17 @@ pyramid
      * *Assertion:* Documents financial transaction IDs retained pursuant to Income-tax Act, 2025 §62 (7-year retention exception).
 
 ### 2.4. Grievance Redressal IT Rules Dual-Clock SLA Verification (Correction 2)
-- **Objective:** Verify that grievance tickets correctly calculate statutory legal deadlines vs internal operational targets based on classification.
+- **Objective:** Verify that grievance tickets correctly calculate statutory legal deadlines vs internal operational targets based on classification under official IT Rules updated 10 February 2026.
 - **Harness:** `scripts/test-grievance-slas.ts`.
 - **Test Scenarios:**
-  1. Submit Rule 3(2)(b) emergency complaint (non-consensual imagery / impersonation).
-     * *Assertion:* `statutory_ack_deadline` = +24h, `statutory_disposal_deadline` = **+24h**; `internal_slt_disposal_deadline` = **+4h**.
-  2. Submit Rule 3(1)(d) government/court takedown notification.
-     * *Assertion:* `statutory_disposal_deadline` = **+36h**; `internal_slt_disposal_deadline` = **+6h**.
-  3. Submit standard devotee privacy/service grievance.
-     * *Assertion:* `statutory_ack_deadline` = +24h, `statutory_disposal_deadline` = **+7 days** (reflecting Feb 2026 amendment); `internal_slt_disposal_deadline` = **+48h**.
+  1. Submit Rule 3(2)(b) emergency complaint (non-consensual imagery / sexual acts / impersonation).
+     * *Assertion:* `statutory_ack_deadline` = +2h, `statutory_disposal_deadline` = **+2 Hours**; `internal_slt_disposal_deadline` = **+1 Hour**.
+  2. Submit Proviso to Rule 3(2)(a)(i) specified content removal request.
+     * *Assertion:* `statutory_disposal_deadline` = **+36 Hours**; `internal_slt_disposal_deadline` = **+12 Hours**.
+  3. Submit Rule 3(1)(d) government/court takedown notification.
+     * *Assertion:* `statutory_disposal_deadline` = **+36 Hours**; `internal_slt_disposal_deadline` = **+6 Hours**.
+  4. Submit standard devotee privacy/service grievance under Rule 3(2)(a)(i).
+     * *Assertion:* `statutory_ack_deadline` = +24 Hours, `statutory_disposal_deadline` = **+7 Days** (reflecting Feb 2026 amendment); `internal_slt_disposal_deadline` = **+48 Hours**.
 
 ### 2.5. Merkle Hash Chain Corruption & Tamper Detection (Correction 6)
 - **Objective:** Prove that manual modification of an audit record by a rogue database administrator is immediately detected by the integrity daemon.

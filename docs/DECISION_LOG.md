@@ -870,3 +870,50 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Planning Deliverables: **`APPROVED & READY FOR OPERATOR REVIEW`**
   - Implementation Code Execution: **`PAUSED AWAITING EXPLICIT OPERATOR AUTHORIZATION`**
 
+---
+
+## 2026-11-19: ADR-037 — Milestone M06 G0: Final Architecture Decision Validation & Approval Preparation
+- **Status:** PENDING OPERATOR APPROVAL (GATE G0)
+- **Context:** Prior to initiating Milestone M06 implementation, a comprehensive validation of all eight pre-implementation architectural decisions, IT Rules grievance timelines, and platform legal classifications was conducted to produce a definitive, unambiguous approval packet for founder/operator sign-off.
+- **Decision:**
+  1. **IT Rules Grievance Clocks Reconciled (10 February 2026 Rules):**
+     - Mapped disaggregated statutory deadlines into five distinct legal clocks:
+       * *Clock 1 (Rule 3(2)(b)):* Emergency private area, nudity, sexual act, impersonation content: **action/takedown within 2 hours** (automated P0 alert).
+       * *Clock 2 (Proviso to Rule 3(2)(a)(i)):* Specified content removal requests: **resolution within 36 hours**.
+       * *Clock 3 (Rule 3(1)(d)):* Court orders and government takedown notices: **removal within 36 hours**.
+       * *Clock 4 (Rule 3(2)(a)(i)):* Ordinary intermediary grievances: **acknowledgement within 24 hours; resolution/disposal within 7 days** (reduced from 15d by Feb 2026 amendment).
+       * *Clock 5 (IT Act §69A):* Government blocking orders: **immediate confidential compliance**.
+     - Decoupled statutory deadlines from internal operational Service-Level Targets (SLTs: 12h ack, 48h resolution for standard grievances; 1h resolution for emergency content).
+  2. **Reassessed Intermediary vs. Publisher Classification:**
+     - Separated six product functions: user discussions (Intermediary under §2(1)(w)), pandit marketplace profiles (Marketplace Intermediary), direct messaging (Intermediary Conduit), educational material (First-Party Editorial, excluded from Part III), Kundli interpretations (Proprietary Algorithmic Output, excluded from Part III), and curated scriptures (Curated Sacred Repository, excluded from Part III).
+     - Confirmed that platform spiritual/editorial text does NOT fall under Part III of the IT Rules unless it constitutes news/current affairs or online curated audio-visual content (OTT). Requires formal legal counsel confirmation.
+  3. **Distributed Rate Limiting Engine (DEC-M06-001):**
+     - Validated Upstash Redis Serverless REST as primary engine.
+     - Evaluated PostgreSQL advisory locks: proved `pg_advisory_lock` (session) is incompatible with transaction-mode connection poolers, and `pg_advisory_xact_lock` (transaction) saturates database connection poolers under high-frequency ingress spikes. Designated PostgreSQL advisory locks strictly as a low-frequency concurrency coordinator for booking mutations.
+     - Enforced strict fail-closed policy (HTTP 503 `RATE_LIMIT_UNAVAILABLE`) on sensitive mutation routes (`/api/auth/otp`, `/api/commerce/checkout`, `/api/compliance/triage`, `/api/compliance/privacy-request`); zero silent local-memory fallback.
+  4. **Ingress Origin Shielding on Vercel (DEC-M06-002):**
+     - Acknowledged standard Vercel Pro cannot enforce custom client-cert mTLS (Cloudflare AOP).
+     - Enforced Cloudflare CIDR firewall allowlisting + cryptographic shared secret header (`x-ishti-proxy-secret`) in Next.js middleware + direct `*.vercel.app` host header redirection/rejection.
+     - Stated clearly: a shared secret is an application-layer safeguard, not equivalent to mutual TLS. Documented containerized Cloudflare Tunnel (`cloudflared`) on Fly.io/ECS as primary contingency.
+  5. **Grievance Public Intake Interface (DEC-M06-003):**
+     - Formally selected Next.js Route Handler `POST /api/compliance/triage` with REST JSON contracts over Server Actions due to mobile app compatibility, HTTP status codes, and streaming body bounds.
+  6. **15-Point Multi-Copy Privacy Erasure (DEC-M06-004):**
+     - Validated 15-point data copy inventory, per-profile DEK cryptographic shredding, and confirmed that the 30-day backup expiry window is an operational technical policy choice rather than a universal statutory deadline.
+     - Documented lawful retention exceptions (Income-tax Act §62 7-year retention) in `public.privacy_requests.retained_records_summary` and tombstone replay runbooks for disaster recovery.
+  7. **Audit Ledger Defense-in-Depth (DEC-M06-005):**
+     - Enforced 8-layer immutability hierarchy (Merkle hash chaining, daily signed root manifests, external Cloudflare R2 Object Lock in Compliance Mode in a secondary cloud account).
+     - Approved statutory Record-Category Retention Matrix (tax books 7 years, consents active+3y, grievances 3y, ICT logs 180d).
+  8. **Server-Mediated Anonymous Intake RPC (DEC-M06-006):**
+     - Validated `SECURITY DEFINER` RPC `submit_anonymous_grievance` with fixed `search_path = public, pg_temp` and `EXECUTE` granted strictly to `service_role` (revoked from `anon`).
+  9. **Milestone Scope Decoupling (DEC-M06-007 & DEC-M06-008):**
+     - Confirmed commerce/tax automation deferred to Milestone M07 (requiring formal CA written certification) and scripture search deferred to Milestone M08 (requiring Vedic scholar copyright clearance).
+  10. **Architecture Decision Approval Packet:**
+      - Authored `docs/M06_G0_ARCHITECTURE_APPROVAL_PACKET.md` with all eight decisions marked `STATUS: PENDING OPERATOR APPROVAL`.
+- **Verification Evidence:**
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all workspaces.
+  - Zero application code, zero migrations, zero remote database mutations executed.
+  - Verification test suites corroborated (169 M05 compliance tests, 110 security regression tests passing 100%).
+- **Release Verdict:**
+  - Architecture Approval Packet: **`READY FOR FOUNDER / OPERATOR SIGN-OFF`**
+  - Implementation Code Execution: **`STRICTLY PAUSED / AWAITING AUTHORIZATION`**
+

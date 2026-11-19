@@ -393,5 +393,18 @@ Scope & Gates:
   - [x] Updated all 7 M06 planning deliverables: Architecture Plan, Database Plan, Security Plan, Test Strategy, Cost Options, Approvals Registry, and Gap Register
   - [x] Recorded Architectural Decision Record ADR-036 in `docs/DECISION_LOG.md`
   - [x] Maintained strict zero-code, zero-migration, zero-remote-mutation boundary; halted awaiting operator authorization
+- [x] Milestone M06 G0: Final Architecture Decision Validation & Approval Preparation (ADR-037):
+  - [x] Reconciled IT Rules 2021 updated 10 February 2026: Rule 3(2)(b) emergency sexual/impersonation content action within 2 hours; Proviso to Rule 3(2)(a)(i) resolution within 36 hours; Rule 3(1)(d) court/government takedown within 36 hours; Rule 3(2)(a)(i) ordinary intermediary grievance 24h ack & 7d disposal
+  - [x] Reassessed intermediary vs publisher classification across 6 product functions: user discussions (Intermediary), pandit profiles (Marketplace Intermediary), direct messaging (Intermediary Conduit), educational material (Editorial - excluded from Part III), Kundli interpretations (Algorithmic Output - excluded from Part III), and curated scriptures (Sacred Repository - excluded from Part III)
+  - [x] Evaluated DEC-M06-001 (Distributed Rate Limiting): Upstash Redis primary, transaction-mode pooler advisory locking limits, strict fail-closed on sensitive routes (HTTP 503), zero silent local-memory fallback
+  - [x] Evaluated DEC-M06-002 (Origin Shielding on Vercel): Cloudflare CIDR firewall allowlisting + shared proxy secret + direct `*.vercel.app` host header protection; acknowledged shared secret != mTLS; containerized Cloudflare Tunnel contingency
+  - [x] Evaluated DEC-M06-003 (Grievance Ingress): selected Next.js Route Handler `POST /api/compliance/triage` with REST contract over Server Actions; dual-clock timers (2h/24h/36h/7d)
+  - [x] Evaluated DEC-M06-004 (Privacy Erasure): validated 15-point data copy inventory, DEK shredding, 30-day backup expiry policy as technical operational choice, tombstone replay runbook
+  - [x] Evaluated DEC-M06-005 (Audit Evidence): 8-layer immutability defense, Merkle hash chaining, daily Ed25519 root signatures, Cloudflare R2 Object Lock in Compliance Mode, Record-Category Retention Matrix
+  - [x] Evaluated DEC-M06-006 (Anonymous Public Intake): `SECURITY DEFINER` RPC `submit_anonymous_grievance` with `search_path = public, pg_temp`, `EXECUTE` granted strictly to `service_role` (revoked from `anon`), Zod bounds (max 32 KB)
+  - [x] Evaluated DEC-M06-007 & DEC-M06-008: confirmed commerce/tax automation deferred to M07 (requiring CA sign-off) and scripture search deferred to M08 (requiring scholar sign-off)
+  - [x] Authored Milestone M06 Architecture Decision Approval Packet ([docs/M06_G0_ARCHITECTURE_APPROVAL_PACKET.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_G0_ARCHITECTURE_APPROVAL_PACKET.md)) with all 8 decisions in `PENDING OPERATOR APPROVAL` status
+  - [x] Recorded Architectural Decision Record ADR-037 in `docs/DECISION_LOG.md`
+  - [x] Maintained strict zero-code, zero-migration, zero-remote-mutation boundary; halted awaiting explicit operator approval
 
 

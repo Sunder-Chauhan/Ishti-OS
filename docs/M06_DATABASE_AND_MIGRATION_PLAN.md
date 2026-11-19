@@ -187,8 +187,9 @@ CREATE TABLE public.grievance_tickets (
     complainant_phone TEXT,
     category TEXT NOT NULL CHECK (
         category IN (
-            'CONTENT_IMPERSONATION_SEXUAL', -- Rule 3(2)(b): 24h statutory takedown
-            'COURT_GOVT_TAKEDOWN_ORDER',    -- Rule 3(1)(d): 36h statutory takedown
+            'CONTENT_IMPERSONATION_SEXUAL', -- Rule 3(2)(b): Action within 2 hours
+            'SPECIFIED_REMOVAL_PROVISO',    -- Proviso to Rule 3(2)(a)(i): Resolution within 36 hours
+            'COURT_GOVT_TAKEDOWN_ORDER',    -- Rule 3(1)(d): Takedown within 36 hours
             'PRIVACY_DATA_BREACH',          -- DPDP Act / IT Rules: 7d disposal
             'FRAUD_COMMERCE',               -- Consumer Protection / 7d disposal
             'PANDIT_CONDUCT',               -- Marketplace Quality / 7d disposal
@@ -204,15 +205,15 @@ CREATE TABLE public.grievance_tickets (
     
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     
-    -- Statutory Deadlines (IT Rules 2021 as amended Feb 2026)
-    statutory_ack_deadline TIMESTAMPTZ NOT NULL,   -- submitted_at + 24 hours
+    -- Statutory Deadlines (IT Rules 2021 as amended 10 February 2026)
+    statutory_ack_deadline TIMESTAMPTZ NOT NULL,   -- submitted_at + 24 hours (or 2h for Rule 3(2)(b))
     acknowledged_at TIMESTAMPTZ,
-    statutory_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 7 days (or 24h for Rule 3(2)(b))
+    statutory_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 7 days (or 2h for Rule 3(2)(b); 36h for proviso/court orders)
     resolved_at TIMESTAMPTZ,
     
     -- Internal Operational Service-Level Targets (SLTs)
-    internal_slt_ack_deadline TIMESTAMPTZ NOT NULL,      -- submitted_at + 12 hours
-    internal_slt_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 48 hours
+    internal_slt_ack_deadline TIMESTAMPTZ NOT NULL,      -- submitted_at + 12 hours (30m for Rule 3(2)(b))
+    internal_slt_disposal_deadline TIMESTAMPTZ NOT NULL, -- submitted_at + 48 hours (1h for Rule 3(2)(b); 12h for 36h proviso)
     
     resolution_summary TEXT,
     rejection_reason TEXT
@@ -262,21 +263,27 @@ BEGIN
         RAISE EXCEPTION 'Payload field limits exceeded' USING ERRCODE = '22001';
     END IF;
 
-    -- Dynamic Deadline Calculation based on Category (Correction 2)
+    -- Dynamic Deadline Calculation based on Official IT Rules (Updated 10 February 2026)
     IF p_category = 'CONTENT_IMPERSONATION_SEXUAL' THEN
-        -- Rule 3(2)(b): 24h statutory takedown; 4h internal target
+        -- Rule 3(2)(b): Action within 2 hours; 1h internal SLT target
+        v_statutory_ack := now() + INTERVAL '2 hours';
+        v_statutory_disposal := now() + INTERVAL '2 hours';
+        v_internal_ack := now() + INTERVAL '30 minutes';
+        v_internal_disposal := now() + INTERVAL '1 hour';
+    ELSIF p_category = 'SPECIFIED_REMOVAL_PROVISO' THEN
+        -- Proviso to Rule 3(2)(a)(i): Resolution within 36 hours
         v_statutory_ack := now() + INTERVAL '24 hours';
-        v_statutory_disposal := now() + INTERVAL '24 hours';
-        v_internal_ack := now() + INTERVAL '2 hours';
-        v_internal_disposal := now() + INTERVAL '4 hours';
+        v_statutory_disposal := now() + INTERVAL '36 hours';
+        v_internal_ack := now() + INTERVAL '6 hours';
+        v_internal_disposal := now() + INTERVAL '12 hours';
     ELSIF p_category = 'COURT_GOVT_TAKEDOWN_ORDER' THEN
-        -- Rule 3(1)(d): 36h statutory takedown
+        -- Rule 3(1)(d): Takedown within 36 hours from receipt of order
         v_statutory_ack := now() + INTERVAL '24 hours';
         v_statutory_disposal := now() + INTERVAL '36 hours';
         v_internal_ack := now() + INTERVAL '2 hours';
         v_internal_disposal := now() + INTERVAL '6 hours';
     ELSE
-        -- Standard IT Rules Rule 3(2)(a)(i): 24h ack, 7d disposal (Feb 2026 amendment)
+        -- Standard Intermediary Grievance under Rule 3(2)(a)(i): 24h ack, 7d disposal (Feb 2026 amendment)
         v_statutory_ack := now() + INTERVAL '24 hours';
         v_statutory_disposal := now() + INTERVAL '7 days';
         v_internal_ack := now() + INTERVAL '12 hours';
