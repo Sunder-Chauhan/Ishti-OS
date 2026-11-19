@@ -953,3 +953,42 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Milestone M06 G0 Defect Correction: **`COMPLETE & SYNCHRONIZED`**
   - Implementation Code Execution: **`STRICTLY PAUSED / AWAITING OPERATOR AUTHORIZATION`**
 
+---
+
+## 2026-11-19: ADR-039 — Milestone M06 G0: Clock-Start Invariant, Typed Clocks & Multi-Allegation Architecture
+- **Status:** PENDING OPERATOR APPROVAL (GATE G0)
+- **Context:** Independent architectural review identified critical flaws in grievance intake and deadline calculation: computing deadlines from classification timestamp (`now() + ...`) improperly extended statutory limits; relying on a single flat table prevented handling submissions with multiple allegations or differing legal categories (e.g. urgent impersonation alongside commercial pandit fee disputes); clarification requests lacked explicit tolling rules; and standard intermediary grievances were not clearly bounded by Rule 3(1) due-diligence nexus requirements.
+- **Decision:**
+  1. **Enforce Clock-Start Invariant:**
+     - Statutory compliance deadlines are anchored strictly to the original triggering event timestamp (`received_at` for web intake; verified physical/service delivery for court/govt orders).
+     - Calculation formula: $\text{applicable\_deadline} = \text{triggering\_timestamp} + \text{statutory\_duration}$.
+     - Human classification decisions determine legal applicability, but **NEVER reset, restart, or postpone a statutory clock**.
+     - If classification occurs after a statutory deadline has passed (e.g. emergency complaint received at 10:00 and classified at 12:15), the clock status is immediately recorded as `BREACHED_PENDING_ACTION` with an automatic P0 escalation.
+  2. **Relational Multi-Allegation & Typed Clocks Data Model:**
+     - Decomposed monolithic ticketing into three relational entities:
+       * `public.grievance_cases`: Root parent submission preserving immutable `received_at`, `received_channel`, `intake_case_id`, `intake_payload_hash` (SHA-256), sanitized `raw_submission JSONB`, and triage SLTs.
+       * `public.grievance_allegations`: Decomposes multi-claim and multi-URL submissions into individual actionable items (e.g. separating urgent impersonation images from commercial booking fee disputes).
+       * `public.grievance_clocks`: Independent, typed clock records tracking individual statutory and operational obligations (`RULE_3_2_B_EMERGENCY_REMOVAL`, `RULE_3_1_D_ORDER_TAKEDOWN`, `RULE_3_2_A_I_EXPEDITED_REMOVAL`, `RULE_3_2_A_I_ACKNOWLEDGEMENT`, `RULE_3_2_A_I_DISPOSAL`, `SECTION_69A_BLOCKING_DIRECTION`, `INTERNAL_OPERATIONAL_SLT`).
+  3. **Reassess Standard Grievance Scope:**
+     - Rule 3(2)(a)(i) 24h ack & 7d disposal clocks apply strictly to complaints alleging failure of intermediary due diligence under Rule 3(1).
+     - General community terms feedback, UI suggestions, and commercial pandit marketplace disputes are categorized as non-statutory complaints or commercial disputes, governed by internal SLTs (e.g. 72 hours) and zero statutory IT Rules clocks.
+  4. **Incomplete Requests & Clarification Rules:**
+     - Incomplete submissions (missing URLs, vague claims) are flagged `AWAITING_CLARIFICATION`.
+     - Clarification requests do **NOT automatically pause or reset statutory clocks** without written confirmation from Indian legal counsel. For Rule 3(2)(b) (2 hours) and Rule 3(1)(d) (3 hours), zero pause is recognized by statute.
+  5. **Eight Mandatory Test Scenarios Specified:**
+     - Scenario 1: Qualifying emergency complaint at 10:00, classified at 11:30 (deadline 12:00, 30m buffer).
+     - Scenario 2: Court order received at 09:00, logged at 10:15 (deadline 12:00, 3h from service).
+     - Scenario 3: Standard grievance initially unclassified in PENDING_CLASSIFICATION.
+     - Scenario 4: Mixed submission (commercial pandit dispute + urgent impersonation claim).
+     - Scenario 5: Multi-URL content removal request decomposed into separate allegations.
+     - Scenario 6: Incomplete request awaiting clarification (no silent clock pause).
+     - Scenario 7: Confidential Section 69A direction (direction-specified requirements; strict confidentiality).
+     - Scenario 8: Re-classification after new evidence (audit trail in `grievance_events`; deadline remains anchored to original receipt).
+- **Verification Evidence:**
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across `@spiritual-os/mobile` and `@spiritual-os/web`.
+  - All 8 M06 planning deliverables synchronized with zero architectural or legal discrepancies.
+  - Zero application code, zero migrations, zero remote database mutations executed.
+- **Release Verdict:**
+  - Clock-Start & Classification Architecture: **`RECONCILED & COMPLETE`**
+  - Implementation Code Execution: **`STRICTLY PAUSED / AWAITING OPERATOR AUTHORIZATION`**
+

@@ -72,28 +72,34 @@ pyramid
   6. *Lawful Retention Documentation:* Inspect `public.privacy_requests.retained_records_summary`.
      * *Assertion:* Documents financial transaction IDs retained pursuant to Income-tax Act, 2025 §62 (7-year retention exception).
 
-### 2.4. Grievance Redressal IT Rules Disaggregated SLA & Classification Verification (Correction 2)
-- **Objective:** Verify that grievance tickets correctly enforce human classification gates and disaggregated statutory deadlines vs internal operational targets based on classification under official consolidated IT Rules updated 10 February 2026 including the February 2026 corrigendum.
+### 2.4. Grievance Redressal IT Rules Typed Clocks & Clock-Start Invariant Verification (Correction 2)
+- **Objective:** Verify that grievance intake preserves immutable receipt timestamps, decomposes multi-allegation submissions, enforces human classification gates, and binds independent typed statutory clocks strictly anchored to the original triggering timestamp under official consolidated IT Rules updated 10 February 2026 (including corrigendum).
 - **Harness:** `scripts/test-grievance-slas.ts`.
-- **Test Scenarios:**
-  1. *Intake Review Queue & Classification Gate:*
-     * Submit ticket with intake claim `QUALIFYING_CONTENT_REMOVAL` via `submit_anonymous_grievance`.
-     * *Assertion:* Ticket is created with `classification_status` = `'PENDING_CLASSIFICATION'`, `internal_slt_triage_deadline` = +30m, and all statutory deadline fields (`statutory_removal_deadline`, `statutory_expedited_removal_deadline`, `statutory_ack_deadline`, `statutory_disposal_deadline`) are strictly `NULL`.
-  2. *Verified Rule 3(2)(b) Emergency Removal Determination:*
-     * Execute `classify_and_bind_statutory_clock(ticketId, 'RULE_3_2_B_EMERGENCY_TAKEDOWN', officerId, notes)`.
-     * *Assertion:* `statutory_removal_deadline` = **+2 Hours**; `statutory_ack_deadline` = `NULL`; `statutory_disposal_deadline` = `NULL`; `internal_slt_removal_deadline` = **+1 Hour**; `internal_slt_ack_deadline` = **+30 Minutes**; zero pause permitted.
-  3. *Verified Proviso to Rule 3(2)(a)(i) Expedited Removal Determination:*
-     * Execute `classify_and_bind_statutory_clock(ticketId, 'RULE_3_2_A_I_PROVISO_EXPEDITED_REMOVAL', officerId, notes)`.
-     * *Assertion:* `statutory_ack_deadline` = **+24 Hours**; `statutory_expedited_removal_deadline` = **+36 Hours**; `statutory_disposal_deadline` = `NULL`; `internal_slt_ack_deadline` = **+6 Hours**; `internal_slt_removal_deadline` = **+12 Hours**; pause rules require counsel confirmation.
-  4. *Verified Rule 3(1)(d) Court / Government Takedown Determination:*
-     * Execute `classify_and_bind_statutory_clock(ticketId, 'RULE_3_1_D_COURT_GOVT_ORDER', officerId, notes)`.
-     * *Assertion:* `statutory_removal_deadline` = **+3 Hours**; `statutory_ack_deadline` = `NULL` (no statutory ack obligation under 3(1)(d)); `statutory_disposal_deadline` = `NULL` (not a generic grievance disposal); `internal_slt_review_deadline` = **+30 Minutes**; `internal_slt_removal_deadline` = **+1 Hour**; zero pause permitted.
-  5. *Verified Rule 3(2)(a)(i) Standard Intermediary Grievance:*
-     * Execute `classify_and_bind_statutory_clock(ticketId, 'RULE_3_2_A_I_INTERMEDIARY_GRIEVANCE', officerId, notes)`.
-     * *Assertion:* `statutory_ack_deadline` = **+24 Hours**; `statutory_disposal_deadline` = **+7 Days** (reflecting Feb 2026 amendment); `statutory_removal_deadline` = `NULL`; `statutory_expedited_removal_deadline` = `NULL`; `internal_slt_ack_deadline` = **+12 Hours**; `internal_slt_disposal_deadline` = **+48 Hours**; pause rules require counsel confirmation.
-  6. *Voluntary Platform Complaint / Service Dispute:*
-     * Execute `classify_and_bind_statutory_clock(ticketId, 'VOLUNTARY_FEEDBACK_NON_STATUTORY', officerId, notes)`.
-     * *Assertion:* All statutory deadlines remain `NULL`; `internal_slt_ack_deadline` = +24 Hours; `internal_slt_disposal_deadline` = +72 Hours.
+- **The Eight Mandatory Test Scenarios:**
+  1. *Scenario 1: Qualifying Emergency Complaint Received at 10:00, Classified at 11:30 (Clock-Start Invariant)*
+     - **Action:** Ingest an emergency complaint alleging non-consensual sexual/impersonation content at simulated timestamp 10:00 (`received_at = 10:00`). Compliance officer executes `classify_and_bind_statutory_clock()` at 11:30.
+     - **Assertion:** Clock `RULE_3_2_B_EMERGENCY_REMOVAL` is instantiated in `public.grievance_clocks` with `triggering_timestamp = 10:00` and `applicable_deadline = 12:00` (exactly 10:00 + 2 hours, **NOT** 11:30 + 2 hours). Status is `ACTIVE` with a remaining operational buffer of 30 minutes. If classification is delayed past 12:00 (e.g. at 12:15), the clock status is immediately recorded as `BREACHED_PENDING_ACTION` with an automatic P0 alert.
+  2. *Scenario 2: Court Order Received Through Approved Channel, Classified Later*
+     - **Action:** A court order under Rule 3(1)(d) is officially served via physical/registered delivery at 09:00. The legal team logs the case into the platform at 10:15, providing `p_override_trigger_timestamp = 09:00`.
+     - **Assertion:** Clock `RULE_3_1_D_ORDER_TAKEDOWN` is bound with `triggering_timestamp = 09:00` and `applicable_deadline = 12:00` (exactly 3 hours from service). Zero statutory acknowledgement clock is created (Rule 3(1)(d) mandates immediate takedown, not acknowledgement).
+  3. *Scenario 3: Standard Grievance Initially Unclassified*
+     - **Action:** A user submits a grievance alleging failure of platform due diligence at 14:00 via `POST /api/compliance/triage`.
+     - **Assertion:** Parent record created in `public.grievance_cases` with `classification_status = 'PENDING_CLASSIFICATION'`. Zero statutory clocks are bound to `public.grievance_clocks`. Operational triage SLT is set to +2 hours (16:00).
+  4. *Scenario 4: Mixed Submission: Commercial Pandit Dispute + Urgent Impersonation Allegation*
+     - **Action:** Complainant submits a single intake ticket containing two distinct claims: (A) A commercial fee dispute alleging a pandit did not perform a booked puja; (B) An urgent allegation that the pandit profile image depicts an impersonated private photograph of the complainant.
+     - **Assertion:** A single parent record `public.grievance_cases` is created, with two child records in `public.grievance_allegations`. Officer classifies Allegation A as `PANDIT_SERVICE_COMMERCIAL_DISPUTE` (binds an `INTERNAL_OPERATIONAL_SLT` clock with a 72-hour target and zero statutory IT Rules clock). Officer classifies Allegation B as `RULE_3_2_B_EMERGENCY_TAKEDOWN` (binds `RULE_3_2_B_EMERGENCY_REMOVAL` with deadline = `received_at + 2 hours`). Both allegations and clocks coexist independently under the same parent case without legal conflation.
+  5. *Scenario 5: Multi-URL Content Removal Request*
+     - **Action:** Complainant submits an intake payload citing 4 distinct infringing forum URLs violating Rule 3(1)(b).
+     - **Assertion:** The intake RPC decomposes the array of URLs into 4 separate rows in `public.grievance_allegations`. Upon verification as `RULE_3_2_A_I_PROVISO_EXPEDITED_REMOVAL`, the system instantiates typed clocks `RULE_3_2_A_I_ACKNOWLEDGEMENT` (`received_at + 24 hours`) and `RULE_3_2_A_I_EXPEDITED_REMOVAL` (`received_at + 36 hours`).
+  6. *Scenario 6: Incomplete Request Awaiting Clarification (No Silent Clock Pause)*
+     - **Action:** Complainant submits a vague defamation claim under Rule 3(1)(b) without identifying the specific forum thread URL. Compliance officer updates allegation status to `AWAITING_CLARIFICATION` and sends an information request.
+     - **Assertion:** Allegation enters `AWAITING_CLARIFICATION`. Statutory clocks continue running strictly anchored to `received_at`; **no automatic pause or reset occurs** unless written confirmation from Indian legal counsel explicitly authorizes tolling for that category.
+  7. *Scenario 7: Confidential Section 69A Blocking Direction*
+     - **Action:** Central Government Designated Officer serves a confidential blocking direction under Section 69A.
+     - **Assertion:** Direction is logged strictly via restricted administrative channel. Instantiates a `SECTION_69A_BLOCKING_DIRECTION` clock with `applicable_deadline = NULL` and `direction_execution_requirement` populated with the direction text. The system enforces strict confidentiality under Rule 16 of the 2009 Blocking Rules; zero public ticket is published; zero assumption of a fixed 36-hour window.
+  8. *Scenario 8: Classification Decision That Changes After New Evidence (Re-Classification Audit Trail)*
+     - **Action:** A submission is initially classified as `VOLUNTARY_FEEDBACK_NON_STATUTORY` with an internal 72-hour resolution SLT. 45 minutes later, complainant provides supplemental evidence proving the post contains non-consensual intimate imagery under Rule 3(2)(b). Officer re-classifies the case to `RULE_3_2_B_EMERGENCY_TAKEDOWN`.
+     - **Assertion:** The internal SLT clock transitions to `CANCELLED_RECLASSIFIED`. A new `RULE_3_2_B_EMERGENCY_REMOVAL` clock is created. **Clock-Start Invariant:** The deadline is computed strictly as `case.received_at + 2 hours` (NOT re-classification timestamp + 2 hours). If 2 hours have already elapsed since original intake, the clock status immediately records as `BREACHED_PENDING_ACTION`. A complete audit trail of the re-classification event is appended to `public.grievance_events`.
 
 ### 2.5. Merkle Hash Chain Corruption & Tamper Detection (Correction 6)
 - **Objective:** Prove that manual modification of an audit record by a rogue database administrator is immediately detected by the integrity daemon.

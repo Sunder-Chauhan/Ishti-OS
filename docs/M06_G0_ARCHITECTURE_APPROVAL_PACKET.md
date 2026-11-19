@@ -90,26 +90,37 @@ flowchart TD
 
 ---
 
-### DEC-M06-003: Grievance Architecture & IT Rules Timeline Realignment
+### DEC-M06-003: Grievance Architecture, Clock-Start Invariant & Typed Clocks Realignment
 - **Decision ID:** `DEC-M06-003`
-- **Recommended Option:** **Next.js Route Handler (`POST /api/compliance/triage`) with Seven Request Categories, Human Classification Gate & Disaggregated Legal Clocks**
+- **Recommended Option:** **Next.js Route Handler (`POST /api/compliance/triage`), Relational Multi-Allegation Schema (`grievance_cases` -> `grievance_allegations` -> `grievance_clocks`), Clock-Start Invariant & Typed Legal Clocks**
   * Next.js Route Handler selected as the sole public intake interface over Server Actions due to REST standard contract, HTTP status codes, mobile app compatibility, and bounded stream reading.
-  * **Seven Distinct Categories & Classification Gate:** Intake enters a human-review queue (`PENDING_CLASSIFICATION`). Statutory clocks are bound **strictly upon verified legal determination** by a Compliance Officer:
-    1. *Statutory Intermediary Grievance (Rule 3(2)(a)(i)):* 24h statutory ack (`statutory_ack_deadline`), 7d statutory disposal (`statutory_disposal_deadline`).
+  * **Immutable Intake Preservation & Clock-Start Invariant:**
+    - Every incoming submission immediately captures `received_at` (immutable timestamp), `received_channel`, `intake_case_id` (`ISHTI-CASE-YYYY-XXXX`), `intake_payload_hash`, sanitized `raw_submission JSONB`, and initial allegations with `classification_status = 'PENDING_CLASSIFICATION'`.
+    - **Classification Must Not Delay Clock Commencement:** While human classification determines legal applicability, statutory deadlines are **strictly computed from the triggering event timestamp (`received_at` or verified court/govt service timestamp)**:
+      $$\text{applicable\_deadline} = \text{triggering\_timestamp} + \text{statutory\_duration}$$
+    - **Classification NEVER resets, restarts, or postpones a statutory clock.** For example, an emergency complaint received at 10:00 and classified at 11:30 has its 2-hour deadline set to 12:00 (leaving 30 minutes for operational takedown). If classification occurs after 12:00, the clock immediately records as `BREACHED_PENDING_ACTION` with an automatic P0 escalation.
+  * **Relational Multi-Allegation & Typed Clocks Data Model:**
+    - Replaces monolithic flat ticketing with `public.grievance_cases` (parent submission), `public.grievance_allegations` (multi-allegation / multi-URL decomposition), and `public.grievance_clocks` (typed independent statutory and operational clock instances).
+  * **Seven Distinct Categories & Classification Gate:** Intake enters a review queue (`PENDING_CLASSIFICATION`). Statutory clocks are bound **strictly upon verified legal determination** by a Compliance Officer:
+    1. *Statutory Intermediary Grievance (Rule 3(2)(a)(i)):* 24h statutory ack (`received_at + 24 hours`), 7d statutory disposal (`received_at + 7 days`). Requires documented due diligence nexus under Rule 3(1).
     2. *Voluntary Platform Complaint:* General feedback/bugs. Zero statutory clock; internal operational SLTs only.
     3. *Expert / Pandit Service Dispute:* Commercial booking quality, cancellations, refunds. Zero statutory clock.
     4. *Privacy-Rights Request:* DPDP Act §§11–13 rights (access, correction, erasure). Routed to `public.privacy_requests`.
     5. *Qualifying Content Removal Request:*
-       - *5a (Rule 3(2)(b)):* Emergency sexual content / impersonation. **Action / takedown within 2 hours** (`statutory_removal_deadline`). Zero statutory ack clock.
-       - *5b (Proviso to Rule 3(2)(a)(i)):* **Expedited removal within 36 hours** (`statutory_expedited_removal_deadline`) for content specifically referred to in Rule 3(1)(b), plus 24h statutory ack (`statutory_ack_deadline`). *(Not a generic 36-hour grievance disposal clock).*
-    6. *Court Orders & Reasoned Government Intimations (Rule 3(1)(d)):* **Removal or access disablement within 3 hours** (`statutory_removal_deadline`) from receipt of qualifying actual-knowledge order/intimation within statutory Article 19(2) scope. *(Zero statutory acknowledgement deadline; zero generic grievance disposal deadline).*
-    7. *Statutory Confidential Blocking Directions (IT Act §69A):* **Immediate confidential compliance** under 2009 Blocking Rules; penal consequences under Section 69A(3).
-  * **Clock Pause Rules Protocol:** Zero pause permitted under Rule 3(2)(b) and Rule 3(1)(d); pause rules for ordinary grievances under Rule 3(2)(a)(i) require formal legal counsel confirmation.
+       - *5a (Rule 3(2)(b)):* Emergency sexual content / impersonation. **Action / takedown within 2 hours of receipt** (`received_at + 2 hours`). Zero statutory ack clock.
+       - *5b (Proviso to Rule 3(2)(a)(i)):* **Expedited removal within 36 hours of receipt** (`received_at + 36 hours`) for content specifically referred to in Rule 3(1)(b), plus 24h statutory ack (`received_at + 24 hours`). *(Not a generic 36-hour grievance disposal clock).*
+    6. *Court Orders & Reasoned Government Intimations (Rule 3(1)(d)):* **Removal or access disablement within 3 hours of service** (`triggering_timestamp + 3 hours`) from receipt of qualifying actual-knowledge order/intimation within statutory Article 19(2) scope. *(Zero statutory acknowledgement deadline; zero generic grievance disposal deadline).*
+    7. *Statutory Confidential Blocking Directions (IT Act §69A):* **Immediate confidential compliance** under 2009 Blocking Rules; direction-specified requirements (no fixed 36h duration); penal consequences under Section 69A(3).
+  * **Incomplete Requests & Clock Pause Rules Protocol:**
+    - Incomplete submissions flagged `AWAITING_CLARIFICATION`.
+    - Clarification requests do **NOT automatically pause or reset statutory clocks** without written Indian legal counsel confirmation. Zero pause permitted under Rule 3(2)(b) and Rule 3(1)(d); pause rules for ordinary grievances require formal legal counsel confirmation.
   * Decouple statutory deadlines from internal operational targets (SLTs: 30m triage SLT for emergency/court claims, 2h standard; 12h ack, 48h resolution for standard complaints; 30m review, 1h removal for Rule 3(1)(d) and Rule 3(2)(b)).
 - **Alternatives Rejected & Why:**
   1. *Server Actions for Public Ingress:* Rejected because Server Actions use React flight protocol serialization, preventing standard REST integration for mobile apps or external complainants.
   2. *Single 24h Blanket Timeline:* Rejected as legally incorrect; failed to meet the strict 2-hour takedown mandate for Rule 3(2)(b) content and 3-hour mandate for Rule 3(1)(d) court orders.
   3. *Unverified User-Driven Statutory Clock Binding:* Rejected because untrusted external input cannot unilaterally bind statutory deadlines without legal applicability verification.
+  4. *Clock-Start from Classification Timestamp (`now() + ...`):* Rejected because delaying classification would unconstitutionally and unlawfully extend statutory deadlines.
+  5. *Single Flat Table for Multi-Allegation Submissions:* Rejected because a single submission often contains both an urgent content removal claim and unrelated commercial dispute items that require separate legal handling.
 - **Risks Accepted:** The 2-hour window under Rule 3(2)(b) and 3-hour window under Rule 3(1)(d) require an active Grievance Officer on-call alerting rotation.
 - **Risks Still Open:** Formal written opinion from Indian legal counsel required to verify applicability classifications, safe-harbour risk posture, and pause rules before commercial launch.
 - **Owner:** Legal Engineering Lead & Compliance Officer
@@ -213,7 +224,7 @@ flowchart TD
 | :--- | :--- | :---: | :---: | :---: | :---: |
 | **DEC-M06-001** | Upstash Redis Primary + Fail-Closed Sensitive Routes | Latency Unverified (Pending Benchmark) | `PENDING APPROVAL` | ____________________ | ______ |
 | **DEC-M06-002** | Cloudflare CIDR Allowlisting + Shared Secret Header on Vercel | Proposed (Deployment Verification Required) | `PENDING APPROVAL` | ____________________ | ______ |
-| **DEC-M06-003** | Route Handler `/api/compliance/triage` + 5 Legal Clocks (2h/3h/36h/24h/7d) | Corrected to 10 Feb 2026 Rules | `PENDING APPROVAL` | ____________________ | ______ |
+| **DEC-M06-003** | Route Handler `/api/compliance/triage` + Typed Clocks + Clock-Start Invariant | Reconciled to Clock-Start Invariant & Typed Clocks | `PENDING APPROVAL` | ____________________ | ______ |
 | **DEC-M06-004** | 15-Point Multi-Copy Erasure + DEK Shredding + 30d Backup Expiry Policy | Architecture Complete | `PENDING APPROVAL` | ____________________ | ______ |
 | **DEC-M06-005** | 8-Layer Defense (Merkle Chains + R2 WORM) + Retention Matrix | Architecture Complete | `PENDING APPROVAL` | ____________________ | ______ |
 | **DEC-M06-006** | Server-Mediated Ingress + `SECURITY DEFINER` RPC strictly for `service_role` | Architecture Complete | `PENDING APPROVAL` | ____________________ | ______ |
@@ -230,7 +241,7 @@ flowchart TD
 | Evaluation Dimension | Current Formal Status | Audit Evidence & Detailed Findings |
 | :--- | :---: | :--- |
 | **1. Architecture Recommendation** | **`COMPLETE`** | All 8 core architectural decisions (DEC-M06-001 through DEC-M06-008) have been comprehensively specified, alternatives evaluated, failure modes modeled, and trade-offs documented across 7 M06 planning deliverables. |
-| **2. Statutory Mapping** | **`CORRECTED`** | Fully reconciled against official Gazette Notification G.S.R. 843(E) (DPDP Act phased commencement) and the consolidated IT Rules 2021 as amended 10 February 2026 (including corrigendum): Rule 3(2)(b) emergency removal within 2h, Rule 3(1)(d) court/govt actual-knowledge removal/disablement within 3h (zero statutory ack/disposal clock), Proviso to Rule 3(2)(a)(i) expedited content removal within 36h for Rule 3(1)(b) violations, Rule 3(2)(a)(i) 24h ack & 7d disposal, and IT Act §69A confidential blocking orders. Seven request categories separated; human classification gate mandated; pause rules marked as requiring counsel confirmation. |
+| **2. Statutory Mapping** | **`CORRECTED & RECONCILED`** | Fully reconciled against official Gazette Notification G.S.R. 843(E) (DPDP Act phased commencement) and the consolidated IT Rules 2021 as amended 10 February 2026 (including corrigendum): Rule 3(2)(b) emergency removal within 2h from receipt, Rule 3(1)(d) court/govt actual-knowledge removal/disablement within 3h from service (zero statutory ack/disposal clock), Proviso to Rule 3(2)(a)(i) expedited content removal within 36h from receipt for Rule 3(1)(b) violations, Rule 3(2)(a)(i) 24h ack & 7d disposal from receipt, and IT Act §69A confidential blocking orders. Clock-start invariant strictly enforced (statutory deadlines computed from triggering event / receipt timestamp, never postponed by classification); relational multi-allegation schema (`grievance_cases` -> `grievance_allegations` -> `grievance_clocks`) deployed; pause rules marked as requiring counsel confirmation. |
 | **3. Infrastructure Compatibility** | **`PROPOSED (NOT EMPIRICALLY VERIFIED)`** | Ingress shielding via Cloudflare CIDR firewall allowlisting + shared proxy secret (`x-ishti-proxy-secret`) and host-header protection is architecturally proposed for Vercel Pro. However, it is **not yet verified in a live deployment environment**. |
 | **4. Infrastructure Empirical Verification** | **`PENDING DEPLOYMENT BENCHMARKS`** | Upstash Redis `ap-south-1` Mumbai latency, Vercel edge runtime round-trips, and the 8-point origin shielding bypass test suite (direct `*.vercel.app`, spoofed headers, alias bypass) are **unverified pending empirical benchmark testing in Phase 2 & Phase 5**. |
 | **5. Database Migration Plan** | **`REVIEWED WITH ROLLBACK LIMITATIONS DOCUMENTED`** | Migration DDL schemas (4 forward migrations) and RLS security models have been fully authored. Migration reversibility is rigorously categorized into 6 operational classes; naive down-script assumptions have been eliminated; backup and restore verification is mandated prior to destructive changes. |

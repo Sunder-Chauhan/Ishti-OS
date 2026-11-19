@@ -107,14 +107,23 @@ flowchart TD
 
 ---
 
-### DEC-M06-003: Grievance Architecture & IT Rules Timeline Realignment
+### DEC-M06-003: Grievance Architecture, Clock-Start Invariant & Typed Clocks Realignment
 - **Decision ID:** `DEC-M06-003`
-- **Exact Problem:** Previous planning drafts contained contradictory implementation pathways (Server Actions vs Route Handlers), conflated statutory IT Rules deadlines, failed to separate statutory obligations from internal SLTs, and lacked a human classification gate to prevent broad or malicious user labels from unilaterally binding statutory deadlines.
+- **Exact Problem:** Previous planning drafts contained contradictory implementation pathways (Server Actions vs Route Handlers), conflated statutory IT Rules deadlines, calculated deadlines from classification time (`now() + ...`) rather than receipt time, failed to support multi-allegation / multi-URL submissions, assumed clarification requests automatically pause statutory clocks, and lacked a typed clock data model to track independent statutory and operational obligations.
 - **Recommended Approach:**
   * **Single Public Ingress Interface:** Next.js **Route Handler (`POST /api/compliance/triage`)** with JSON REST request/response contracts is selected as the sole server-mediated public intake interface.
     - *Rationale:* Route Handlers provide standard WHATWG HTTP endpoints accessible by external web clients, mobile apps, and statutory escalation webhooks with standard HTTP status codes (`201 Created`, `400 Bad Request`, `413 Payload Too Large`, `429 Too Many Requests`, `503 Service Unavailable`). Server Actions are coupled to React component forms and use internal React flight protocol serialization, making them inappropriate for public external intake and webhook integrations.
+  * **Immutable Intake Preservation & Clock-Start Invariant:**
+    - Every incoming request immediately receives: `received_at` (immutable timestamp), `received_channel` (e.g. `WEB_ROUTE_HANDLER`), `intake_case_id` (`ISHTI-CASE-YYYY-XXXX`), `classification_status = 'PENDING_CLASSIFICATION'`, `intake_payload_hash` (SHA-256), sanitized `raw_submission JSONB`, and an immutable audit log record.
+    - **Classification Must Not Delay Clock Commencement:** While human classification determines legal applicability, the statutory deadline is **strictly computed from the original triggering event timestamp (`received_at` or verified court/govt service timestamp)**:
+      $$\text{applicable\_deadline} = \text{triggering\_timestamp} + \text{statutory\_duration}$$
+    - **Classification NEVER resets, restarts, or postpones a statutory clock.** For example, an emergency complaint received at 10:00 and classified at 11:30 has its 2-hour deadline set to 12:00 (leaving 30 minutes for operational takedown). If classification occurs after 12:00, the clock immediately records as `BREACHED_PENDING_ACTION` with an automatic P0 escalation.
+  * **Relational Multi-Allegation & Typed Clocks Data Model:**
+    1. `public.grievance_cases`: Root parent submission tracking complainant identity, intake channel, raw payload hash, and triage SLTs.
+    2. `public.grievance_allegations`: Decomposes a single submission into multiple distinct claims, affected content URLs, and verified legal categories (e.g. one urgent impersonation image alongside one commercial pandit fee dispute).
+    3. `public.grievance_clocks`: Independent, typed clock records (`RULE_3_2_B_EMERGENCY_REMOVAL`, `RULE_3_1_D_ORDER_TAKEDOWN`, `RULE_3_2_A_I_EXPEDITED_REMOVAL`, `RULE_3_2_A_I_ACKNOWLEDGEMENT`, `RULE_3_2_A_I_DISPOSAL`, `SECTION_69A_BLOCKING_DIRECTION`, `INTERNAL_OPERATIONAL_SLT`) tracking `triggering_event`, `triggering_timestamp`, `applicable_deadline`, and compliance status.
   * **Seven Distinct Request Categories & Mandatory Human Classification Gate:**
-    1. *Statutory Intermediary Grievance (Rule 3(2)(a)(i)):* User complaint regarding intermediary due diligence or community moderation.
+    1. *Statutory Intermediary Grievance (Rule 3(2)(a)(i)):* User complaint alleging failure of intermediary due diligence under Rule 3(1). (Requires documented verification of intermediary due diligence nexus; general terms, UI dissatisfaction, or marketplace disputes do not qualify).
     2. *Voluntary Platform Complaint:* General feedback, UI bugs, app dissatisfaction. (Zero statutory clock; internal operational SLTs only).
     3. *Expert / Pandit Service Dispute:* Marketplace commercial booking quality, pandit conduct, refunds. (Consumer Protection Act / terms; zero statutory clock).
     4. *Privacy-Rights Request:* DPDP Act §§11–13 rights (access, correction, erasure). (Handled by `public.privacy_requests`).
@@ -123,20 +132,24 @@ flowchart TD
        - *5b: Expedited Content Removal Request (Proviso to Rule 3(2)(a)(i)):* Removal of content specifically referred to in Rule 3(1)(b) sub-clauses (i)–(x).
     6. *Court Orders & Reasoned Government Intimations (Rule 3(1)(d)):* Formal orders by competent courts or reasoned notifications by Appropriate Government/agency under Section 79(3)(b).
     7. *Statutory Confidential Blocking Directions (IT Act §69A):* Confidential blocking directions under 2009 Blocking Rules. (Handled outside public ticketing).
-    - *Classification Gate:* All intake enters a review queue with `classification_status = 'PENDING_CLASSIFICATION'`. Statutory clocks are populated **only after a documented legal applicability determination** by a Compliance / Legal Officer.
+  * **Incomplete Requests & Clarification Rules:**
+    - Submissions missing URLs or with vague claims are flagged `AWAITING_CLARIFICATION`.
+    - **No Automatic Clock Pause:** Clarification requests do **NOT automatically pause or reset statutory clocks** without written Indian legal counsel confirmation. For Rule 3(2)(b) and 3(1)(d), zero pause is recognized by law.
   * **Disaggregated Statutory Clocks (Official Consolidated IT Rules Updated 10 February 2026 + Corrigendum):**
-    1. *Emergency Private Area, Nudity, Sexual Act, Impersonation Content (Rule 3(2)(b)):* **Action / takedown within 2 hours** (`statutory_removal_deadline`). Zero statutory ack clock; zero statutory pause permitted.
-    2. *Court Orders & Reasoned Government Intimations (Rule 3(1)(d)):* **Removal or disabling access within 3 hours** (`statutory_removal_deadline`) from receipt of qualifying actual-knowledge order/intimation within its statutory Article 19(2) scope. *(Zero statutory acknowledgement deadline; zero generic grievance disposal deadline; zero statutory pause permitted).*
-    3. *Qualifying Content Removal Requests (Proviso to Rule 3(2)(a)(i)):* **Expedited content removal within 36 hours** (`statutory_expedited_removal_deadline`) for content specified under Rule 3(1)(b) sub-clauses, plus 24h statutory ack (`statutory_ack_deadline`). *(Not a generic 36-hour grievance resolution clock; pause rules require formal counsel confirmation).*
-    4. *Ordinary Intermediary Grievance (Rule 3(2)(a)(i)):* **Acknowledgement within 24 hours** (`statutory_ack_deadline`); **resolution/disposal within 7 days** (`statutory_disposal_deadline`). *(Pause rules require formal counsel confirmation).*
-    5. *Government Blocking Directions (IT Act §69A read with 2009 Blocking Rules):* **Separate confidential procedure**; immediate compliance as directed by Central Government Designated Officer. Failure to comply carries criminal liability under Section 69A(3). Not an ordinary grievance clock.
-  * **Disaggregated Operational SLTs:** Internal operational targets (`internal_slt_triage_deadline`, `internal_slt_ack_deadline`, `internal_slt_review_deadline`, `internal_slt_removal_deadline`, `internal_slt_disposal_deadline`) are strictly distinguished from statutory obligations.
+    1. *Emergency Private Area, Nudity, Sexual Act, Impersonation Content (Rule 3(2)(b)):* **Action / takedown within 2 hours of receipt** (`applicable_deadline = received_at + 2 hours`). Zero statutory ack clock; zero statutory pause permitted.
+    2. *Court Orders & Reasoned Government Intimations (Rule 3(1)(d)):* **Removal or disabling access within 3 hours of service** (`applicable_deadline = triggering_timestamp + 3 hours`) from receipt of qualifying actual-knowledge order/intimation within Article 19(2) scope. *(Zero statutory acknowledgement deadline; zero generic grievance disposal deadline; zero statutory pause permitted).*
+    3. *Qualifying Content Removal Requests (Proviso to Rule 3(2)(a)(i)):* **Expedited content removal within 36 hours of receipt** (`applicable_deadline = received_at + 36 hours`) for content specified under Rule 3(1)(b) sub-clauses, plus 24h statutory ack (`received_at + 24 hours`). *(Not a generic 36-hour grievance resolution clock; pause rules require formal counsel confirmation).*
+    4. *Ordinary Intermediary Grievance (Rule 3(2)(a)(i)):* **Acknowledgement within 24 hours of receipt** (`received_at + 24 hours`); **resolution/disposal within 7 days of receipt** (`received_at + 7 days`). *(Requires verified due-diligence nexus; pause rules require formal counsel confirmation).*
+    5. *Government Blocking Directions (IT Act §69A read with 2009 Blocking Rules):* **Separate confidential procedure**; immediate compliance as directed by Central Government Designated Officer (direction-specified requirements; no fixed 36h duration). Failure to comply carries criminal liability under Section 69A(3). Not an ordinary grievance clock.
+  * **Disaggregated Operational SLTs:** Internal operational targets (`internal_slt_triage_deadline`, `internal_slt_ack_deadline`, `internal_slt_disposal_deadline`) are strictly distinguished from statutory obligations.
 - **Alternatives Evaluated & Rejected:**
   1. *Server Action Ingress:* Rejected because it cannot serve mobile apps or external API consumers with standard REST contracts.
   2. *Single 24h Blanket Clock:* Rejected as legally incorrect; conflated acknowledgement with final disposal and failed to meet the strict 2h requirement for Rule 3(2)(b) and 3h requirement for Rule 3(1)(d).
   3. *Unverified User-Driven Statutory Clock Assignment:* Rejected because allowing untrusted external complainants to self-assign statutory clocks creates severe denial-of-service and false-compliance risks.
+  4. *Clock-Start from Classification Timestamp (`now() + ...`):* Rejected because delaying classification would unconstitutionally and unlawfully extend statutory deadlines, violating mandatory statutory limits.
+  5. *Single Flat Table for Multi-Allegation Submissions:* Rejected because a single submission often contains both an urgent content removal claim and unrelated commercial dispute items that require separate legal handling.
 - **Security & Legal Trade-Offs:** The 2-hour window under Rule 3(2)(b) and 3-hour window under Rule 3(1)(d) require automated P0 alerting (SMS/phone notification to on-call Grievance Officers) as an internal operational safeguard. Failure to act within prescribed statutory timelines creates substantial legal exposure and may jeopardize the availability of safe-harbour protection under Section 79 of the IT Act, subject to statutory applicability, intermediary status, the specific obligations and facts, and counsel assessment.
-- **Cost Implications:** $0.00 (Core logic implemented in PostgreSQL triggers and Next.js Route Handler).
+- **Cost Implications:** $0.00 (Core logic implemented in PostgreSQL triggers, RPC functions, and Next.js Route Handler).
 - **Operational Dependencies:** Grievance Officer on-call rota for 24/7 coverage of Rule 3(2)(b) and Rule 3(1)(d) emergency takedowns.
 - **Approval Owner:** Legal Engineering Lead & Compliance Officer
 - **Status:** **`PENDING OPERATOR APPROVAL`**
@@ -211,7 +224,7 @@ flowchart TD
 - **Decision ID:** `DEC-M06-006`
 - **Exact Problem:** External complainants and prospective early-access users need to submit data without authenticating. Granting direct database write access to the PostgREST `anon` role enables parameter pollution and bulk spamming, while exposing an unconstrained `SECURITY DEFINER` function creates a privilege escalation risk.
 - **Recommended Approach:**
-  * **Strict Database Role Isolation:** The PostgREST `anon` and `public` roles are granted **ZERO table permissions** (`REVOKE ALL ON public.grievance_tickets FROM anon, public`).
+  * **Strict Database Role Isolation:** The PostgREST `anon` and `public` roles are granted **ZERO table permissions** (`REVOKE ALL ON public.grievance_cases, public.grievance_allegations, public.grievance_clocks FROM anon, public`).
   * **Server-Mediated Ingress:** All anonymous submissions must hit the Next.js Route Handler `POST /api/compliance/triage`.
   * **Input Validation & Abuse Mitigation:**
     - Zod schema validation enforces strict field formats and string lengths (complainant email max 255 chars, description max 4,000 chars, total payload max 32 KB).
@@ -221,8 +234,9 @@ flowchart TD
     - Marked `SECURITY DEFINER` with a fixed `search_path = public, pg_temp` to prevent search_path hijacking.
     - Execution privilege is granted **STRICTLY TO `service_role`**; `REVOKE EXECUTE FROM PUBLIC, anon`.
     - Internal validation rejects payloads exceeding size limits.
-    - Enforces operational intake triage SLTs (30m for claimed emergency/court submissions, 2h for standard complaints) with `PENDING_CLASSIFICATION` status.
-    - Does NOT silently assign statutory legal deadlines upon unverified intake; statutory clocks are populated strictly via `classify_and_bind_statutory_clock()` following documented legal determination by a Compliance Officer.
+    - Preserves immutable intake timestamp (`received_at`), `received_channel`, `intake_payload_hash`, and initial allegations in `PENDING_CLASSIFICATION`.
+    - Enforces operational intake triage SLTs (30m for claimed emergency/court submissions, 2h for standard complaints).
+    - Does NOT silently assign statutory legal deadlines upon unverified intake; statutory clocks are populated strictly via `classify_and_bind_statutory_clock()` adhering to the clock-start invariant (anchored to original intake timestamp) following documented legal determination by a Compliance Officer.
     - Inserts immutable audit record with `actor_role = 'anonymous_public'`.
 - **Alternatives Evaluated & Rejected:**
   1. *Granting INSERT to anon in PostgREST:* Rejected as unsafe; exposes database schema to direct unmetered client injection.
