@@ -176,7 +176,7 @@ A comprehensive code and documentation search was conducted across all M06 plann
 - **Monorepo Typecheck:** `npm run typecheck` returned **0 errors** across `@spiritual-os/mobile` and `@spiritual-os/web`.
 - **Git Working Tree:** Clean. All modifications committed and pushed to `origin/feature/m05-trust-governance`.
 - **Preceding Commit:** `3d655eb`
-- **Correction Commit:** (To be finalized with this deliverable commit).
+- **Correction Commits:** `0abdf9d` (reconciling statutory deadlines, 7 categories, and safe harbour) and current sync commit.
 
 ---
 
