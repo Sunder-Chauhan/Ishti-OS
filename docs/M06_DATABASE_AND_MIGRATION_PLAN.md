@@ -177,15 +177,15 @@ BEFORE UPDATE OR DELETE ON public.audit_ledger
 FOR EACH ROW EXECUTE FUNCTION public.prevent_audit_ledger_mutation();
 ```
 
-### 2.4. Production Grievance Redressal, Multi-Allegation Intake & Typed Clocks (Workstream M06.5) (Corrections 2 & 4)
+### 2.4. Production Grievance Redressal, Multi-Allegation Intake & Typed Clocks (Workstream M06.5) (Corrections 2, 4 & ADR-040)
 
 ```sql
 -- Table: public.grievance_cases
--- Purpose: Root parent submission for incoming complaints, preserving immutable receipt timestamps, intake hashes, and triage status
+-- Purpose: Root parent submission for incoming complaints, preserving immutable receipt timestamps, intake hashes, sanitized data, and triage status
 CREATE TABLE public.grievance_cases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    case_reference TEXT NOT NULL UNIQUE, -- 'ISHTI-CASE-YYYY-XXXX'
-    received_at TIMESTAMPTZ NOT NULL DEFAULT now(), -- Immutable intake receipt timestamp
+    public_reference TEXT NOT NULL UNIQUE, -- Unguessable CSPRNG Crockford Base32 token: 'ISHTI-GRV-' + 16 chars (80 bits entropy, e.g. 'ISHTI-GRV-7M9K-2WX4-BQ8R-5TY1')
+    case_received_at TIMESTAMPTZ NOT NULL DEFAULT now(), -- Immutable HTTP intake timestamp for parent container
     received_channel TEXT NOT NULL CHECK (
         received_channel IN (
             'WEB_ROUTE_HANDLER',
@@ -198,7 +198,7 @@ CREATE TABLE public.grievance_cases (
     complainant_email TEXT NOT NULL,
     complainant_phone TEXT,
     
-    -- Intake Claims & Raw Preservation
+    -- Intake Claims & Cryptographic Request Hash Preservation
     intake_category TEXT NOT NULL CHECK (
         intake_category IN (
             'STATUTORY_INTERMEDIARY_GRIEVANCE', -- Alleging intermediary due diligence failure
@@ -210,8 +210,9 @@ CREATE TABLE public.grievance_cases (
             'OTHER_INQUIRY'
         )
     ),
-    intake_payload_hash TEXT NOT NULL, -- SHA-256 of raw bounded submission body
-    raw_submission JSONB NOT NULL,     -- Complete sanitized intake metadata & claims
+    raw_request_sha256 TEXT NOT NULL,         -- SHA-256 hash of original bounded raw HTTP bytes (<= 32 KB)
+    sanitized_payload_json JSONB NOT NULL,    -- Sanitized JSONB representation for application logic (never conflated with raw bytes)
+    sanitization_metadata JSONB NOT NULL DEFAULT '{}'::jsonb, -- Records stripping of script tags, normalized Unicode, etc.
     
     classification_status TEXT NOT NULL DEFAULT 'PENDING_CLASSIFICATION' CHECK (
         classification_status IN (
@@ -243,11 +244,19 @@ CREATE TABLE public.grievance_cases (
 );
 
 -- Table: public.grievance_allegations
--- Purpose: Supports multi-allegation and multi-URL decomposition within a single case submission
+-- Purpose: Supports multi-allegation and multi-URL decomposition within a single case submission, tracking independent provenance and timestamps
 CREATE TABLE public.grievance_allegations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     case_id UUID NOT NULL REFERENCES public.grievance_cases(id) ON DELETE CASCADE,
     allegation_index INT NOT NULL DEFAULT 1,
+    allegation_received_at TIMESTAMPTZ NOT NULL DEFAULT now(), -- Immutable timestamp when this specific allegation was ingested
+    provenance TEXT NOT NULL DEFAULT 'INITIAL_SUBMISSION' CHECK (
+        provenance IN ('INITIAL_SUBMISSION', 'SUPPLEMENTAL_SUBMISSION', 'DISCOVERED_DURING_INVESTIGATION')
+    ),
+    affected_party_type TEXT NOT NULL DEFAULT 'SELF' CHECK (
+        affected_party_type IN ('SELF', 'AUTHORIZED_REPRESENTATIVE', 'THIRD_PARTY_REPORTER')
+    ),
+    affected_individual_name TEXT,
     target_content_url TEXT,
     target_content_type TEXT CHECK (
         target_content_type IN ('FORUM_POST', 'USER_AVATAR', 'PANDIT_PROFILE', 'DIRECT_MESSAGE', 'EDITORIAL_ARTICLE', 'OTHER')
@@ -280,8 +289,32 @@ CREATE TABLE public.grievance_allegations (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Table: public.grievance_evidence
+-- Purpose: Stores initial and supplemental evidentiary items (URLs, screenshots, documents) with immutable receipt timestamps, cryptographic hashes, and quarantined storage references
+CREATE TABLE public.grievance_evidence (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    case_id UUID NOT NULL REFERENCES public.grievance_cases(id) ON DELETE CASCADE,
+    allegation_id UUID REFERENCES public.grievance_allegations(id) ON DELETE SET NULL, -- 1-to-many relationship
+    evidence_received_at TIMESTAMPTZ NOT NULL DEFAULT now(), -- Immutable timestamp when evidence was received
+    evidence_type TEXT NOT NULL CHECK (
+        evidence_type IN ('URL_REFERENCE', 'FILE_ATTACHMENT', 'SCREENSHOT', 'LEGAL_DOCUMENT', 'COMMUNICATION_LOG')
+    ),
+    file_sha256 TEXT NOT NULL, -- Cryptographic hash of the evidence file/payload
+    storage_uri TEXT, -- Quarantined bucket path or external URI (zero public URLs)
+    mime_type TEXT,
+    file_size_bytes BIGINT CHECK (file_size_bytes IS NULL OR file_size_bytes <= 10485760), -- Max 10MB per file
+    uploaded_by_role TEXT NOT NULL DEFAULT 'anonymous_complainant' CHECK (
+        uploaded_by_role IN ('anonymous_complainant', 'authenticated_user', 'compliance_officer', 'system_service')
+    ),
+    is_sensitive_imagery BOOLEAN NOT NULL DEFAULT FALSE, -- Flagged for Rule 3(2)(b) intimate imagery (quarantined, accessible strictly by compliance officers)
+    retention_status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (
+        retention_status IN ('ACTIVE', 'RESTRICTED_ACCESS', 'PURGED_LAWFUL_ORDER', 'ARCHIVED')
+    ),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Table: public.grievance_clocks
--- Purpose: Typed, independent statutory and operational clock instances anchored strictly to original triggering timestamps
+-- Purpose: Typed, independent statutory and operational clock instances anchored strictly to legally applicable triggering timestamps
 CREATE TABLE public.grievance_clocks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     case_id UUID NOT NULL REFERENCES public.grievance_cases(id) ON DELETE CASCADE,
@@ -305,34 +338,38 @@ CREATE TABLE public.grievance_clocks (
     triggering_event TEXT NOT NULL CHECK (
         triggering_event IN (
             'INTAKE_RECEIPT',
+            'SUPPLEMENTAL_EVIDENCE_RECEIPT',
             'OFFICIAL_COURT_SERVICE',
             'LEGAL_NOTICE_DELIVERY',
             'GOVT_NOTIFICATION_RECEIPT'
         )
     ),
-    triggering_timestamp TIMESTAMPTZ NOT NULL, -- Exact timestamp of intake receipt or official service
-    applicable_deadline TIMESTAMPTZ,           -- Calculated: triggering_timestamp + statutory_duration
-    direction_execution_requirement TEXT,      -- For Section 69A confidential directions or specific court orders
+    statutory_triggered_at TIMESTAMPTZ NOT NULL, -- Legally applicable timestamp that initiates statutory countdown (assigned/derived)
+    applicable_deadline TIMESTAMPTZ,             -- Calculated: statutory_triggered_at + statutory_duration
+    direction_execution_requirement TEXT,        -- For Section 69A confidential directions or specific court orders
     
     -- Decision Metadata
     classified_by UUID REFERENCES auth.users(id),
     classified_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    officer_legal_reasoning TEXT,                -- Mandatory documented rationale for classification and statutory_triggered_at assignment
     
     -- Lifecycle & Escalation
     status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (
         status IN ('ACTIVE', 'COMPLIED', 'BREACHED_PENDING_ACTION', 'BREACHED_COMPLIED_LATE', 'CANCELLED_RECLASSIFIED')
     ),
-    action_timestamp TIMESTAMPTZ,              -- When compliance action was completed
-    evidence_reference TEXT,                   -- Reference to audit_ledger or storage proof
+    action_timestamp TIMESTAMPTZ,                -- When compliance action was completed
+    evidence_reference TEXT,                     -- Reference to audit_ledger or storage proof
     escalation_history JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Table: public.grievance_events (Append-Only Event Sourcing)
+-- Table: public.grievance_events (Append-Only and Tamper-Evident Event Trail)
 CREATE TABLE public.grievance_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sequence_id BIGSERIAL UNIQUE,
     case_id UUID NOT NULL REFERENCES public.grievance_cases(id) ON DELETE CASCADE,
     allegation_id UUID REFERENCES public.grievance_allegations(id) ON DELETE SET NULL,
+    evidence_id UUID REFERENCES public.grievance_evidence(id) ON DELETE SET NULL,
     clock_id UUID REFERENCES public.grievance_clocks(id) ON DELETE SET NULL,
     actor_id UUID REFERENCES auth.users(id), -- NULL for anonymous complainant update
     actor_role TEXT NOT NULL DEFAULT 'grievance_officer',
@@ -340,6 +377,7 @@ CREATE TABLE public.grievance_events (
         event_type IN (
             'CASE_RECEIVED',
             'ALLEGATION_RECORDED',
+            'EVIDENCE_SUBMITTED',
             'CLASSIFICATION_APPLIED',
             'CLOCK_BOUND',
             'ACKNOWLEDGEMENT_ISSUED',
@@ -349,21 +387,41 @@ CREATE TABLE public.grievance_events (
             'CLOCK_COMPLIED',
             'CLOCK_BREACHED',
             'CASE_RESOLVED',
-            'CASE_REJECTED'
+            'CASE_REJECTED',
+            'REDACTION_TOMBSTONE'
         )
     ),
     event_details JSONB NOT NULL,
+    previous_event_hash TEXT NOT NULL DEFAULT '', -- Hash chain link to preceding sequence_id
+    event_hash TEXT NOT NULL,                     -- SHA-256(sequence_id || case_id || event_type || created_at || event_details || previous_event_hash)
+    is_tombstone BOOLEAN NOT NULL DEFAULT FALSE,  -- True for lawful redaction events without mutating historical rows
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Trigger: Enforce Append-Only Property on public.grievance_events
+CREATE OR REPLACE FUNCTION public.prevent_grievance_event_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'CRITICAL SECURITY VIOLATION: public.grievance_events is append-only and tamper-evident. UPDATE and DELETE operations are prohibited.'
+    USING ERRCODE = '42501';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+CREATE TRIGGER trg_grievance_events_immutable
+BEFORE UPDATE OR DELETE ON public.grievance_events
+FOR EACH ROW EXECUTE FUNCTION public.prevent_grievance_event_mutation();
+
 CREATE INDEX idx_grievance_cases_status ON public.grievance_cases(status);
 CREATE INDEX idx_grievance_cases_classification ON public.grievance_cases(classification_status);
+CREATE INDEX idx_grievance_cases_public_reference ON public.grievance_cases(public_reference);
 CREATE INDEX idx_grievance_clocks_deadline ON public.grievance_clocks(applicable_deadline) WHERE status = 'ACTIVE';
 CREATE INDEX idx_grievance_clocks_type ON public.grievance_clocks(clock_type);
 CREATE INDEX idx_grievance_allegations_case_id ON public.grievance_allegations(case_id);
+CREATE INDEX idx_grievance_evidence_case_id ON public.grievance_evidence(case_id);
+CREATE INDEX idx_grievance_evidence_allegation_id ON public.grievance_evidence(allegation_id);
 ```
 
-### 2.5. Server-Mediated Anonymous Intake & Classification RPC Functions (Correction 4)
+### 2.5. Server-Mediated Anonymous Intake & Classification RPC Functions (Corrections 4 & ADR-040)
 
 ```sql
 -- Security Definer RPC: submit_anonymous_grievance
@@ -376,15 +434,18 @@ CREATE OR REPLACE FUNCTION public.submit_anonymous_grievance(
     p_description TEXT,
     p_evidence_urls TEXT[],
     p_ip_hash TEXT,
-    p_case_ref TEXT,
-    p_raw_submission JSONB DEFAULT '{}'::jsonb
+    p_public_ref TEXT,
+    p_raw_request_sha256 TEXT,
+    p_sanitized_payload JSONB DEFAULT '{}'::jsonb,
+    p_sanitization_metadata JSONB DEFAULT '{}'::jsonb
 )
 RETURNS UUID AS $$
 DECLARE
     v_case_id UUID;
+    v_allegation_id UUID;
     v_priority TEXT := 'STANDARD';
     v_internal_triage TIMESTAMPTZ;
-    v_payload_hash TEXT;
+    v_now TIMESTAMPTZ := now();
     v_url TEXT;
     v_idx INT := 1;
 BEGIN
@@ -393,66 +454,93 @@ BEGIN
         RAISE EXCEPTION 'Payload field limits exceeded' USING ERRCODE = '22001';
     END IF;
 
-    -- Compute Payload SHA-256 Hash
-    v_payload_hash := encode(digest(coalesce(p_raw_submission::text, p_description), 'sha256'), 'hex');
-
     -- Operational Triage Target Assignment (Statutory clocks assigned ONLY upon legal verification)
     IF p_intake_category IN ('QUALIFYING_CONTENT_REMOVAL', 'COURT_GOVT_ORDER_SUBMISSION') THEN
         v_priority := CASE WHEN p_intake_category = 'COURT_GOVT_ORDER_SUBMISSION' THEN 'CRITICAL_LEGAL' ELSE 'EXPEDITED_RULE_3_2_B' END;
-        v_internal_triage := now() + INTERVAL '30 minutes'; -- Immediate triage SLT
+        v_internal_triage := v_now + INTERVAL '30 minutes'; -- Immediate triage SLT
     ELSE
         v_priority := 'STANDARD';
-        v_internal_triage := now() + INTERVAL '2 hours';
+        v_internal_triage := v_now + INTERVAL '2 hours';
     END IF;
 
     -- Insert Grievance Case with PENDING_CLASSIFICATION status
-    -- Immutable received_at anchored at transaction execution
+    -- Immutable case_received_at anchored at transaction execution
     INSERT INTO public.grievance_cases (
-        case_reference,
-        received_at,
+        public_reference,
+        case_received_at,
         received_channel,
         complainant_user_id,
         complainant_email,
         complainant_phone,
         intake_category,
-        intake_payload_hash,
-        raw_submission,
+        raw_request_sha256,
+        sanitized_payload_json,
+        sanitization_metadata,
         classification_status,
         priority,
         status,
         internal_slt_triage_deadline
     ) VALUES (
-        p_case_ref,
-        now(),
+        p_public_ref,
+        v_now,
         'WEB_ROUTE_HANDLER',
         NULL, -- Anonymous public intake
         p_complainant_email,
         p_complainant_phone,
         p_intake_category,
-        v_payload_hash,
-        p_raw_submission,
+        p_raw_request_sha256,
+        p_sanitized_payload,
+        p_sanitization_metadata,
         'PENDING_CLASSIFICATION',
         v_priority,
         'SUBMITTED',
         v_internal_triage
     ) RETURNING id INTO v_case_id;
 
-    -- Decompose Evidence URLs into Allegations
+    -- Decompose Evidence URLs into Allegations and Evidence Rows
     IF p_evidence_urls IS NOT NULL AND array_length(p_evidence_urls, 1) > 0 THEN
         FOREACH v_url IN ARRAY p_evidence_urls LOOP
             INSERT INTO public.grievance_allegations (
                 case_id,
                 allegation_index,
+                allegation_received_at,
+                provenance,
                 target_content_url,
                 claim_description,
                 status
             ) VALUES (
                 v_case_id,
                 v_idx,
+                v_now,
+                'INITIAL_SUBMISSION',
                 v_url,
                 p_description,
                 'PENDING_REVIEW'
+            ) RETURNING id INTO v_allegation_id;
+
+            -- Ingest URL as evidence item
+            INSERT INTO public.grievance_evidence (
+                case_id,
+                allegation_id,
+                evidence_received_at,
+                evidence_type,
+                file_sha256,
+                storage_uri,
+                uploaded_by_role,
+                is_sensitive_imagery,
+                retention_status
+            ) VALUES (
+                v_case_id,
+                v_allegation_id,
+                v_now,
+                'URL_REFERENCE',
+                encode(digest(v_url, 'sha256'), 'hex'),
+                v_url,
+                'anonymous_complainant',
+                FALSE,
+                'ACTIVE'
             );
+
             v_idx := v_idx + 1;
         END LOOP;
     ELSE
@@ -460,25 +548,30 @@ BEGIN
         INSERT INTO public.grievance_allegations (
             case_id,
             allegation_index,
+            allegation_received_at,
+            provenance,
             target_content_url,
             claim_description,
             status
         ) VALUES (
             v_case_id,
             1,
+            v_now,
+            'INITIAL_SUBMISSION',
             NULL,
             p_description,
             'PENDING_REVIEW'
         );
     END IF;
 
-    -- Record Append-Only Case Event
+    -- Record Append-Only Case Event with Hash Chain
     INSERT INTO public.grievance_events (
         case_id,
         actor_id,
         actor_role,
         event_type,
-        event_details
+        event_details,
+        event_hash
     ) VALUES (
         v_case_id,
         NULL,
@@ -488,36 +581,101 @@ BEGIN
             'status', 'SUBMITTED',
             'intake_category', p_intake_category,
             'ip_hash', p_ip_hash,
-            'payload_hash', v_payload_hash
-        )
+            'raw_request_sha256', p_raw_request_sha256,
+            'public_reference', p_public_ref
+        ),
+        encode(digest(v_case_id::text || 'CASE_RECEIVED' || v_now::text || p_raw_request_sha256, 'sha256'), 'hex')
     );
 
     RETURN v_case_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
+-- Security Definer RPC: add_supplemental_evidence_or_allegation
+-- Handles late-arriving evidence, URLs, or allegations submitted after initial intake
+CREATE OR REPLACE FUNCTION public.add_supplemental_evidence_or_allegation(
+    p_case_id UUID,
+    p_allegation_id UUID, -- If attaching to existing allegation, or NULL to create a new one
+    p_claim_description TEXT,
+    p_evidence_url TEXT,
+    p_evidence_type TEXT,
+    p_file_sha256 TEXT,
+    p_storage_uri TEXT,
+    p_is_sensitive_imagery BOOLEAN DEFAULT FALSE,
+    p_actor_role TEXT DEFAULT 'anonymous_complainant'
+)
+RETURNS UUID AS $$
+DECLARE
+    v_allegation_id UUID := p_allegation_id;
+    v_evidence_id UUID;
+    v_idx INT;
+    v_evidence_ts TIMESTAMPTZ := now();
+BEGIN
+    -- If no allegation specified, create supplemental allegation
+    IF v_allegation_id IS NULL THEN
+        SELECT COALESCE(MAX(allegation_index), 0) + 1 INTO v_idx
+        FROM public.grievance_allegations WHERE case_id = p_case_id;
+
+        INSERT INTO public.grievance_allegations (
+            case_id, allegation_index, allegation_received_at, provenance,
+            target_content_url, claim_description, status
+        ) VALUES (
+            p_case_id, v_idx, v_evidence_ts, 'SUPPLEMENTAL_SUBMISSION',
+            p_evidence_url, COALESCE(p_claim_description, 'Supplemental claim/URL submitted'), 'PENDING_REVIEW'
+        ) RETURNING id INTO v_allegation_id;
+    END IF;
+
+    -- Insert Evidence Record with immutable timestamp
+    INSERT INTO public.grievance_evidence (
+        case_id, allegation_id, evidence_received_at, evidence_type,
+        file_sha256, storage_uri, uploaded_by_role, is_sensitive_imagery, retention_status
+    ) VALUES (
+        p_case_id, v_allegation_id, v_evidence_ts, p_evidence_type,
+        COALESCE(p_file_sha256, encode(digest(COALESCE(p_evidence_url, ''), 'sha256'), 'hex')),
+        p_storage_uri, p_actor_role, p_is_sensitive_imagery, 'ACTIVE'
+    ) RETURNING id INTO v_evidence_id;
+
+    -- Record Append-Only Grievance Event
+    INSERT INTO public.grievance_events (
+        case_id, allegation_id, evidence_id, actor_role, event_type,
+        event_details, event_hash
+    ) VALUES (
+        p_case_id, v_allegation_id, v_evidence_id, p_actor_role, 'EVIDENCE_SUBMITTED',
+        jsonb_build_object(
+            'evidence_received_at', v_evidence_ts,
+            'evidence_type', p_evidence_type,
+            'is_sensitive_imagery', p_is_sensitive_imagery
+        ),
+        encode(digest(p_case_id::text || 'EVIDENCE_SUBMITTED' || v_evidence_ts::text || p_evidence_type, 'sha256'), 'hex')
+    );
+
+    RETURN v_evidence_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
 -- Security Definer RPC: classify_and_bind_statutory_clock
 -- Executed strictly by authorized Compliance / Legal Officers to record verified applicability determination
--- CRITICAL CLOCK-START INVARIANT: Deadlines are computed strictly from triggering_timestamp (case received_at or official service timestamp).
+-- CRITICAL CLOCK-START INVARIANT: Deadlines are computed strictly from statutory_triggered_at (legally applicable triggering timestamp).
 -- Classification NEVER resets, restarts, or postpones a statutory clock.
 CREATE OR REPLACE FUNCTION public.classify_and_bind_statutory_clock(
     p_case_id UUID,
     p_allegation_id UUID,
     p_verified_category TEXT,
     p_officer_id UUID,
-    p_notes TEXT,
-    p_override_trigger_timestamp TIMESTAMPTZ DEFAULT NULL
+    p_officer_reasoning TEXT,
+    p_statutory_triggered_at TIMESTAMPTZ DEFAULT NULL
 )
 RETURNS VOID AS $$
 DECLARE
     v_case RECORD;
+    v_allegation RECORD;
     v_trigger_ts TIMESTAMPTZ;
     v_deadline TIMESTAMPTZ;
     v_clock_status TEXT := 'ACTIVE';
     v_clock_id UUID;
 BEGIN
     -- Retrieve parent case receipt timestamp and channel
-    SELECT received_at, received_channel INTO v_case
+    SELECT case_received_at, received_channel INTO v_case
     FROM public.grievance_cases
     WHERE id = p_case_id;
 
@@ -525,16 +683,25 @@ BEGIN
         RAISE EXCEPTION 'Case % not found', p_case_id USING ERRCODE = 'P0002';
     END IF;
 
-    -- Clock-Start Invariant: Trigger timestamp is original intake or physical service
-    IF p_override_trigger_timestamp IS NOT NULL THEN
-        v_trigger_ts := p_override_trigger_timestamp;
+    -- Retrieve allegation receipt timestamp if specified
+    IF p_allegation_id IS NOT NULL THEN
+        SELECT allegation_received_at INTO v_allegation
+        FROM public.grievance_allegations
+        WHERE id = p_allegation_id;
+    END IF;
+
+    -- Clock-Start Invariant: Trigger timestamp is legally applicable triggering event
+    IF p_statutory_triggered_at IS NOT NULL THEN
+        v_trigger_ts := p_statutory_triggered_at;
+    ELSIF v_allegation.allegation_received_at IS NOT NULL THEN
+        v_trigger_ts := v_allegation.allegation_received_at;
     ELSE
-        v_trigger_ts := v_case.received_at;
+        v_trigger_ts := v_case.case_received_at;
     END IF;
 
     -- Evaluate Statutory Category & Enforce Invariant Clock Computation
     IF p_verified_category = 'RULE_3_2_B_EMERGENCY_TAKEDOWN' THEN
-        -- Rule 3(2)(b): Exactly 2 Hours from Receipt
+        -- Rule 3(2)(b): Exactly 2 Hours from Triggering Timestamp
         v_deadline := v_trigger_ts + INTERVAL '2 hours';
         IF now() > v_deadline THEN
             v_clock_status := 'BREACHED_PENDING_ACTION';
@@ -542,13 +709,13 @@ BEGIN
 
         INSERT INTO public.grievance_clocks (
             case_id, allegation_id, clock_type, statutory_provision,
-            triggering_event, triggering_timestamp, applicable_deadline,
-            classified_by, classified_at, status
+            triggering_event, statutory_triggered_at, applicable_deadline,
+            classified_by, classified_at, officer_legal_reasoning, status
         ) VALUES (
             p_case_id, p_allegation_id, 'RULE_3_2_B_EMERGENCY_REMOVAL',
             'IT Rules 2021, Rule 3(2)(b)',
             CASE WHEN v_case.received_channel = 'WEB_ROUTE_HANDLER' THEN 'INTAKE_RECEIPT' ELSE 'LEGAL_NOTICE_DELIVERY' END,
-            v_trigger_ts, v_deadline, p_officer_id, now(), v_clock_status
+            v_trigger_ts, v_deadline, p_officer_id, now(), p_officer_reasoning, v_clock_status
         ) RETURNING id INTO v_clock_id;
 
     ELSIF p_verified_category = 'RULE_3_1_D_COURT_GOVT_ORDER' THEN
@@ -560,27 +727,27 @@ BEGIN
 
         INSERT INTO public.grievance_clocks (
             case_id, allegation_id, clock_type, statutory_provision,
-            triggering_event, triggering_timestamp, applicable_deadline,
-            classified_by, classified_at, status
+            triggering_event, statutory_triggered_at, applicable_deadline,
+            classified_by, classified_at, officer_legal_reasoning, status
         ) VALUES (
             p_case_id, p_allegation_id, 'RULE_3_1_D_ORDER_TAKEDOWN',
             'IT Rules 2021, Rule 3(1)(d)',
             CASE WHEN v_case.received_channel = 'POSTAL_COURT_SERVICE' THEN 'OFFICIAL_COURT_SERVICE' ELSE 'GOVT_NOTIFICATION_RECEIPT' END,
-            v_trigger_ts, v_deadline, p_officer_id, now(), v_clock_status
+            v_trigger_ts, v_deadline, p_officer_id, now(), p_officer_reasoning, v_clock_status
         ) RETURNING id INTO v_clock_id;
 
     ELSIF p_verified_category = 'RULE_3_2_A_I_PROVISO_EXPEDITED_REMOVAL' THEN
-        -- Proviso to Rule 3(2)(a)(i): 24h statutory ack AND 36h expedited removal from receipt
+        -- Proviso to Rule 3(2)(a)(i): 24h statutory ack AND 36h expedited removal from triggering timestamp
         -- Clock 1: 24h Ack
         INSERT INTO public.grievance_clocks (
             case_id, allegation_id, clock_type, statutory_provision,
-            triggering_event, triggering_timestamp, applicable_deadline,
-            classified_by, classified_at, status
+            triggering_event, statutory_triggered_at, applicable_deadline,
+            classified_by, classified_at, officer_legal_reasoning, status
         ) VALUES (
             p_case_id, p_allegation_id, 'RULE_3_2_A_I_ACKNOWLEDGEMENT',
             'IT Rules 2021, Rule 3(2)(a)(i)',
             'INTAKE_RECEIPT', v_trigger_ts, v_trigger_ts + INTERVAL '24 hours',
-            p_officer_id, now(), CASE WHEN now() > (v_trigger_ts + INTERVAL '24 hours') THEN 'BREACHED_PENDING_ACTION' ELSE 'ACTIVE' END
+            p_officer_id, now(), p_officer_reasoning, CASE WHEN now() > (v_trigger_ts + INTERVAL '24 hours') THEN 'BREACHED_PENDING_ACTION' ELSE 'ACTIVE' END
         );
 
         -- Clock 2: 36h Expedited Removal
@@ -591,27 +758,27 @@ BEGIN
 
         INSERT INTO public.grievance_clocks (
             case_id, allegation_id, clock_type, statutory_provision,
-            triggering_event, triggering_timestamp, applicable_deadline,
-            classified_by, classified_at, status
+            triggering_event, statutory_triggered_at, applicable_deadline,
+            classified_by, classified_at, officer_legal_reasoning, status
         ) VALUES (
             p_case_id, p_allegation_id, 'RULE_3_2_A_I_EXPEDITED_REMOVAL',
             'IT Rules 2021, Proviso to Rule 3(2)(a)(i)',
             'INTAKE_RECEIPT', v_trigger_ts, v_deadline,
-            p_officer_id, now(), v_clock_status
+            p_officer_id, now(), p_officer_reasoning, v_clock_status
         ) RETURNING id INTO v_clock_id;
 
     ELSIF p_verified_category = 'RULE_3_2_A_I_INTERMEDIARY_GRIEVANCE' THEN
-        -- Standard Intermediary Grievance under Rule 3(2)(a)(i): 24h ack AND 7d disposal from receipt
+        -- Standard Intermediary Grievance under Rule 3(2)(a)(i): 24h ack AND 7d disposal from triggering timestamp
         -- Clock 1: 24h Ack
         INSERT INTO public.grievance_clocks (
             case_id, allegation_id, clock_type, statutory_provision,
-            triggering_event, triggering_timestamp, applicable_deadline,
-            classified_by, classified_at, status
+            triggering_event, statutory_triggered_at, applicable_deadline,
+            classified_by, classified_at, officer_legal_reasoning, status
         ) VALUES (
             p_case_id, p_allegation_id, 'RULE_3_2_A_I_ACKNOWLEDGEMENT',
             'IT Rules 2021, Rule 3(2)(a)(i)',
             'INTAKE_RECEIPT', v_trigger_ts, v_trigger_ts + INTERVAL '24 hours',
-            p_officer_id, now(), CASE WHEN now() > (v_trigger_ts + INTERVAL '24 hours') THEN 'BREACHED_PENDING_ACTION' ELSE 'ACTIVE' END
+            p_officer_id, now(), p_officer_reasoning, CASE WHEN now() > (v_trigger_ts + INTERVAL '24 hours') THEN 'BREACHED_PENDING_ACTION' ELSE 'ACTIVE' END
         );
 
         -- Clock 2: 7d Disposal
@@ -622,39 +789,39 @@ BEGIN
 
         INSERT INTO public.grievance_clocks (
             case_id, allegation_id, clock_type, statutory_provision,
-            triggering_event, triggering_timestamp, applicable_deadline,
-            classified_by, classified_at, status
+            triggering_event, statutory_triggered_at, applicable_deadline,
+            classified_by, classified_at, officer_legal_reasoning, status
         ) VALUES (
             p_case_id, p_allegation_id, 'RULE_3_2_A_I_DISPOSAL',
             'IT Rules 2021, Rule 3(2)(a)(i)',
             'INTAKE_RECEIPT', v_trigger_ts, v_deadline,
-            p_officer_id, now(), v_clock_status
+            p_officer_id, now(), p_officer_reasoning, v_clock_status
         ) RETURNING id INTO v_clock_id;
 
     ELSIF p_verified_category = 'SECTION_69A_BLOCKING_DIRECTION' THEN
         -- Section 69A: Confidential direction with direction-specified requirements
         INSERT INTO public.grievance_clocks (
             case_id, allegation_id, clock_type, statutory_provision,
-            triggering_event, triggering_timestamp, applicable_deadline,
-            direction_execution_requirement, classified_by, classified_at, status
+            triggering_event, statutory_triggered_at, applicable_deadline,
+            direction_execution_requirement, classified_by, classified_at, officer_legal_reasoning, status
         ) VALUES (
             p_case_id, p_allegation_id, 'SECTION_69A_BLOCKING_DIRECTION',
             'IT Act 2000, Section 69A read with 2009 Blocking Rules',
             'GOVT_NOTIFICATION_RECEIPT', v_trigger_ts, NULL,
-            p_notes, p_officer_id, now(), 'ACTIVE'
+            p_officer_reasoning, p_officer_id, now(), p_officer_reasoning, 'ACTIVE'
         ) RETURNING id INTO v_clock_id;
 
     ELSE
         -- Non-statutory categories (voluntary feedback, pandit disputes): Internal SLT clock only
         INSERT INTO public.grievance_clocks (
             case_id, allegation_id, clock_type, statutory_provision,
-            triggering_event, triggering_timestamp, applicable_deadline,
-            classified_by, classified_at, status
+            triggering_event, statutory_triggered_at, applicable_deadline,
+            classified_by, classified_at, officer_legal_reasoning, status
         ) VALUES (
             p_case_id, p_allegation_id, 'INTERNAL_OPERATIONAL_SLT',
             'Internal Platform Operational Policy',
             'INTAKE_RECEIPT', v_trigger_ts, v_trigger_ts + INTERVAL '72 hours',
-            p_officer_id, now(), 'ACTIVE'
+            p_officer_id, now(), p_officer_reasoning, 'ACTIVE'
         ) RETURNING id INTO v_clock_id;
     END IF;
 
@@ -679,7 +846,8 @@ BEGIN
         actor_id,
         actor_role,
         event_type,
-        event_details
+        event_details,
+        event_hash
     ) VALUES (
         p_case_id,
         p_allegation_id,
@@ -689,11 +857,12 @@ BEGIN
         'CLASSIFICATION_APPLIED',
         jsonb_build_object(
             'verified_category', p_verified_category,
-            'triggering_timestamp', v_trigger_ts,
+            'statutory_triggered_at', v_trigger_ts,
             'applicable_deadline', v_deadline,
             'clock_status', v_clock_status,
-            'notes', p_notes
-        )
+            'officer_reasoning', p_officer_reasoning
+        ),
+        encode(digest(p_case_id::text || 'CLASSIFICATION_APPLIED' || now()::text || p_verified_category, 'sha256'), 'hex')
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
@@ -702,6 +871,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 REVOKE EXECUTE ON FUNCTION public.submit_anonymous_grievance FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.submit_anonymous_grievance FROM anon;
 GRANT EXECUTE ON FUNCTION public.submit_anonymous_grievance TO service_role;
+
+REVOKE EXECUTE ON FUNCTION public.add_supplemental_evidence_or_allegation FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.add_supplemental_evidence_or_allegation FROM anon;
+GRANT EXECUTE ON FUNCTION public.add_supplemental_evidence_or_allegation TO service_role;
 
 REVOKE EXECUTE ON FUNCTION public.classify_and_bind_statutory_clock FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.classify_and_bind_statutory_clock FROM anon;
@@ -729,9 +902,11 @@ GRANT EXECUTE ON FUNCTION public.classify_and_bind_statutory_clock TO service_ro
 | `grievance_cases` | `authenticated` | SELECT | `auth.uid() = complainant_user_id OR public.is_grievance_officer()` | Complainants view own cases; Grievance Officers manage queue. |
 | `grievance_allegations` | `anon` | ALL | `false` (No access) | Allegations inserted and viewed exclusively through RPC or officer role. |
 | `grievance_allegations` | `authenticated` | SELECT | `EXISTS (SELECT 1 FROM public.grievance_cases c WHERE c.id = case_id AND (c.complainant_user_id = auth.uid() OR public.is_grievance_officer()))` | Scoped to parent case owner or compliance officers. |
+| `grievance_evidence` | `anon` | ALL | `false` (No access) | Evidence uploaded and retrieved strictly through RPC or officer role. |
+| `grievance_evidence` | `authenticated` | SELECT | `public.is_grievance_officer() OR (is_sensitive_imagery = FALSE AND EXISTS (SELECT 1 FROM public.grievance_cases c WHERE c.id = case_id AND c.complainant_user_id = auth.uid()))` | Devotees can see their own non-sensitive evidence; sensitive Rule 3(2)(b) imagery is restricted strictly to officers. |
 | `grievance_clocks` | `anon` | ALL | `false` (No access) | Clock records managed strictly through RPC or officer role. |
 | `grievance_clocks` | `authenticated` | SELECT | `public.is_grievance_officer()` | Statutory and SLT clocks restricted strictly to compliance/legal officers. |
-| `grievance_events` | `authenticated` | SELECT | `public.is_grievance_officer()` | Append-only grievance event trail restricted to compliance officers. |
+| `grievance_events` | `authenticated` | SELECT | `public.is_grievance_officer()` | Append-only and tamper-evident grievance event trail restricted to compliance officers. |
 
 ---
 
@@ -765,7 +940,7 @@ CREATE TABLE public.tax_configuration_rules (
 1. `supabase/migrations/20261120000001_m06_user_consents.sql`: Creates `public.user_consents` and `public.consent_audit_history` with RLS.
 2. `supabase/migrations/20261120000002_m06_privacy_requests.sql`: Creates `public.privacy_requests` with multi-copy tracking fields and RLS.
 3. `supabase/migrations/20261120000003_m06_audit_ledger.sql`: Creates `public.audit_ledger`, BRIN indexes, and `trg_audit_ledger_immutable`.
-4. `supabase/migrations/20261120000004_m06_grievance_system.sql`: Creates `public.grievance_cases`, `public.grievance_allegations`, `public.grievance_clocks`, `public.grievance_events`, and `submit_anonymous_grievance()` / `classify_and_bind_statutory_clock()` RPCs with strict RLS and trigger controls.
+4. `supabase/migrations/20261120000004_m06_grievance_system.sql`: Creates `public.grievance_cases`, `public.grievance_allegations`, `public.grievance_evidence`, `public.grievance_clocks`, `public.grievance_events`, and `submit_anonymous_grievance()` / `add_supplemental_evidence_or_allegation()` / `classify_and_bind_statutory_clock()` RPCs with strict RLS, unguessable CSPRNG public references (`ISHTI-GRV-XXXX`), and `trg_grievance_events_immutable` trigger controls.
 
 ### 5.2. Rigorous Migration Reversibility & Rollback Categorization
 > [!CAUTION]

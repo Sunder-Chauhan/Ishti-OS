@@ -992,3 +992,57 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Clock-Start & Classification Architecture: **`RECONCILED & COMPLETE`**
   - Implementation Code Execution: **`STRICTLY PAUSED / AWAITING OPERATOR AUTHORIZATION`**
 
+---
+
+## 2026-11-19: ADR-040 — Milestone M06 G0: Final Timestamp Provenance, Evidence Integrity & Audit Security Architecture
+- **Status:** PENDING OPERATOR APPROVAL (GATE G0)
+- **Context:** Following detailed architectural and evidentiary review of the M06 grievance redressal model, critical deficiencies were identified in timestamp provenance, late-arriving evidence handling, raw vs sanitized payload separation, audit log immutability claims, and public case-reference security. Specifically:
+  1. The system improperly assumed that every allegation in a case shared the root case receipt timestamp.
+  2. Scenario 8 improperly backdated late-arriving evidence (e.g. impersonation claims submitted at 11:30 on a 10:00 parent case) to parent case receipt (10:00), penalizing the platform for time elapsed prior to receiving actionable evidence.
+  3. Sanitized JSONB was conflated with original raw request bytes.
+  4. Predictable sequential case references (`ISHTI-CASE-YYYY-XXXX`) were vulnerable to enumeration attacks and leaked platform case volume.
+  5. Grievance events lacked tamper-evident trigger protection and hash chaining, and claims of "absolute immutability" failed to account for lawful court/DPDP purges.
+- **Decision:**
+  1. **Strict Timestamp Provenance Taxonomy:**
+     - Differentiated five distinct timestamp fields across the intake lifecycle:
+       * `case_received_at` (System-Captured, Immutable): Ingress timestamp of parent case container at Route Handler.
+       * `allegation_received_at` (System-Captured, Immutable): Ingestion timestamp of a specific claim or URL.
+       * `evidence_received_at` (System-Captured, Immutable): Ingestion timestamp of an uploaded file, screenshot, or URL payload.
+       * `statutory_triggered_at` (Assigned / Derived via Authorized Classification): Legally applicable timestamp initiating statutory countdown.
+       * `classified_at` (System-Captured at Decision): Timestamp when the officer records the classification decision.
+  2. **Late-Arriving Evidence & Scenario 8 Correction:**
+     - For late-arriving evidence or allegations (e.g. general dispute at 10:00 $\to$ user submits impersonation URL at 11:30 $\to$ officer classifies at 11:45), the statutory clock is anchored strictly to the **legally applicable triggering timestamp** (`statutory_triggered_at = evidence_received_at = 11:30`), setting the 2-hour deadline to **13:30** (leaving 1 hour 45 minutes operational buffer).
+     - The platform is neither penalized for the 90 minutes prior to receiving the allegation, nor granted an unlawful extension to 13:45. Compliance officer documents legal rationale in `officer_legal_reasoning`; legal uncertainties are marked `PENDING COUNSEL CONFIRMATION`.
+  3. **Relational Evidence Table (`public.grievance_evidence`):**
+     - Introduced dedicated evidence table with 1-to-many relationship to allegations and cases.
+     - Tracks `evidence_received_at`, `evidence_type`, cryptographic `file_sha256`, quarantined `storage_uri` (zero public URLs), and `is_sensitive_imagery` flag (quarantining Rule 3(2)(b) intimate imagery strictly to compliance officers).
+     - Added `add_supplemental_evidence_or_allegation` RPC function for atomic late-arriving evidence ingestion.
+  4. **Separation of Raw Request Bytes from Sanitized Application Data:**
+     - Exact incoming request bytes ($\le 32$ KB) are hashed immediately: `raw_request_sha256 = SHA-256(raw_bytes)`.
+     - Application logic consumes `sanitized_payload_json JSONB` alongside `sanitization_metadata JSONB` recording normalized Unicode and stripped script tags. Sanitized JSONB is never described as the raw submission.
+  5. **Public Case-Reference Security & Anti-Enumeration Gates:**
+     - Replaced predictable references with cryptographically unguessable CSPRNG tokens: `ISHTI-GRV-` + 16 Crockford Base32 characters (80 bits entropy, e.g. `ISHTI-GRV-7M9K-2WX4-BQ8R-5TY1`).
+     - Internal sequential IDs are never exposed.
+     - Public tracking requires secondary verification (public reference + verified complainant email + OTP).
+     - Rate-limited to 5 lookups per 15 minutes per IP with uniform generic 404/403 responses.
+  6. **Tamper-Evident Audit Protection on Grievance Events:**
+     - Standardized terminology to **`append-only and tamper-evident`**, rejecting false claims of absolute immutability.
+     - Protected `public.grievance_events` with trigger `trg_grievance_events_immutable` (raising SQLSTATE `42501` on UPDATE/DELETE) and SHA-256 hash chaining (`event_hash`).
+     - Lawful deletions/court orders handled via signed **Redaction Tombstone Events** without corrupting historical audit chains.
+  7. **Eight Mandatory Test Scenarios Reconciled:**
+     - Scenario 1: Parent case at 10:00, new allegation at 11:30 (deadline 13:30).
+     - Scenario 2: URL A received initially at 10:00, URL B supplied later at 11:15.
+     - Scenario 3: Supplemental evidence alters allegation classification (re-classification audit trail).
+     - Scenario 4: Concurrent allegations running with independent triggering timestamps.
+     - Scenario 5: Sanitized JSONB differing from exact raw request bytes.
+     - Scenario 6: Unauthorized UPDATE/DELETE against grievance events blocked by trigger.
+     - Scenario 7: Public case-reference enumeration attempts mitigated (80-bit entropy + generic 404/403).
+     - Scenario 8: Lawful retention/deletion processing via signed redaction tombstones.
+- **Verification Evidence:**
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across `@spiritual-os/mobile` and `@spiritual-os/web`.
+  - All 8 M06 planning deliverables synchronized with zero architectural or legal discrepancies.
+  - Zero application code, zero migrations, zero remote database mutations executed.
+- **Release Verdict:**
+  - Milestone M06 G0 Architecture Packet: **`FINALIZED, HARDENED & RECONCILED`**
+  - Implementation Code Execution: **`STRICTLY PAUSED / AWAITING OPERATOR AUTHORIZATION`**
+
