@@ -1433,69 +1433,15 @@ async function runM05Tests() {
   // --------------------------------------------------------------------------
   // Pass 8.1: Mandatory Bounded Request-Body Streaming & Size Limits Suite
   // --------------------------------------------------------------------------
-  console.log("\n[PASS 8.1] Executing Bounded Request-Body Streaming Suite...");
+  console.log("\n[PASS 8.2] Executing Bounded Request-Body Streaming & Finalization Suite...");
 
-  // Test 1: Oversized body WITH Content-Length header (> 64 KB) rejected with 413
-  const oversizedWithHeader = await readBoundedJsonBody(
-    {
-      headers: {
-        get: (h: string) => (h === "content-length" ? "70000" : null),
-      },
-      text: async () => JSON.stringify({ data: "x".repeat(70000) }),
-    },
-    65536
-  );
-  assert(
-    oversizedWithHeader.ok === false &&
-      oversizedWithHeader.statusCode === 413 &&
-      oversizedWithHeader.code === "PAYLOAD_TOO_LARGE",
-    "G5",
-    "Pass 8.1 Body 1: Oversized body with Content-Length rejected early with 413 PAYLOAD_TOO_LARGE"
-  );
-
-  // Test 2: Oversized body WITHOUT Content-Length (streamed chunks exceeding 64 KB) rejected with 413 and cancelled
-  let streamCancelledReason: unknown = null;
-  const chunk64k = new Uint8Array(40000).fill(65); // 40 KB
-  let chunkCount = 0;
-  const oversizedStream = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      if (chunkCount < 3) {
-        chunkCount++;
-        controller.enqueue(chunk64k); // 40KB * 3 = 120 KB
-      } else {
-        controller.close();
-      }
-    },
-    cancel(reason) {
-      streamCancelledReason = reason;
-    },
-  });
-
-  const oversizedWithoutHeader = await readBoundedJsonBody(
-    {
-      headers: {
-        get: () => null, // No Content-Length (chunked)
-      },
-      body: oversizedStream,
-    },
-    65536
-  );
-  assert(
-    oversizedWithoutHeader.ok === false &&
-      oversizedWithoutHeader.statusCode === 413 &&
-      oversizedWithoutHeader.code === "PAYLOAD_TOO_LARGE" &&
-      streamCancelledReason === "PAYLOAD_TOO_LARGE",
-    "G5",
-    "Pass 8.1 Body 2: Chunked stream exceeding 64 KB without Content-Length is aborted and cancelled with 413"
-  );
-
-  // Test 3: Malformed Content-Length header (non-numeric / negative) rejected with 400
+  // Early Content-Length validation: Malformed headers (non-numeric / negative) rejected with 400
   const malformedClAlpha = await readBoundedJsonBody(
     {
       headers: {
         get: (h: string) => (h === "content-length" ? "70kb; injection" : null),
       },
-      text: async () => JSON.stringify({ test: "val" }),
+      body: null,
     },
     65536
   );
@@ -1504,7 +1450,7 @@ async function runM05Tests() {
       headers: {
         get: (h: string) => (h === "content-length" ? "-500" : null),
       },
-      text: async () => JSON.stringify({ test: "val" }),
+      body: null,
     },
     65536
   );
@@ -1515,119 +1461,297 @@ async function runM05Tests() {
       malformedClNegative.ok === false &&
       malformedClNegative.code === "MALFORMED_CONTENT_LENGTH",
     "G5",
-    "Pass 8.1 Body 3: Malformed Content-Length headers (non-numeric, negative) rejected with 400"
+    "Pass 8.2 Body Pre-Check: Malformed Content-Length headers (non-numeric, negative) rejected with 400"
   );
 
-  // Test 4: Valid chunked stream within 64 KB limit decodes and parses cleanly
-  const validPayload = JSON.stringify({ incidentType: "TEST_INCIDENT", severity: "HIGH" });
-  const validBytes = new TextEncoder().encode(validPayload);
-  let validStreamRead = false;
-  const validStream = new ReadableStream<Uint8Array>({
+  // Test 1: Valid readable stream within limit decodes and parses cleanly
+  const p82ValidPayload = JSON.stringify({ incidentType: "UNAUTHORIZED_ACCESS", severity: "HIGH" });
+  const p82ValidBytes = new TextEncoder().encode(p82ValidPayload);
+  let p82ValidRead = false;
+  const p82ValidStream = new ReadableStream<Uint8Array>({
     pull(controller) {
-      if (!validStreamRead) {
-        validStreamRead = true;
-        controller.enqueue(validBytes);
+      if (!p82ValidRead) {
+        p82ValidRead = true;
+        controller.enqueue(p82ValidBytes);
       } else {
         controller.close();
       }
     },
   });
-  const validStreamResult = await readBoundedJsonBody(
+  const p82Test1 = await readBoundedJsonBody(
     {
       headers: { get: () => null },
-      body: validStream,
+      body: p82ValidStream,
     },
     65536
   );
   assert(
-    validStreamResult.ok === true &&
-      (validStreamResult.data as Record<string, unknown>)?.incidentType === "TEST_INCIDENT",
+    p82Test1.ok === true &&
+      (p82Test1.data as Record<string, unknown>)?.incidentType === "UNAUTHORIZED_ACCESS",
     "G5",
-    "Pass 8.1 Body 4: Valid streamed payload within limit parses successfully"
+    "Pass 8.2 Test 1: Valid readable stream within limit decodes and parses cleanly"
   );
 
-  // Test 5: Invalid UTF-8 bytes rejected with 400 INVALID_ENCODING
-  const invalidUtf8Bytes = new Uint8Array([0x80, 0xbf, 0xff, 0xfe]); // Invalid UTF-8 sequence
-  let invalidUtf8Read = false;
-  const invalidUtf8Stream = new ReadableStream<Uint8Array>({
+  // Test 2: Oversized stream without Content-Length (chunked) aborted and cancelled with 413
+  let p82OverCancelReason: unknown = null;
+  const p82Chunk40k = new Uint8Array(40000).fill(65);
+  let p82ChunkCount = 0;
+  const p82OversizedStream = new ReadableStream<Uint8Array>({
     pull(controller) {
-      if (!invalidUtf8Read) {
-        invalidUtf8Read = true;
-        controller.enqueue(invalidUtf8Bytes);
+      if (p82ChunkCount < 3) {
+        p82ChunkCount++;
+        controller.enqueue(p82Chunk40k); // 40KB * 3 = 120 KB > 64 KB
+      } else {
+        controller.close();
+      }
+    },
+    cancel(reason) {
+      p82OverCancelReason = reason;
+    },
+  });
+  const p82Test2 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: p82OversizedStream,
+    },
+    65536
+  );
+  assert(
+    p82Test2.ok === false &&
+      p82Test2.statusCode === 413 &&
+      p82Test2.code === "PAYLOAD_TOO_LARGE" &&
+      p82OverCancelReason === "PAYLOAD_TOO_LARGE",
+    "G5",
+    "Pass 8.2 Test 2: Oversized stream without Content-Length is aborted and cancelled immediately with 413"
+  );
+
+  // Test 3: Oversized stream with Content-Length rejected early before stream read
+  let p82Stream3ReaderCreated = false;
+  const p82Stream3 = new ReadableStream<Uint8Array>();
+  const origGetReader = p82Stream3.getReader.bind(p82Stream3);
+  p82Stream3.getReader = () => {
+    p82Stream3ReaderCreated = true;
+    return origGetReader();
+  };
+  const p82Test3 = await readBoundedJsonBody(
+    {
+      headers: { get: (h: string) => (h === "content-length" ? "70000" : null) },
+      body: p82Stream3,
+    },
+    65536
+  );
+  assert(
+    p82Test3.ok === false &&
+      p82Test3.statusCode === 413 &&
+      p82Test3.code === "PAYLOAD_TOO_LARGE" &&
+      !p82Stream3ReaderCreated,
+    "G5",
+    "Pass 8.2 Test 3: Oversized stream with Content-Length rejected early with 413 before stream read"
+  );
+
+  // Test 4: Content-Length smaller than actual streamed bytes cancels stream and rejects with 400
+  let p82MismatchCancelReason: unknown = null;
+  let p82MismatchRead = false;
+  const p82MismatchPayload = new TextEncoder().encode(JSON.stringify({ note: "Payload longer than declared CL" })); // ~40 bytes
+  const p82MismatchStream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (!p82MismatchRead) {
+        p82MismatchRead = true;
+        controller.enqueue(p82MismatchPayload);
+      } else {
+        controller.close();
+      }
+    },
+    cancel(reason) {
+      p82MismatchCancelReason = reason;
+    },
+  });
+  const p82Test4 = await readBoundedJsonBody(
+    {
+      headers: { get: (h: string) => (h === "content-length" ? "10" : null) }, // Declares 10, delivers ~40
+      body: p82MismatchStream,
+    },
+    65536
+  );
+  assert(
+    p82Test4.ok === false &&
+      p82Test4.statusCode === 400 &&
+      p82Test4.code === "CONTENT_LENGTH_MISMATCH" &&
+      p82MismatchCancelReason === "CONTENT_LENGTH_MISMATCH",
+    "G5",
+    "Pass 8.2 Test 4: Content-Length smaller than actual streamed bytes cancels stream and rejects with 400 CONTENT_LENGTH_MISMATCH"
+  );
+
+  // Test 5: Missing readable stream (request.body is null or undefined)
+  const p82Test5Null = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: null,
+    },
+    65536
+  );
+  const p82Test5Undefined = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+    },
+    65536
+  );
+  assert(
+    p82Test5Null.ok === false &&
+      p82Test5Null.statusCode === 400 &&
+      p82Test5Null.code === "MISSING_REQUEST_STREAM" &&
+      p82Test5Undefined.ok === false &&
+      p82Test5Undefined.code === "MISSING_REQUEST_STREAM",
+    "G5",
+    "Pass 8.2 Test 5: Missing readable stream rejected with 400 MISSING_REQUEST_STREAM"
+  );
+
+  // Test 6: Text-only request attempting to use the removed fallback is rejected; text() is never called
+  let p82TextFallbackInvoked = false;
+  const p82TextOnlyRequest = {
+    headers: { get: () => null },
+    text: async () => {
+      p82TextFallbackInvoked = true;
+      return JSON.stringify({ exploit: "unbounded_text_payload" });
+    },
+  };
+  const p82Test6 = await readBoundedJsonBody(
+    p82TextOnlyRequest as any,
+    65536
+  );
+  assert(
+    p82Test6.ok === false &&
+      p82Test6.statusCode === 400 &&
+      p82Test6.code === "MISSING_REQUEST_STREAM" &&
+      !p82TextFallbackInvoked,
+    "G5",
+    "Pass 8.2 Test 6: Text-only request attempting fallback rejected with 400 MISSING_REQUEST_STREAM; text() never invoked"
+  );
+
+  // Test 7: Invalid UTF-8 bytes rejected with 400 INVALID_ENCODING
+  const p82InvalidUtf8Bytes = new Uint8Array([0x80, 0xbf, 0xff, 0xfe]);
+  let p82InvalidUtf8Read = false;
+  const p82InvalidUtf8Stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (!p82InvalidUtf8Read) {
+        p82InvalidUtf8Read = true;
+        controller.enqueue(p82InvalidUtf8Bytes);
       } else {
         controller.close();
       }
     },
   });
-  const invalidUtf8Result = await readBoundedJsonBody(
+  const p82Test7 = await readBoundedJsonBody(
     {
       headers: { get: () => null },
-      body: invalidUtf8Stream,
+      body: p82InvalidUtf8Stream,
     },
     65536
   );
   assert(
-    invalidUtf8Result.ok === false &&
-      invalidUtf8Result.statusCode === 400 &&
-      invalidUtf8Result.code === "INVALID_ENCODING",
+    p82Test7.ok === false &&
+      p82Test7.statusCode === 400 &&
+      p82Test7.code === "INVALID_ENCODING",
     "G5",
-    "Pass 8.1 Body 5: Invalid UTF-8 byte stream safely rejected with 400 INVALID_ENCODING"
+    "Pass 8.2 Test 7: Invalid UTF-8 byte sequence safely rejected with 400 INVALID_ENCODING"
   );
 
-  // Test 6: Malformed JSON syntax rejected with 400 MALFORMED_JSON
-  const malformedJsonBytes = new TextEncoder().encode("{ incidentType: unquoted, ");
-  let malformedJsonRead = false;
-  const malformedJsonStream = new ReadableStream<Uint8Array>({
+  // Test 8: Malformed JSON syntax rejected with 400 MALFORMED_JSON
+  const p82MalformedJsonBytes = new TextEncoder().encode("{ incidentType: unquoted, ");
+  let p82MalformedJsonRead = false;
+  const p82MalformedJsonStream = new ReadableStream<Uint8Array>({
     pull(controller) {
-      if (!malformedJsonRead) {
-        malformedJsonRead = true;
-        controller.enqueue(malformedJsonBytes);
+      if (!p82MalformedJsonRead) {
+        p82MalformedJsonRead = true;
+        controller.enqueue(p82MalformedJsonBytes);
       } else {
         controller.close();
       }
     },
   });
-  const malformedJsonResult = await readBoundedJsonBody(
+  const p82Test8 = await readBoundedJsonBody(
     {
       headers: { get: () => null },
-      body: malformedJsonStream,
+      body: p82MalformedJsonStream,
     },
     65536
   );
   assert(
-    malformedJsonResult.ok === false &&
-      malformedJsonResult.statusCode === 400 &&
-      malformedJsonResult.code === "MALFORMED_JSON",
+    p82Test8.ok === false &&
+      p82Test8.statusCode === 400 &&
+      p82Test8.code === "MALFORMED_JSON",
     "G5",
-    "Pass 8.1 Body 6: Malformed JSON syntax rejected with 400 MALFORMED_JSON"
+    "Pass 8.2 Test 8: Malformed JSON syntax rejected with 400 MALFORMED_JSON"
   );
 
-  // Test 7: Non-object JSON (array, primitive) rejected with 400 BAD_REQUEST
-  const arrayBytes = new TextEncoder().encode('["not", "a", "json", "object"]');
-  let arrayRead = false;
-  const arrayStream = new ReadableStream<Uint8Array>({
+  // Test 9: Non-object JSON (array, primitive) rejected with 400 BAD_REQUEST
+  const p82ArrayBytes = new TextEncoder().encode('["not", "a", "json", "object"]');
+  let p82ArrayRead = false;
+  const p82ArrayStream = new ReadableStream<Uint8Array>({
     pull(controller) {
-      if (!arrayRead) {
-        arrayRead = true;
-        controller.enqueue(arrayBytes);
+      if (!p82ArrayRead) {
+        p82ArrayRead = true;
+        controller.enqueue(p82ArrayBytes);
       } else {
         controller.close();
       }
     },
   });
-  const arrayResult = await readBoundedJsonBody(
+  const p82Test9Array = await readBoundedJsonBody(
     {
       headers: { get: () => null },
-      body: arrayStream,
+      body: p82ArrayStream,
+    },
+    65536
+  );
+  const p82PrimitiveBytes = new TextEncoder().encode('"just a primitive string"');
+  let p82PrimitiveRead = false;
+  const p82PrimitiveStream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (!p82PrimitiveRead) {
+        p82PrimitiveRead = true;
+        controller.enqueue(p82PrimitiveBytes);
+      } else {
+        controller.close();
+      }
+    },
+  });
+  const p82Test9Primitive = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: p82PrimitiveStream,
     },
     65536
   );
   assert(
-    arrayResult.ok === false &&
-      arrayResult.statusCode === 400 &&
-      arrayResult.code === "BAD_REQUEST",
+    p82Test9Array.ok === false &&
+      p82Test9Array.statusCode === 400 &&
+      p82Test9Array.code === "BAD_REQUEST" &&
+      p82Test9Primitive.ok === false &&
+      p82Test9Primitive.code === "BAD_REQUEST",
     "G5",
-    "Pass 8.1 Body 7: Non-object JSON array rejected with 400 BAD_REQUEST"
+    "Pass 8.2 Test 9: Non-object JSON (array, primitive) rejected with 400 BAD_REQUEST"
+  );
+
+  // Test 10: Stream read failure safely caught and rejected with 400 STREAM_READ_ERROR
+  const p82FailingStream = new ReadableStream<Uint8Array>({
+    pull() {
+      throw new Error("Simulated network stream abort");
+    },
+  });
+  const p82Test10 = await readBoundedJsonBody(
+    {
+      headers: { get: () => null },
+      body: p82FailingStream,
+    },
+    65536
+  );
+  assert(
+    p82Test10.ok === false &&
+      p82Test10.statusCode === 400 &&
+      p82Test10.code === "STREAM_READ_ERROR",
+    "G5",
+    "Pass 8.2 Test 10: Stream read failure safely caught and rejected with 400 STREAM_READ_ERROR"
   );
 
   // --------------------------------------------------------------------------

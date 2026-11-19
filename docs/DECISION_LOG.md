@@ -683,7 +683,7 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   2. **Bounded Memory Engine (`BoundedRateLimiter`):**
      - Enforces hard ceiling `MAX_ENTRIES = 10_000` on the process-local Map.
      - Proactive capacity sweep purges expired entries (`now > entry.resetTime`).
-     - Saturation eviction removes least-recently-accessed (LRU) entry when saturated.
+     - Saturation initially used LRU eviction (superseded in ADR-032 by safe saturation quota preservation).
      - Fail-closed behavior on invalid parameters (limit $\le 0$, windowMs $\le 0$, empty key) or runtime errors.
      - Deterministic `cleanupExpired()` and instrumentation via `getStats()`.
   3. **Strict Ingress & Origin Shielding Invariants:**
@@ -724,6 +724,31 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
      - Enforces fatal UTF-8 decoding (`new TextDecoder("utf-8", { fatal: true })`) and safe JSON object validation.
 - **Verification Evidence:**
   - Automated M05 Suite (`scripts/run-m05-tests.ts`): **155/155 PASSED** (0 failures; 6 dedicated active-counter preservation tests, 7 dedicated streaming body tests, 1 legacy proxy rejection test).
+  - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all workspaces.
+  - Production Web Application Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** cleanly.
+  - Hosted Environment Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and untouched.
+- **Release Verdict:** **`READY FOR INDEPENDENT COUNSEL REVIEW`** (Technical safeguards and legal baselines verified; distributed rate limiting retained as M06 launch dependency).
+
+---
+
+## 2026-11-19: ADR-033 — Pass 8.2: Bounded Request-Body Helper Finalization & Unbounded Fallback Elimination
+- **Status:** APPROVED & IMPLEMENTED LOCALLY
+- **Context:** Following independent code review of Pass 8.1 (commit `97b82a8`), a residual fallback vulnerability was identified in `readBoundedJsonBody()`: if a request did not present a `ReadableStream` or if `text()` was available, the helper fell back to `await request.text()`, which buffers the entire body into memory before enforcing byte limits.
+- **Decision:**
+  1. **Complete Elimination of Unbounded `text()` Fallback:**
+     - Removed `request.text()` fallback entirely from `readBoundedJsonBody()`.
+     - Strictly requires a valid `ReadableStream<Uint8Array>` (`request.body`).
+     - Returns structured rejection `{ ok: false, statusCode: 400, code: "MISSING_REQUEST_STREAM" }` if `request.body` is absent or lacks a `getReader()` function.
+     - Ensures that no alternate code path can buffer an unmetered request into process memory.
+  2. **Content-Length Mismatch Detection & Immediate Abort:**
+     - If `Content-Length` is smaller than actual streamed bytes, the stream reader is cancelled immediately (`await reader.cancel("CONTENT_LENGTH_MISMATCH")`) and rejected with 400 `CONTENT_LENGTH_MISMATCH`.
+     - If the stream closes with fewer bytes than declared in `Content-Length`, rejects with 400 `CONTENT_LENGTH_MISMATCH`.
+  3. **Preservation of Invariants:**
+     - Preserves 64 KB hard cap, immediate stream cancellation on overflow, fatal UTF-8 decoding (`fatal: true`), and non-null object JSON validation.
+     - Documented `totalEvicted` in `RateLimiterStats` as an explicit invariant verification metric that strictly remains 0 to prove active quota preservation under safe saturation.
+- **Verification Evidence:**
+  - Automated M05 Suite (`scripts/run-m05-tests.ts`): **159/159 PASSED** (0 failures; 10 dedicated Pass 8.2 regression tests covering valid stream, oversized without CL, oversized with CL, CL smaller than streamed bytes, missing stream, text-only fallback attempt rejection, invalid UTF-8, malformed JSON, JSON array/primitive, and stream read failure).
   - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
   - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all workspaces.
   - Production Web Application Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED** cleanly.

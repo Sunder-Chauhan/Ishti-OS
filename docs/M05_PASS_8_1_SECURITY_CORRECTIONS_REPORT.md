@@ -49,6 +49,9 @@ Following independent security review of Pass 8 (commit `738782d`), three critic
 
 ### C. Vulnerability 3: Unbounded Memory Buffering in Request Body Parsing
 
+> [!NOTE] Pass 8.2 Helper Finalization Notice
+> In Pass 8.1, `readBoundedJsonBody()` introduced bounded streaming but retained a fallback to `request.text()`. In Pass 8.2, this fallback was completely eliminated to require a readable stream (`request.body`), returning `400 MISSING_REQUEST_STREAM` if unavailable and ensuring zero unbounded buffering across all code paths. See `docs/M05_PASS_8_2_FINAL_REVIEW_REPORT.md`.
+
 - **The Flaw in Pass 8:**
   In `/api/compliance/triage/route.ts`, the handler called `const rawText = await request.text()` before checking `rawText.length > MAX_PAYLOAD_BYTES`.
 - **The Exploit Vector:**

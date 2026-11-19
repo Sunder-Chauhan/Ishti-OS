@@ -75,10 +75,11 @@ export interface SessionVerificationProvider {
  * CRITICAL MEMORY & LIFECYCLE INVARIANTS:
  * 1. STRICT CARDINALITY BOUND: The internal Map capacity is capped at `maxEntries` (default 10,000).
  *    Under no circumstances (including high-cardinality floods of random keys) does the map exceed this bound.
- * 2. PROACTIVE & SATURATION EVICTION:
- *    - On every insertion when at or approaching capacity, expired entries (`now > entry.resetTime`) are purged.
- *    - If the map remains saturated after purging expired entries, least-recently-accessed (LRU)
- *      entries are evicted to make space for the new key, ensuring active keys are preserved.
+ * 2. PROACTIVE EXPIRATION & SAFE SATURATION (Pass 8.1+):
+ *    - On every insertion when at capacity, expired entries (`now > entry.resetTime`) are purged.
+ *    - If the map remains saturated after purging expired entries (all entries active and unexpired),
+ *      new identities are rejected (fail-closed) WITHOUT evicting active counters (`totalEvicted` strictly remains 0).
+ *      This strictly guarantees that an attacker cannot evict or reset another identity's rate-limit quota by generating new keys.
  * 3. PROCESS-LOCAL NOTICE: This is an in-memory process-local limiter. It enforces quotas
  *    per Node.js process instance. Multi-instance distributed deployments require Redis or
  *    PostgreSQL advisory locks (scheduled for Milestone M06 production deployment).
@@ -97,6 +98,12 @@ export interface RateLimiterStats {
   maxEntries: number;
   totalHits: number;
   totalBlocked: number;
+  /**
+   * Retained as an explicit invariant verification metric.
+   * Under Pass 8.1+ safe saturation, active entries are NEVER evicted; new keys are rejected
+   * without displacing active counters. Therefore totalEvicted strictly remains 0 to prove
+   * that active quotas are never evicted or reset by key saturation floods.
+   */
   totalEvicted: number;
   totalExpired: number;
 }
@@ -859,7 +866,17 @@ export interface BoundedBodyResult<T = Record<string, unknown>> {
   ok: boolean;
   data?: T;
   error?: string;
-  code?: string;
+  code?:
+    | "PAYLOAD_TOO_LARGE"
+    | "MALFORMED_CONTENT_LENGTH"
+    | "CONTENT_LENGTH_MISMATCH"
+    | "MISSING_REQUEST_STREAM"
+    | "INVALID_ENCODING"
+    | "MALFORMED_JSON"
+    | "BAD_REQUEST"
+    | "EMPTY_BODY"
+    | "STREAM_READ_ERROR"
+    | string;
   statusCode?: number;
 }
 
@@ -868,28 +885,32 @@ export interface BoundedBodyResult<T = Record<string, unknown>> {
  * Content-Length verification, UTF-8 safety, and JSON object validation.
  *
  * Security Invariants:
- * 1. Bounded Streaming: Consumes request.body as a ReadableStream chunk by chunk, tracking byte length.
- * 2. Early Abort / Cancel: Cancels the stream immediately if total bytes exceed maxBytes (default 64 KB),
+ * 1. Requires a ReadableStream: Consumes request.body as a ReadableStream chunk by chunk, tracking byte length.
+ *    If no readable stream is available, rejects immediately with 400 MISSING_REQUEST_STREAM.
+ * 2. No Unbounded Buffering: There is NO text() fallback or unbounded memory buffering.
+ * 3. Early Abort / Cancel on Max Bytes: Cancels the stream reader immediately if total bytes exceed maxBytes (default 64 KB),
  *    preventing memory exhaustion from unbounded requests.
- * 3. Content-Length Header Handling:
+ * 4. Content-Length Header Validation & Mismatch Detection:
  *    - If present, verifies it consists strictly of decimal digits.
  *    - Rejects malformed Content-Length (non-numeric, negative, float, NaN) with 400 MALFORMED_CONTENT_LENGTH.
  *    - Rejects oversized Content-Length (> maxBytes) with 413 PAYLOAD_TOO_LARGE before reading stream.
- * 4. Zero Trust in Content-Length Alone:
+ *    - If actual streamed bytes exceed declared Content-Length, cancels the stream immediately and rejects with 400 CONTENT_LENGTH_MISMATCH.
+ *    - If stream ends with fewer bytes than declared Content-Length, rejects with 400 CONTENT_LENGTH_MISMATCH.
+ * 5. Zero Trust in Content-Length Alone:
  *    - Even if Content-Length is missing or claims to be small (e.g. chunked transfer),
  *      the stream reader enforces the hard byte cap while reading.
- * 5. Safe UTF-8 Decoding: Uses TextDecoder("utf-8", { fatal: true }) to reject invalid byte sequences.
- * 6. Safe JSON Object Validation: Ensures body parses to a non-null, non-array object.
+ * 6. Safe UTF-8 Decoding: Uses TextDecoder("utf-8", { fatal: true }) to reject invalid byte sequences with 400 INVALID_ENCODING.
+ * 7. Safe JSON Object Validation: Ensures body parses to a non-null, non-array object with 400 MALFORMED_JSON or 400 BAD_REQUEST.
  */
 export async function readBoundedJsonBody<T = Record<string, unknown>>(
   request: {
     headers: { get(name: string): string | null | undefined };
     body?: ReadableStream<Uint8Array> | null;
-    text?: () => Promise<string>;
   },
   maxBytes = 65536
 ): Promise<BoundedBodyResult<T>> {
   // 1. Content-Length header verification if present
+  let declaredContentLength: number | null = null;
   const contentLengthHeader = request.headers.get("content-length");
   if (contentLengthHeader !== null && contentLengthHeader !== undefined && contentLengthHeader.trim() !== "") {
     const trimmed = contentLengthHeader.trim();
@@ -918,143 +939,132 @@ export async function readBoundedJsonBody<T = Record<string, unknown>>(
         statusCode: 413,
       };
     }
+    declaredContentLength = parsedLength;
   }
 
-  // 2. Stream consumption
-  if (request.body && typeof request.body.getReader === "function") {
-    const reader = request.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let totalBytes = 0;
+  // 2. Require a readable request stream (Pass 8.2: No text() fallback)
+  if (!request.body || typeof request.body.getReader !== "function") {
+    return {
+      ok: false,
+      error: "A readable request stream is required.",
+      code: "MISSING_REQUEST_STREAM",
+      statusCode: 400,
+    };
+  }
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value) {
-          totalBytes += value.byteLength;
-          if (totalBytes > maxBytes) {
-            try {
-              await reader.cancel("PAYLOAD_TOO_LARGE");
-            } catch {
-              // Ignore cancel error
-            }
-            return {
-              ok: false,
-              error: `Payload too large. Maximum allowed size is ${Math.round(maxBytes / 1024)} KB.`,
-              code: "PAYLOAD_TOO_LARGE",
-              statusCode: 413,
-            };
+  // 3. Stream consumption with chunk-by-chunk bounded counting
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        totalBytes += value.byteLength;
+
+        // Immediate cancellation on maxBytes overflow
+        if (totalBytes > maxBytes) {
+          try {
+            await reader.cancel("PAYLOAD_TOO_LARGE");
+          } catch {
+            // Ignore cancel error
           }
-          chunks.push(value);
+          return {
+            ok: false,
+            error: `Payload too large. Maximum allowed size is ${Math.round(maxBytes / 1024)} KB.`,
+            code: "PAYLOAD_TOO_LARGE",
+            statusCode: 413,
+          };
         }
+
+        // Immediate cancellation on Content-Length mismatch (streamed bytes exceed declared length)
+        if (declaredContentLength !== null && totalBytes > declaredContentLength) {
+          try {
+            await reader.cancel("CONTENT_LENGTH_MISMATCH");
+          } catch {
+            // Ignore cancel error
+          }
+          return {
+            ok: false,
+            error: "Streamed bytes exceeded declared Content-Length.",
+            code: "CONTENT_LENGTH_MISMATCH",
+            statusCode: 400,
+          };
+        }
+
+        chunks.push(value);
       }
-    } catch {
-      return {
-        ok: false,
-        error: "Error reading request stream.",
-        code: "STREAM_READ_ERROR",
-        statusCode: 400,
-      };
     }
-
-    if (totalBytes === 0) {
-      return {
-        ok: false,
-        error: "Empty request body.",
-        code: "EMPTY_BODY",
-        statusCode: 400,
-      };
-    }
-
-    // Assemble buffer
-    const fullBuffer = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (const chunk of chunks) {
-      fullBuffer.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-
-    // Strict UTF-8 decoding
-    let rawText: string;
-    try {
-      const decoder = new TextDecoder("utf-8", { fatal: true });
-      rawText = decoder.decode(fullBuffer);
-    } catch {
-      return {
-        ok: false,
-        error: "Invalid UTF-8 encoding in request body.",
-        code: "INVALID_ENCODING",
-        statusCode: 400,
-      };
-    }
-
-    // Safe JSON parsing
-    try {
-      const parsed = JSON.parse(rawText);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        return {
-          ok: false,
-          error: "Malformed request body. JSON object expected.",
-          code: "BAD_REQUEST",
-          statusCode: 400,
-        };
-      }
-      return { ok: true, data: parsed as T };
-    } catch {
-      return {
-        ok: false,
-        error: "Invalid JSON request body.",
-        code: "MALFORMED_JSON",
-        statusCode: 400,
-      };
-    }
+  } catch {
+    return {
+      ok: false,
+      error: "Error reading request stream.",
+      code: "STREAM_READ_ERROR",
+      statusCode: 400,
+    };
   }
 
-  // Fallback for requests that provide text() instead of a ReadableStream
-  if ("text" in request && typeof request.text === "function") {
-    try {
-      const rawText = await request.text();
-      if (!rawText || rawText.trim().length === 0) {
-        return {
-          ok: false,
-          error: "Empty request body.",
-          code: "EMPTY_BODY",
-          statusCode: 400,
-        };
-      }
-      const byteLength = Buffer.byteLength(rawText, "utf-8");
-      if (byteLength > maxBytes) {
-        return {
-          ok: false,
-          error: `Payload too large. Maximum allowed size is ${Math.round(maxBytes / 1024)} KB.`,
-          code: "PAYLOAD_TOO_LARGE",
-          statusCode: 413,
-        };
-      }
-      const parsed = JSON.parse(rawText);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        return {
-          ok: false,
-          error: "Malformed request body. JSON object expected.",
-          code: "BAD_REQUEST",
-          statusCode: 400,
-        };
-      }
-      return { ok: true, data: parsed as T };
-    } catch {
+  if (totalBytes === 0) {
+    return {
+      ok: false,
+      error: "Empty request body.",
+      code: "EMPTY_BODY",
+      statusCode: 400,
+    };
+  }
+
+  // Content-Length mismatch check: streamed bytes fewer than declared length
+  if (declaredContentLength !== null && totalBytes < declaredContentLength) {
+    return {
+      ok: false,
+      error: "Streamed bytes fewer than declared Content-Length.",
+      code: "CONTENT_LENGTH_MISMATCH",
+      statusCode: 400,
+    };
+  }
+
+  // 4. Assemble bounded buffer
+  const fullBuffer = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    fullBuffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  // 5. Strict UTF-8 decoding
+  let rawText: string;
+  try {
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    rawText = decoder.decode(fullBuffer);
+  } catch {
+    return {
+      ok: false,
+      error: "Invalid UTF-8 encoding in request body.",
+      code: "INVALID_ENCODING",
+      statusCode: 400,
+    };
+  }
+
+  // 6. Safe JSON parsing & object verification
+  try {
+    const parsed = JSON.parse(rawText);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return {
         ok: false,
-        error: "Invalid JSON request body.",
-        code: "MALFORMED_JSON",
+        error: "Malformed request body. JSON object expected.",
+        code: "BAD_REQUEST",
         statusCode: 400,
       };
     }
+    return { ok: true, data: parsed as T };
+  } catch {
+    return {
+      ok: false,
+      error: "Invalid JSON request body.",
+      code: "MALFORMED_JSON",
+      statusCode: 400,
+    };
   }
-
-  return {
-    ok: false,
-    error: "Empty request body.",
-    code: "EMPTY_BODY",
-    statusCode: 400,
-  };
 }

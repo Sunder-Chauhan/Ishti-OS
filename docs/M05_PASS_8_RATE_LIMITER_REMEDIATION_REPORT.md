@@ -7,6 +7,9 @@
 **Pass 7 Commit:** `795f14c`  
 **Pass 8 Status:** **PASSED & VERIFIED LOCALLY** (Ready for operator and independent counsel review; distributed rate limiting strictly retained as M06 launch dependency)
 
+> [!NOTE] Historical Evolution Notice (Pass 8.1 & Pass 8.2 Supersession)
+> This document records the original Pass 8 implementation. Note that active-entry LRU eviction (`evictLru()`) described in Sections 3, 7, and 10 of this report was **completely eliminated in Pass 8.1 & Pass 8.2** to prevent quota reset attacks via key flooding. Under Pass 8.1+, capacity saturation preserves all active entries and rejects new unmapped identities without eviction (`totalEvicted` remains 0). Furthermore, Pass 8.2 eliminated the unbounded `request.text()` fallback in favor of strictly bounded streaming body consumption (`readBoundedJsonBody()`).
+
 ---
 
 ## 1. Original Vulnerability
@@ -136,7 +139,7 @@ The `BoundedRateLimiter` class replaces the previous unbounded `Map`:
 
 - **Maximum Cardinality (`maxEntries`):** Fixed default ceiling of **10,000 entries**. Under no circumstances can the Map exceed this limit.
 - **Proactive Capacity Sweep (`enforceCapacity`):** On every insertion when approaching capacity, the limiter purges all expired entries (`now > entry.resetTime`).
-- **Saturation Eviction (`evictLru`):** If the Map remains at capacity after purging expired entries, the least-recently-accessed entry (`entry.lastAccessed`) is immediately evicted.
+- **Safe Saturation Behavior (Pass 8.1+ update):** Replaced legacy LRU eviction with safe saturation rejection. If the Map remains at capacity after purging expired entries, new identities are rejected (`return false`) without evicting or deleting active unexpired counters (`totalEvicted` strictly remains 0), preventing quota reset bypass attacks.
 - **Hard Ceiling Rejection:** If the Map is saturated and an entry cannot be evicted, the limiter fails closed and returns `false` (blocks request), guaranteeing that the Node.js process heap cannot be exhausted.
 - **Fail-Closed Safety:**
   - Non-positive limits (`limit <= 0`) return `false`.

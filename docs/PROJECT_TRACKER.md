@@ -328,10 +328,10 @@ Scope & Gates:
 - [x] Milestone M05 Pass 8: Critical Rate-Limiter Remediation, Adversarial Testing & Bounded Memory Hardening (ADR-031):
   - [x] Eliminated reliance on attacker-controlled client headers (Bearer tokens, session cookies, User-Agent, Accept-Language, Sec-CH-UA) as rate-limit identities; eliminated rotating-header rate limit bypass
   - [x] Implemented layered defense-in-depth: Layer 1 (pre-auth network limit via verified IP or bounded fallback `${prefix}:net:untrusted-direct`) $\to$ Layer 2 (server session auth) $\to$ Layer 3 (post-auth account limit via verified `auth.user.id`)
-  - [x] Implemented `BoundedRateLimiter` engine with hard ceiling `MAX_ENTRIES = 10_000`, proactive capacity sweeps, LRU eviction on saturation, and fail-closed safety
+  - [x] Implemented `BoundedRateLimiter` engine with hard ceiling `MAX_ENTRIES = 10_000`, proactive capacity sweeps, and fail-closed safety (LRU eviction superseded in Pass 8.1 by safe saturation quota preservation)
   - [x] Documented fundamental network provenance limitation: origin web servers cannot manufacture per-client fairness without trustworthy ingress; origin shielding (Cloudflare AOP / VPC firewall) and distributed Redis rate limiting retained as M06 launch dependencies
   - [x] Verified endpoint protection: `/api/compliance/audit` and `/api/compliance/triage` protected at both Layer 1 (network) and Layer 3 (account)
-  - [x] Added 18 automated adversarial tests in `scripts/run-m05-tests.ts`: 10,000 fake tokens collapse, 10,000 cookies collapse, rotating fingerprint block, invalid-token flood bounded memory, spoofed XFF/X-Real-IP rejection, Cloudflare missing/malformed rejection, reverse proxy sanitization, map saturation LRU eviction, expired cleanup, concurrent race safety, account quota isolation, multi-account same network fairness, roaming account enforcement, fail-closed safety, and 12,000-key high-cardinality stress test
+  - [x] Added 18 automated adversarial tests in `scripts/run-m05-tests.ts`: 10,000 fake tokens collapse, 10,000 cookies collapse, rotating fingerprint block, invalid-token flood bounded memory, spoofed XFF/X-Real-IP rejection, Cloudflare missing/malformed rejection, reverse proxy sanitization, map saturation and quota preservation, expired cleanup, concurrent race safety, account quota isolation, multi-account same network fairness, roaming account enforcement, fail-closed safety, and 12,000-key high-cardinality stress test
   - [x] Test suite expanded to 135/135 M05 tests (100% pass); 110/110 security regression tests passing (245 tests total, 0 failures)
   - [x] TypeScript clean (0 errors) across all packages; Next.js web build clean (31/31 routes prerendered)
   - [x] Decision log updated (ADR-031 in `docs/DECISION_LOG.md`; LDL-014 in `docs/legal/ISHTI_LEGAL_DECISION_LOG.md`)
@@ -344,4 +344,15 @@ Scope & Gates:
   - [x] TypeScript clean (0 errors) across all workspaces; Next.js web build clean (31/31 routes prerendered)
   - [x] Decision log updated (ADR-032 in `docs/DECISION_LOG.md`; LDL-015 in `docs/legal/ISHTI_LEGAL_DECISION_LOG.md`)
   - [x] Remediation report completed: `docs/M05_PASS_8_1_SECURITY_CORRECTIONS_REPORT.md` with status `READY FOR INDEPENDENT COUNSEL REVIEW`
+- [x] Milestone M05 Pass 8.2: Bounded Body Helper Finalization & Unbounded Fallback Elimination (ADR-033):
+  - [x] Completely removed unbounded `request.text()` fallback in `readBoundedJsonBody()`; requires mandatory `ReadableStream<Uint8Array>` (`request.body`)
+  - [x] Return structured error 400 `MISSING_REQUEST_STREAM` if readable stream is unavailable; text-only requests attempting fallback are strictly rejected
+  - [x] Enforced immediate abort on `Content-Length` mismatch: cancels stream reader and rejects with 400 `CONTENT_LENGTH_MISMATCH` if streamed bytes exceed or fall short of declared length
+  - [x] Preserved 64 KB limit, immediate cancellation on overflow, fatal UTF-8 decoding, and safe JSON object validation
+  - [x] Cleaned up stale LRU references in comments, statistics documentation, and project registers
+  - [x] Documented `totalEvicted` in `RateLimiterStats` as an explicit invariant verification metric that strictly remains 0 to prove active quota preservation
+  - [x] Test suite expanded to 159/159 M05 tests (10 dedicated Pass 8.2 tests covering valid stream, oversized without CL, oversized with CL, CL smaller than streamed bytes, missing stream, text fallback rejection, invalid UTF-8, malformed JSON, JSON array/primitive, and stream read failure)
+  - [x] Security regression suite 110/110 passing (269 tests total across suites, 0 failures); TypeScript clean (0 errors); Next.js 31/31 routes compiled
+  - [x] Decision log updated (ADR-033 in `docs/DECISION_LOG.md`; LDL-016 in `docs/legal/ISHTI_LEGAL_DECISION_LOG.md`)
+  - [x] Final review report completed: `docs/M05_PASS_8_2_FINAL_REVIEW_REPORT.md` with status `READY FOR INDEPENDENT COUNSEL REVIEW`
 
