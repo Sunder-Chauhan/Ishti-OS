@@ -1,16 +1,16 @@
-# ISHTI Milestone M06 — Test & Verification Strategy
+# ISHTI Milestone M06 — Test & Verification Strategy (Revised)
 
 **Document Reference:** `docs/M06_TEST_AND_VERIFICATION_STRATEGY.md`  
-**Milestone:** M06 — Backend Persistence, Distributed Invariants & Production Infrastructure  
+**Milestone:** M06 — Core Backend Persistence, Distributed Invariants & Production Shielding  
 **Repository:** `https://github.com/Sunder-Chauhan/Ishti-OS`  
-**Date:** 19 November 2026  
-**Auditor Roles:** Principal Test Architect, Security Verification Engineer  
+**Revision Date:** 19 November 2026  
+**Auditor Roles:** Principal Test Architect, Security Verification Engineer & Privacy Lead  
 
 ---
 
 ## 1. Multi-Tier Testing Hierarchy Overview
 
-To ensure that distributed backend components, financial transactions, privacy workflows, and security safeguards operate flawlessly under adversarial conditions, Milestone M06 mandates a **5-tier testing hierarchy**:
+To ensure that distributed backend components, privacy workflows, and security safeguards operate flawlessly under adversarial conditions, Milestone M06 enforces a **5-tier testing hierarchy**:
 
 ```mermaid
 pyramid
@@ -24,57 +24,79 @@ pyramid
 
 | Testing Tier | Scope | Target Environment | Pass Criteria |
 | :--- | :--- | :--- | :--- |
-| **Tier 1: Unit Tests** | Pure business logic, minor-unit financial math, Merkle tree computation, payload decoding. | Local Node.js / Jest / Vitest | 100% passing; execution time < 5s. |
-| **Tier 2: Integration Tests** | Next.js API route handlers, Server Actions, bounded stream reading, session verifiers. | Local mock HTTP / Supertest | 100% passing; zero unhandled promise rejections. |
-| **Tier 3: Database & RLS Penetration** | Native PostgreSQL 18 RLS policies, trigger immutability, role separation. | Local PostgreSQL 18 container (port 54321) | Zero data leakage across tenants; unauthorized writes throw 42501. |
-| **Tier 4: Concurrency Tests** | Atomic booking reservations, refund double-spends, rate-limiter sliding windows. | Multi-connection pool (20-50 simultaneous clients) | Exactly 1 winner in race conditions; zero double-spends; zero deadlocks. |
-| **Tier 5: Chaos & Load Benchmarks** | Redis disconnection, network packet drops, thundering herd traffic spikes. | K6 / Artillery load testing runner | Fail-open / fail-closed adheres to matrix; latency p99 < 50ms. |
+| **Tier 1: Unit Tests** | Pure business logic, minor-unit calculations, SHA-256 Merkle chain computations, payload decoding. | Local Node.js / Vitest | 100% passing; execution time < 5s. |
+| **Tier 2: API Integration Tests** | Next.js API route handlers, Server Actions, bounded stream reading, session verifiers. | Local mock HTTP / Supertest | 100% passing; zero unhandled promise rejections. |
+| **Tier 3: Database & RLS Penetration** | Native PostgreSQL 18 RLS policies, trigger immutability, role separation, anonymous RPC access. | Local PostgreSQL 18 container (port 54321) | Zero data leakage; unauthorized direct writes throw 42501. |
+| **Tier 4: Concurrency Tests** | Atomic booking reservations, sliding-window rate limit counters across worker threads. | Multi-connection pool (20-50 simultaneous clients) | Exactly 1 winner in race conditions; zero deadlocks. |
+| **Tier 5: Chaos & Load Benchmarks** | Redis disconnection, circuit breaker tripping, thundering herd traffic spikes. | K6 / Artillery load testing runner | Fail-open / fail-closed adheres to matrix; latency p99 < 50ms. |
 
 ---
 
 ## 2. Dedicated Adversarial Test Harnesses & Scenarios
 
-### 2.1. Distributed Rate Limiter Thundering Herd Test
-- **Objective:** Verify that 1,000 simultaneous asynchronous requests distributed across 20 simulated server instances do not allow an attacker to exceed the statutory 60 req/min quota.
-- **Harness:** `scripts/test-distributed-rate-limiter.ts` using `Promise.all()` over multiple Node worker threads targeting a shared Redis/PostgreSQL test instance.
-- **Assertion:** Exactly 60 requests receive `HTTP 200 OK`; exactly 940 requests receive `HTTP 429 Too Many Requests`. Active counter state remains intact.
+### 2.1. Distributed Rate Limiter Outage & Fail-Closed Test (Correction 3)
+- **Objective:** Verify that when Redis is unreachable or times out (>150ms), sensitive mutation routes fail closed (HTTP 503) without silently falling back to uncoordinated local process memory.
+- **Harness:** `scripts/test-rate-limiter-chaos.ts` wraps Redis client with an artificial network partition proxy.
+- **Test Scenarios:**
+  1. *Normal Distributed Ingress:* 60 req/min limit enforced across 5 concurrent Node worker processes. Requests 1–60 return HTTP 200; requests 61–100 return HTTP 429.
+  2. *Redis Severance (Sensitive Route):* Sever Redis connection and submit request to `/api/auth/otp` and `/api/compliance/triage`.
+     * *Assertion:* Endpoints return `HTTP 503 Service Unavailable` with error code `RATE_LIMIT_UNAVAILABLE`. Zero silent local-memory quota fallback.
+  3. *Redis Severance (Public Read Route):* Sever Redis connection and submit request to `/api/panchang/daily`.
+     * *Assertion:* Endpoint returns `HTTP 200 OK` with header `X-RateLimit-Degraded: true` using conservative local limiter.
+  4. *Circuit Breaker Tripping:* Generate 5 consecutive Redis timeouts (>150ms).
+     * *Assertion:* Circuit trips to `OPEN`. P1 alert dispatched. Requests fail fast without incurring the 150ms timeout. Probe request at 30s resets circuit to `HALF_OPEN`.
 
-### 2.2. Tamper Detection on Audit Chain Corruption
-- **Objective:** Prove that manual modification of an audit record by a rogue database administrator is immediately detected.
-- **Harness:**
+### 2.2. Server-Mediated Anonymous Intake Penetration Suite (Correction 4)
+- **Objective:** Verify that unauthenticated public intake is mediated securely without exposing direct database write privileges.
+- **Harness:** `scripts/test-anonymous-intake-security.ts`.
+- **Test Scenarios:**
+  1. *Direct DB Write Attempt:* Attempt direct SQL insert into `public.grievance_tickets` using Supabase client with `anon` public key.
+     * *Assertion:* Database rejects query with exception `42501 (permission denied for table grievance_tickets)`.
+  2. *Server-Mediated Valid Submission:* Dispatch valid JSON payload to `POST /api/compliance/triage`.
+     * *Assertion:* Returns HTTP 201 Created with ticket reference (`ISHTI-GRV-2026-XXXX`). Audit ledger records event with `actor_role = 'anonymous_public'`.
+  3. *Oversized Payload Flooding:* Dispatch a 128 KB JSON payload to `/api/compliance/triage`.
+     * *Assertion:* Bounded stream reader cancels stream immediately and returns HTTP 413 `PAYLOAD_TOO_LARGE` without buffering full body into memory.
+  4. *Anonymous IP Burst Throttling:* Dispatch 10 consecutive submissions from the same IP.
+     * *Assertion:* First 3 submissions succeed; submissions 4–10 are rejected with HTTP 429.
+
+### 2.3. 15-Point Multi-Copy Data Erasure Verification (Correction 5)
+- **Objective:** Prove that confirmed statutory erasure purges personal data across all 15 platform repositories and mathematically destroys encrypted Kundli ciphertext via DEK shredding.
+- **Harness:** `scripts/test-privacy-erasure-lifecycle.ts`.
+- **Test Scenarios:**
+  1. Provision a test devotee with personal profile, encrypted Kundli birth records, consent records, and cached Redis sessions.
+  2. Trigger confirmed erasure via `executePrivacyErasure(userId)`.
+  3. *Primary DB Verification:* Query `public.profiles` and `public.user_consents` for `userId`. Assert 0 rows returned.
+  4. *Cryptographic Shredding Verification:* Query `public.kundli_encryption_keys` for `userId`. Assert 0 rows returned. Attempt AES-256-GCM decryption of historical Kundli ciphertext using platform master key.
+     * *Assertion:* Decryption throws `AUTHENTICATION_TAG_VERIFICATION_FAILED`. Birth data is mathematically irrecoverable.
+  5. *Cache Purge Verification:* Query Redis for `ishti:session:{userId}`. Assert key does not exist (`nil`).
+  6. *Lawful Retention Documentation:* Inspect `public.privacy_requests.retained_records_summary`.
+     * *Assertion:* Documents financial transaction IDs retained pursuant to Income-tax Act, 2025 §62 (7-year retention exception).
+
+### 2.4. Grievance Redressal IT Rules Dual-Clock SLA Verification (Correction 2)
+- **Objective:** Verify that grievance tickets correctly calculate statutory legal deadlines vs internal operational targets based on classification.
+- **Harness:** `scripts/test-grievance-slas.ts`.
+- **Test Scenarios:**
+  1. Submit Rule 3(2)(b) emergency complaint (non-consensual imagery / impersonation).
+     * *Assertion:* `statutory_ack_deadline` = +24h, `statutory_disposal_deadline` = **+24h**; `internal_slt_disposal_deadline` = **+4h**.
+  2. Submit Rule 3(1)(d) government/court takedown notification.
+     * *Assertion:* `statutory_disposal_deadline` = **+36h**; `internal_slt_disposal_deadline` = **+6h**.
+  3. Submit standard devotee privacy/service grievance.
+     * *Assertion:* `statutory_ack_deadline` = +24h, `statutory_disposal_deadline` = **+7 days** (reflecting Feb 2026 amendment); `internal_slt_disposal_deadline` = **+48h**.
+
+### 2.5. Merkle Hash Chain Corruption & Tamper Detection (Correction 6)
+- **Objective:** Prove that manual modification of an audit record by a rogue database administrator is immediately detected by the integrity daemon.
+- **Harness:** `scripts/test-audit-tamper-detection.ts`.
+- **Test Scenarios:**
   1. Insert 50 sequential audit records into `public.audit_ledger`.
   2. Disable the trigger temporarily in a local test sandbox and modify the payload of record #25.
-  3. Execute the daily audit verification function (`verify_audit_ledger_integrity()`).
-- **Assertion:** The verification function returns `false`, identifying record #25 as corrupted with hash mismatch `record_hash != calculated_hash`, and flags downstream records #26–50 as invalidated.
-
-### 2.3. Concurrent Refund Double-Spend Prevention
-- **Objective:** Ensure that rapid, concurrent cancellation requests cannot execute duplicate refunds on the payment gateway or database ledger.
-- **Harness:** Dispatch 20 concurrent HTTP POST requests to `/api/commerce/refund` referencing the same `booking_id` from distinct worker threads.
-- **Assertion:** Exactly 1 request succeeds (HTTP 200) and commits the refund transaction. Exactly 19 requests fail with HTTP 409 Conflict (`ALREADY_REFUNDED` or `TRANSACTION_LOCKED`). Ledger gross and net amounts remain perfectly balanced.
-
-### 2.4. Cryptographic Shredding & Privacy Rights Verification
-- **Objective:** Prove that after statutory erasure is executed, previously encrypted birth data is mathematically irrecoverable.
-- **Harness:**
-  1. Create a devotee Kundli profile with encrypted birth data (`apps/web/lib/crypto/kundli-encryption.ts`).
-  2. Verify that decryption succeeds with the user's active DEK.
-  3. Execute the M06 erasure worker (`executePrivacyErasure(userId)`).
-  4. Attempt to decrypt the historical raw ciphertext using any remaining platform keys.
-- **Assertion:** Decryption throws `ERR_OSSL_EVP_BAD_DECRYPT` / `AUTHENTICATION_TAG_VERIFICATION_FAILED`. The DEK is permanently absent from `public.kundli_encryption_keys`.
-
-### 2.5. RLS Bypass & Multi-Tenant Penetration Suite
-- **Objective:** Verify that authenticated users cannot access or mutate records belonging to other devotees, pandits, or administrative queues.
-- **Harness:** Execute SQL queries via Supabase client impersonating `devotee_a` (`SET LOCAL role = 'authenticated'`, `SET LOCAL "request.jwt.claim.sub" = '<uuid_a>'`).
-- **Target Assertions:**
-  * Querying `user_consents` of `devotee_b` returns 0 rows.
-  * Attempting to update `grievance_tickets` of `devotee_b` returns 0 rows modified.
-  * Direct query to `audit_ledger` without admin role returns 0 rows.
-  * Direct insert into `scripture_catalog` without scholar role returns 42501 permission error.
+  3. Execute `verify_audit_ledger_integrity()`.
+  * *Assertion:* The verification function returns `false`, identifying record #25 as corrupted (`record_hash != calculated_hash`), and flags downstream records #26–50 as invalidated.
 
 ---
 
 ## 3. Milestone M06 Acceptance Gates & Sign-Off Criteria
 
-Before Milestone M06 can be accepted or merged into `main`, it must satisfy all six mandatory gates:
+Before Milestone M06 can be accepted or merged into `main`, it must satisfy all five mandatory gates:
 
 ```
 ================================================================================
@@ -89,22 +111,21 @@ ISHTI Milestone M06 Acceptance Gate Verification Criteria
     • Automated Security Suite (`npm run test:security`): 100% pass (minimum 110+ tests).
     • Zero hardcoded secrets, API keys, or exposed test credentials.
 
-[ ] GATE 3: COMPLIANCE & DISTRIBUTED TEST SUITE
-    • M06 Compliance Suite (`scripts/run-m06-tests.ts`): 100% pass.
-    • Distributed rate limiting, streaming body reader, and audit ledger tests pass.
+[ ] GATE 3: CORE PERSISTENCE & ADVERSARIAL SUITE
+    • Core M06 Verification Suite (`scripts/run-m06-tests.ts`): 100% pass.
+    • Distributed rate limiting chaos tests pass (sensitive routes fail closed).
+    • Server-mediated anonymous grievance intake penetration tests pass.
+    • 15-point multi-copy privacy erasure and DEK shredding tests pass.
+    • Merkle hash chain corruption detection tests pass.
 
 [ ] GATE 4: REAL DATABASE RLS & CONCURRENCY VERIFICATION
     • Executed against isolated native PostgreSQL 18 container (port 54321).
+    • Zero direct table access granted to anon role.
     • All 5 RLS penetration scenarios pass cleanly without data leakage.
-    • Multi-connection concurrency race tests pass with 0 double-spends.
 
 [ ] GATE 5: ZERO-DOWNTIME MIGRATION VERIFICATION
     • Forward migrations execute cleanly on clean database.
     • Reverse migrations (`down/`) roll back cleanly without residue.
     • Idempotency verified: re-running migrations causes 0 errors.
-
-[ ] GATE 6: PRODUCTION APPLICATION BUILD
-    • Next.js 15 production build (`npm run build:web`): All routes compile cleanly.
-    • Bundle analysis confirms zero server secrets leaked to client bundles.
 ================================================================================
 ```

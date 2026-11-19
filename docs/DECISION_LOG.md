@@ -819,3 +819,54 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Legal Readiness: **`NOT READY`** (Requires formal legal counsel & CA written sign-offs)
   - Commercial Launch Readiness: **`NOT READY`** (Blocked on M06 implementation and statutory approvals)
 
+---
+
+## 2026-11-19: ADR-036 — Milestone M06 Pre-Implementation Architecture Corrections & Scope Refinement
+- **Status:** APPROVED & DOCUMENTED (PRE-IMPLEMENTATION PHASE)
+- **Context:** Following an independent architectural review of the initial M06 planning deliverables, 10 critical corrections were identified to resolve legal timing precision, grievance categorization, distributed rate limiting failure modes, anonymous intake boundaries, multi-copy privacy erasure, audit ledger immutability nuances, hosting origin shielding, tax determination separation, cost modeling, and milestone scope boundaries.
+- **Decision:**
+  1. **DPDP Act Phased Commencement Reconciled (Correction 1):**
+     - Reconciled 12-month provisions (§6(9), §27(1)(d), Rule 4) as IN FORCE since 13 Nov 2026.
+     - Reconciled 18-month provisions (§§3–5, 6, 8, 9, 11–13) scheduled for 13 May 2027 as pre-launch engineering controls without claiming premature legal compliance.
+     - Documented lawful retention exceptions (Income-tax Act §62, IT Rules, dispute defense) overriding statutory erasure under DPDP §12(3).
+  2. **Grievance Redressal IT Rules Disaggregation (Correction 2):**
+     - Mapped disaggregated IT Rules Rule 3(2) timelines: 24h acknowledgement, 7d disposal (reflecting February 2026 amendment), 24h Rule 3(2)(b) emergency sexual content takedown, 36h Rule 3(1)(d) court order takedown, and §69A confidential blocking.
+     - Decoupled statutory legal deadlines from aggressive internal operational targets (SLTs).
+     - Partitioned platform product functions into Intermediary (IT Act §79 safe harbour applies) vs First-Party Publisher (safe harbour does not apply).
+  3. **Distributed Rate Limiting Failure Redesign (Correction 3):**
+     - Eliminated silent fallback to process-local memory on sensitive mutation routes (auth, checkout, erasure, grievance).
+     - Enforced strict fail-closed policy (HTTP 503 `RATE_LIMIT_UNAVAILABLE`) or atomic PostgreSQL advisory locking fallback for sensitive routes during cache severance.
+     - Specified circuit breaker state machine (trips after 5 consecutive timeouts >150ms), 1 retry with 25ms backoff, and P1 alerts.
+  4. **Server-Mediated Anonymous Intake Model (Correction 4):**
+     - Replaced the over-broad "zero unauthenticated mutation" constraint with a controlled, secure server-mediated anonymous public intake model.
+     - Revoked direct table INSERT permissions from PostgREST `anon` role; mediated intake exclusively through Server Actions calling isolated PostgreSQL RPC `submit_anonymous_grievance` with strict Zod bounds (max 32 KB), Layer 1 IP throttling, and audit events (`actor_role = 'anonymous_public'`).
+  5. **15-Point Multi-Copy Privacy Erasure Architecture (Correction 5):**
+     - Expanded erasure beyond single-point DEK shredding to map all 15 personal data repositories (primary DB, caches, search indexes, backups, logs, vendors, object storage).
+     - Implemented 8-stage state machine and per-profile AES-256 DEK cryptographic shredding.
+     - Documented transparent 30-day rolling backup expiry lifecycle with disaster recovery deletion tombstones.
+  6. **Audit Ledger Defense-in-Depth & Retention Matrix (Correction 6):**
+     - Acknowledged that SQL triggers protect application queries, but not compromised superusers.
+     - Enforced 8-layer integrity hierarchy: triggers, Merkle hash chains, daily signed roots, and external WORM Object Lock in an isolated cloud account.
+     - Replaced blanket 7-year retention with a statutory Record-Category Retention Matrix.
+  7. **Hosting Origin Shielding Compatibility (Correction 7):**
+     - Acknowledged standard Vercel Pro does not support custom client-cert mTLS (Cloudflare AOP).
+     - Enforced Cloudflare CIDR firewall allowlisting + cryptographic shared proxy secret header (`x-ishti-proxy-secret`). Marked AOP as `UNVERIFIED ON VERCEL`.
+  8. **Decoupled Commerce & Tax Determination (Correction 8):**
+     - Decoupled financial double-entry ledger to Milestone M07.
+     - Configured dynamic tax rules table (`tax_configuration_rules`) without hardcoding universal rates; required mandatory Chartered Accountant written certification before enabling automated withholding.
+  9. **Reworked Cost Projections (Correction 9):**
+     - Grounded cost modeling in November 2026 published vendor rates across 3 explicit scenarios (Beta <500 MAU: ~$2–$22/mo; Launch 15k MAU: ~$145/mo; Scale 100k MAU: ~$780/mo).
+     - Marked all estimates as indicative with zero financial commitments.
+  10. **Core M06 Scope Partitioning (Correction 10):**
+      - Focused Core M06 strictly on 6 persistence workstreams (M06.1 to M06.6); deferred commerce to M07, scriptures to M08, admin console to M09.
+  11. **Pre-Implementation Decision Register:**
+      - Authored `docs/M06_PRE_IMPLEMENTATION_DECISION_REGISTER.md` resolving 8 critical architectural questions.
+- **Verification Evidence:**
+  - 7 existing M06 planning deliverables revised and cross-referenced.
+  - New decision register authored.
+  - Zero application code, zero migrations, zero remote database mutations executed.
+  - M05 test suites corroborated (169/169 M05, 110/110 security, 0 typecheck, 31 routes compiled).
+- **Release Verdict:**
+  - Planning Deliverables: **`APPROVED & READY FOR OPERATOR REVIEW`**
+  - Implementation Code Execution: **`PAUSED AWAITING EXPLICIT OPERATOR AUTHORIZATION`**
+

@@ -1,11 +1,11 @@
-# ISHTI Milestone M05 — Final Gap Register
+# ISHTI Milestone M05 — Final Gap Register (Revised)
 
 **Document Reference:** `docs/M05_FINAL_GAP_REGISTER.md`  
 **Milestone:** M05 — Legal, Privacy & Trust Foundation  
 **Branch:** `feature/m05-trust-governance`  
 **Commit Baseline:** `0c355bc`  
-**Date:** 19 November 2026  
-**Auditor Roles:** Principal Software Architect, Application Security Engineer, Privacy Engineering Lead  
+**Revision Date:** 19 November 2026  
+**Auditor Roles:** Principal Software Architect, Application Security Engineer & Privacy Engineering Lead  
 
 ---
 
@@ -21,18 +21,20 @@ In accordance with ISHTI governance principles, no simulated prototype, in-memor
 
 | Gap ID | Pillar / Area | Description of Gap | Risk / Exposure | Severity | Target Milestone | Responsible Role |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **GAP-M05-001** | Ingress & Security | **Process-Local Rate Limiting:** `BoundedRateLimiter` maintains an in-memory `Map`. When deployed across multiple Next.js instances or serverless workers, quotas do not synchronize, allowing round-robin requests to multiply allowable burst limits. | Distributed abuse; burst attacks bypassing rate limits across multiple container replicas. | **HIGH** | Milestone M06 (M06.1) | Backend Architect |
-| **GAP-M05-002** | Ingress & Network | **Unshielded Direct Origin Risk:** `compliance-session-verifier.ts` validates `CF-Connecting-IP` when `TRUSTED_PROXY_STRATEGY="cloudflare"`, but cannot prevent an attacker who discovers the origin IP from forging headers if direct traffic is permitted. | Attacker forges client IP if origin is directly addressable without Cloudflare Authenticated Origin Pulls (AOP). | **HIGH** | Milestone M06 (M06.7) | DevOps / Cloud Infrastructure Lead |
-| **GAP-M05-003** | Operations & Redressal | **In-Memory Grievance Storage:** Triage and grievance tickets (`ISHTI-GRV-...`) are held in process memory. Process restarts or container redeployments destroy all unpersisted grievance records. No automated statutory email/SMS acknowledgement occurs. | Loss of grievance records; violation of IT Rules Rule 3(2) 24h acknowledgement and 7d resolution mandates. | **CRITICAL / BLOCKER** | Milestone M06 (M06.4) | Backend Lead & Privacy Engineer |
-| **GAP-M05-004** | Audit & Evidence | **Client-Side / Local Memory Audit Ledger:** Audit events are recorded via SHA-256 chaining in local memory and browser storage. There is no remote, append-only database table with write-once-read-many (WORM) storage. | Inability to prove audit trail integrity in legal proceedings; vulnerable to tampering by privileged system operators. | **HIGH** | Milestone M06 (M06.3) | Security Architect |
-| **GAP-M05-005** | Subject Rights | **Simulated Privacy Rights Erasure & SAR:** `apps/web/lib/compliance/privacy-rights.ts` is explicitly marked `DEMONSTRATION_PREVIEW_ONLY`. It does not execute cascading database row deletion, nor does it cryptographically shred AES-256 kundli encryption keys. | Failure to execute statutory erasure under DPDP Act §12(3) / GDPR Art 17; simulated SAR export lacks secure authenticated distribution. | **CRITICAL / BLOCKER** | Milestone M06 (M06.2) | Backend Lead & Cryptography Engineer |
-| **GAP-M05-006** | Consent Engine | **Browser-Local Consent Persistence:** Consent records are stored in browser `localStorage` (`ishti_consent_chain`). The backend lacks an authenticated, immutable `consent_records` table linked to user identities with verifiable withdrawal workflows. | Inability to demonstrate verifiable consent before the Data Protection Board under DPDP Act §6; consent state lost on device change. | **CRITICAL / BLOCKER** | Milestone M06 (M06.2) | Backend Architect & Frontend Lead |
-| **GAP-M05-007** | Age Assurance | **Simulated Parental Consent Gate:** Consent engine provides a self-declaration age checkbox. It lacks integration with verifiable parental consent mechanisms (e.g. Government DLT, Aadhaar token, or parental verification flow) mandated by DPDP Act §9. | Unlawful processing of personal data of children; statutory liability up to ₹200 crore under DPDP Act Section 33 Schedule Item 3. | **HIGH** | Pre-Launch Compliance | Privacy Engineering Lead & Legal Counsel |
-| **GAP-M05-008** | Policy Management | **Draft Legal Policy Placeholders:** All 10 policies in `policy-registry.ts` are marked `status: "LEGAL_REVIEW"` and contain `[LEGAL_REVIEW_REQUIRED: ...]` placeholders. Policies are not yet certified by qualified legal counsel. | Unenforceable terms of service, invalid privacy notices, and consumer disputes regarding spiritual guarantees. | **CRITICAL / BLOCKER** | Pre-Launch (Founder Sign-off) | Founder & Legal Counsel |
-| **GAP-M05-009** | Commerce & Taxation | **Uncertified Tax & Commerce Baselines:** Cancellation tiers (100% >24h, 50% 12-24h, 0% <4h), GST SAC codes (999799/998439), 0.5% TCS (§52), and 0.1% TDS (§194-O / §393) are engineering implementations requiring formal CA certification. | Tax withholding penalties, misclassified GST liabilities, and consumer protection complaints under Consumer Protection (E-Commerce) Rules. | **CRITICAL / BLOCKER** | Pre-Launch (Finance Sign-off) | Practicing Chartered Accountant & Founder |
-| **GAP-M05-010** | Content Governance | **Scripture Copyright & Translation Clearance:** Contemporary translations and commentary for scriptural texts (beyond historic public-domain English translations from Griffith 1896 / Müller 1879) lack formal rights clearance. | Intellectual property infringement claims from modern publishers, translators, or copyright holders. | **HIGH** | Pre-Beta / Ongoing | Vedic Scholar & Legal Counsel |
-| **GAP-M05-011** | Security Engineering | **Theoretical Throwing Getter Edge-Case:** `readBoundedJsonBody()` tests `typeof request.body.getReader !== "function"` prior to reader acquisition. While safe in native Node/Next.js runtime, an exotic mock object with a throwing accessor getter could bypass structured 400. | Zero production risk (Node HTTP runtime controls `request.body`), but represents a theoretical edge case in non-standard test harnesses. | **LOW** | Milestone M06 (M06.1) | Application Security Engineer |
-| **GAP-M05-012** | Subject Rights | **SAR Export Packaging & Delivery:** Subject Access Request (SAR) export generates raw JSON in memory. It lacks asymmetric encryption, password protection, and signed temporary download link delivery. | Unencrypted exposure of personal data during data portability downloads; potential PII interception. | **MEDIUM** | Milestone M06 (M06.2) | Application Security Engineer |
+| **GAP-M05-001** | Ingress & Security | **Process-Local Rate Limiting:** `BoundedRateLimiter` maintains an in-memory `Map`. Quotas do not synchronize across container instances. Silent local fallback on sensitive routes enables distributed brute force. | Distributed abuse; burst attacks bypassing rate limits across multiple container replicas. | **HIGH** | Milestone M06 (M06.1) | Backend Architect |
+| **GAP-M05-002** | Ingress & Network | **Unshielded Direct Origin Risk:** `compliance-session-verifier.ts` validates `CF-Connecting-IP` when `TRUSTED_PROXY_STRATEGY="cloudflare"`, but cannot prevent an attacker who discovers origin IP from forging headers if direct traffic is permitted. | Attacker forges client IP if origin is directly addressable without Cloudflare edge proxying. | **HIGH** | Milestone M06 (M06.6) | DevOps / Cloud Infrastructure Lead |
+| **GAP-M05-003** | Operations & Redressal | **In-Memory Grievance Storage:** Triage and grievance tickets (`ISHTI-GRV-...`) are held in process memory. Container restarts destroy unpersisted tickets. Lacks dual-clock SLA monitoring (24h ack, 7d disposal under IT Rules). | Loss of grievance records; violation of IT Rules Rule 3(2) statutory mandates. | **CRITICAL / BLOCKER** | Milestone M06 (M06.5) | Backend Lead & Privacy Engineer |
+| **GAP-M05-004** | Audit & Evidence | **Client-Side / Local Memory Audit Ledger:** Audit events are recorded via SHA-256 chaining in local memory and browser storage. Lacks database triggers, Merkle tree verification, and external WORM object lock. | Inability to prove audit trail integrity in legal proceedings; vulnerable to tampering by privileged operators. | **HIGH** | Milestone M06 (M06.4) | Security Architect |
+| **GAP-M05-005** | Subject Rights | **Simulated Privacy Erasure & Multi-Copy Persistence:** `apps/web/lib/compliance/privacy-rights.ts` is `DEMONSTRATION_PREVIEW_ONLY`. Does not execute DB cascading deletion, per-profile DEK shredding, or multi-copy purge across 15 stores. | Failure to execute statutory erasure under DPDP Act §12(3) / GDPR Art 17; simulated SAR export lacks secure delivery. | **CRITICAL / BLOCKER** | Milestone M06 (M06.3) | Backend Lead & Cryptography Engineer |
+| **GAP-M05-006** | Consent Engine | **Browser-Local Consent Persistence:** Consent records are stored in browser `localStorage` (`ishti_consent_chain`). The backend lacks an authenticated, immutable `consent_records` table with DPDP §6(4) withdrawal workflows. | Inability to demonstrate verifiable consent before the Data Protection Board under DPDP Act §6; consent lost on device wipe. | **CRITICAL / BLOCKER** | Milestone M06 (M06.2) | Backend Architect & Frontend Lead |
+| **GAP-M05-007** | Age Assurance | **Simulated Parental Consent Gate:** Consent engine provides a self-declaration age checkbox. Lacks integration with verifiable parental consent mechanisms (e.g. Government DLT, Aadhaar token) mandated by DPDP Act §9. | Unlawful processing of personal data of children; statutory liability up to ₹200 crore under DPDP Act §33 Schedule Item 3. | **HIGH** | Pre-Launch Compliance | Privacy Engineering Lead & Legal Counsel |
+| **GAP-M05-008** | Policy Management | **Draft Legal Policy Placeholders:** All 10 policies in `policy-registry.ts` are marked `status: "LEGAL_REVIEW"` and contain `[LEGAL_REVIEW_REQUIRED: ...]` placeholders. Policies are not yet certified by qualified legal counsel. | Unenforceable terms of service, invalid privacy notices, and consumer disputes regarding spiritual disclaimers. | **CRITICAL / BLOCKER** | Pre-Launch (Founder Sign-off) | Founder & Legal Counsel |
+| **GAP-M05-009** | Commerce & Taxation | **Uncertified Tax & Commerce Baselines:** Cancellation tiers (100% >24h, 50% 12-24h, 0% <4h), GST SAC codes (999799/998439), 0.5% TCS (§52), and 0.1% TDS (§194-O / §393) are engineering baselines requiring CA certification. | Tax withholding penalties, misclassified GST liabilities, and consumer disputes. Deferred to Milestone M07. | **HIGH** | Milestone M07 | Practicing Chartered Accountant & Founder |
+| **GAP-M05-010** | Content Governance | **Scripture Copyright & Translation Clearance:** Contemporary translations and commentary for scriptural texts lack formal rights clearance. Deferred to Milestone M08. | Intellectual property infringement claims from modern publishers or copyright holders. | **HIGH** | Milestone M08 | Vedic Scholar & Legal Counsel |
+| **GAP-M05-011** | Security Engineering | **Theoretical Throwing Getter Edge-Case:** `readBoundedJsonBody()` tests `typeof request.body.getReader !== "function"` prior to reader acquisition. Non-blocking in Node HTTP runtime, but theoretical edge case in mock harnesses. | Zero production risk (Node runtime controls `request.body`). | **LOW** | Milestone M06 (M06.1) | Application Security Engineer |
+| **GAP-M05-012** | Subject Rights | **SAR Export Packaging & Delivery:** Subject Access Request (SAR) export generates raw JSON in memory. Lacks AES-256 encrypted archive packaging and time-limited signed download link delivery. | Unencrypted exposure of personal data during data portability downloads; potential PII interception. | **MEDIUM** | Milestone M06 (M06.3) | Application Security Engineer |
+| **GAP-M05-013** | Hosting Infrastructure | **Vercel Pro Incompatibility with Cloudflare AOP (mTLS):** Standard Vercel Pro does not support custom client certificates. Direct origin shielding must rely on Cloudflare CIDR firewall allowlisting and shared proxy secret. | Potential origin bypass if direct IP is discovered and firewall rules are misconfigured. | **HIGH** | Milestone M06 (M06.6) | DevOps / Cloud Infrastructure Lead |
+| **GAP-M05-014** | Ingress Security | **Controlled Anonymous Public Intake Pathway:** Grievances and early access require server-mediated intake without exposing direct database write access to the PostgREST `anon` role. | Uncontrolled direct table access or vulnerability to spam floods if anonymous intake is unmediated. | **HIGH** | Milestone M06 (M06.5) | Backend Architect & Security Lead |
 
 ---
 
@@ -42,28 +44,19 @@ In accordance with ISHTI governance principles, no simulated prototype, in-memor
 gantt
     title ISHTI Trust & Security Gap Resolution Road Map
     dateFormat  YYYY-MM-DD
-    section Milestone M06 (Backend Persistence)
-    Distributed Rate Limiting (GAP-001)         :active, 2026-11-20, 10d
-    Durable Consent Persistence (GAP-006)       :active, 2026-11-22, 10d
-    Cryptographic Audit Ledger (GAP-004)        :2026-11-25, 8d
-    Production Grievance System (GAP-003)       :2026-11-27, 8d
-    Durable Privacy Rights & Shredding (GAP-005):2026-12-01, 10d
-    Origin Shielding Configuration (GAP-002)    :2026-12-05, 5d
-    SAR Secure Packaging (GAP-012)              :2026-12-08, 5d
+    section Milestone M06 (Core Persistence Baseline)
+    Distributed Rate Limiting & Fail-Closed (GAP-001)  :active, 2026-11-20, 8d
+    Durable Consent Persistence (GAP-006)             :active, 2026-11-22, 8d
+    Multi-Copy Privacy Erasure & DEK Shred (GAP-005)  :2026-11-25, 8d
+    Tamper-Evident Audit Ledger & WORM (GAP-004)      :2026-11-27, 8d
+    Grievance System & Anonymous Intake (GAP-003, 014):2026-12-01, 8d
+    Origin Shielding CIDR & Secret (GAP-002, 013)     :2026-12-05, 5d
+    SAR Encrypted Packaging (GAP-012)                 :2026-12-08, 5d
+    section Milestone M07 (Commerce & Tax)
+    CA-Certified Tax Engine & Ledger (GAP-009)        :2026-12-15, 15d
+    section Milestone M08 (Vedic Knowledge & Search)
+    Scripture Rights & Semantic Search (GAP-010)      :2027-01-05, 20d
     section External Human Approvals
-    CA Tax & Invoicing Certification (GAP-009)  :2026-12-01, 15d
-    Legal Policy Certification (GAP-008)        :2026-12-05, 20d
-    Parental Verification Gate (GAP-007)        :2026-12-10, 15d
-    Scripture Rights Clearance (GAP-010)        :2026-12-01, 30d
+    Legal Policy & DPDP Certification (GAP-008)       :2026-12-05, 20d
+    Parental Verification Gate (GAP-007)              :2026-12-10, 15d
 ```
-
----
-
-## 4. Acceptance Criteria for Gap Closure
-
-1. **Architecture & Engineering Gaps (GAP-001 through GAP-006, GAP-011, GAP-012):**
-   - Closed exclusively via verified code implementations, passing unit/integration tests, zero schema drift, and clean TypeScript compilation in Milestone M06.
-2. **Infrastructure Gaps (GAP-002):**
-   - Closed via verified Terraform/Cloudflare configuration enforcing mutual TLS (mTLS) or Authenticated Origin Pulls, verified via automated staging penetration test.
-3. **Legal & Tax Gaps (GAP-007, GAP-008, GAP-009, GAP-010):**
-   - Closed exclusively upon receipt of formal written, dated, and signed legal opinions and Chartered Accountant certificates archived in `docs/legal/signed/`.

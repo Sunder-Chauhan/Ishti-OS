@@ -378,5 +378,20 @@ Scope & Gates:
   - [x] Authored Milestone M06 Human Approvals Registry ([docs/M06_HUMAN_APPROVALS_REQUIRED.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_HUMAN_APPROVALS_REQUIRED.md)) cataloging founder decisions, legal opinions, CA tax certifications, and scholar reviews
   - [x] Recorded Architectural Decision Record ADR-035 in `docs/DECISION_LOG.md`
   - [x] Maintained strict zero-code-change boundary during audit and planning phase; halted awaiting operator authorization prior to executing M06 code
+- [x] Milestone M06 Architecture Correction & Pre-Implementation Review (ADR-036):
+  - [x] Reconciled DPDP Act phased commencement schedule (as of 19 Nov 2026): Section 6(9), Section 27(1)(d), and Rule 4 confirmed IN FORCE; 18-month provisions (Sections 3–5, 6, 8, 9, 11–13) scheduled for 13 May 2027 engineered in advance as pre-launch controls without claiming current compliance
+  - [x] Disaggregated IT Rules Rule 3(2) timelines (24h ack, 7d disposal under Feb 2026 amendment, 24h Rule 3(2)(b) sexual content takedown, 36h Rule 3(1)(d) court order takedown, §69A blocking) and partitioned Intermediary vs First-Party Publisher product functions
+  - [x] Redesigned distributed rate limiting failure policy: eliminated silent local-memory fallback on sensitive mutation routes (auth, checkout, erasure, grievance must fail closed); specified circuit breakers, bounded retries (150ms timeout), and hybrid architecture
+  - [x] Redefined server-mediated anonymous public intake model (Correction 4): zero direct 'anon' database grants, Zod schema bounds (max 32 KB), Layer 1 IP rate limiting, dedicated RPC function `submit_anonymous_grievance`, and isolated audit events
+  - [x] Redesigned privacy rights erasure architecture (Correction 5): mapped all 15 personal data repositories, implemented 8-stage state machine, per-profile DEK cryptographic shredding, and documented 30-day rolling backup expiry lifecycle
+  - [x] Hardened audit ledger immutability and retention model (Correction 6): acknowledged superuser trigger limitations, implemented 8-layer defense with Merkle hash chains and external WORM Object Lock, replaced blanket 7-year retention with Record-Category Retention Matrix
+  - [x] Audited Vercel origin shielding compatibility (Correction 7): confirmed standard Vercel Pro does not support custom mTLS AOP; documented Cloudflare CIDR firewall allowlisting + shared proxy secret; marked AOP as UNVERIFIED ON VERCEL
+  - [x] Decoupled commerce and tax determination (Correction 8): deferred financial double-entry ledger to Milestone M07; required mandatory CA certification before enabling tax configuration rules or automated withholding
+  - [x] Reworked infrastructure cost model (Correction 9): cited Nov 2026 vendor pricing; modeled 3 scenarios (Beta <500 MAU, Launch 15k MAU, Scale 100k MAU); marked estimates indicative with zero financial commitments
+  - [x] Partitioned M06 milestone scope (Correction 10): focused core M06 on 6 persistence workstreams (M06.1 to M06.6); deferred commerce to M07, scriptures to M08, admin console to M09
+  - [x] Authored Milestone M06 Pre-Implementation Decision Register ([docs/M06_PRE_IMPLEMENTATION_DECISION_REGISTER.md](file:///C:/Users/as/Documents/GitHub/spiritual-OS/docs/M06_PRE_IMPLEMENTATION_DECISION_REGISTER.md)) resolving 8 critical decisions
+  - [x] Updated all 7 M06 planning deliverables: Architecture Plan, Database Plan, Security Plan, Test Strategy, Cost Options, Approvals Registry, and Gap Register
+  - [x] Recorded Architectural Decision Record ADR-036 in `docs/DECISION_LOG.md`
+  - [x] Maintained strict zero-code, zero-migration, zero-remote-mutation boundary; halted awaiting operator authorization
 
 
