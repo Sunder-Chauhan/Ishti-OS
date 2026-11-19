@@ -667,3 +667,37 @@ Decision: Independently audit the M03.1 staging reconciliation script, remediate
   - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all packages.
   - Production Web Application Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED**.
 
+---
+
+## 2026-11-19: ADR-031 — Pass 8: Bounded Memory Rate Limiter, Layered Identity Architecture, & Elimination of Attacker-Controlled Key Rotation
+- **Status:** APPROVED & IMPLEMENTED LOCALLY
+- **Context:** Following independent code review of commit `795f14c` (Pass 7), a critical rate-limiter vulnerability was identified:
+  1. *Attacker-Controlled Identity Keys:* Pass 7 attempted to mitigate direct-origin denial-of-service by partitioning unauthenticated callers using request hashes (Bearer tokens, session cookies, User-Agent, Accept-Language, Sec-CH-UA). Because all of these HTTP headers are controlled by the client prior to authentication, an attacker could rotate headers on every request to generate infinite buckets, completely bypassing rate limits.
+  2. *Unbounded Heap Exhaustion:* The underlying in-memory Map had no maximum capacity bound and no LRU eviction policy. Flooding the server with unique headers caused unbounded key growth, risking process out-of-memory (OOM) crashes.
+  3. *Confusing Network Identity with Fairness:* An application running on an exposed origin cannot reliably provide per-client fairness when no trustworthy network identity exists. Attempting to manufacture identity from untrusted client headers introduced severe security vulnerabilities.
+- **Decision:**
+  1. **Layered Rate Limiting & Defensible Identity Model:**
+     - *Layer 1 (Pre-Authentication Network Level):* Uses verified network IP ONLY from explicitly configured trusted ingress (`TRUSTED_PROXY_STRATEGY=cloudflare` or `reverse_proxy`). Direct or unverified requests collapse into a shared bounded fallback key: `${prefix}:net:untrusted-direct`. All client-controlled headers (tokens, cookies, User-Agent, Client Hints) are strictly ignored before auth.
+     - *Layer 2 (Authentication Boundary):* Server-side session verification via `@supabase/ssr` `auth.getUser()`, resolving internal `auth.user.id` and profile role in RLS context.
+     - *Layer 3 (Post-Authentication Account Level):* Quotas bound strictly to cryptographically verified internal user ID: `${prefix}:acct:${auth.user.id}`. Multiple accounts on the same IP receive isolated quotas; roaming accounts across multiple IPs remain strictly bound to their single account quota.
+  2. **Bounded Memory Engine (`BoundedRateLimiter`):**
+     - Enforces hard ceiling `MAX_ENTRIES = 10_000` on the process-local Map.
+     - Proactive capacity sweep purges expired entries (`now > entry.resetTime`).
+     - Saturation eviction removes least-recently-accessed (LRU) entry when saturated.
+     - Fail-closed behavior on invalid parameters (limit $\le 0$, windowMs $\le 0$, empty key) or runtime errors.
+     - Deterministic `cleanupExpired()` and instrumentation via `getStats()`.
+  3. **Strict Ingress & Origin Shielding Invariants:**
+     - Cloudflare mode strictly inspects `CF-Connecting-IP` without fallback to XFF or X-Real-IP; malformed headers safely reject to `untrusted-direct`.
+     - Reverse proxy mode requires ingress sanitization (Nginx `proxy_set_header X-Real-IP $remote_addr;`).
+     - Direct origin mode ignores all forwarded headers.
+     - Documented infrastructure origin shielding (Cloudflare Authenticated Origin Pulls / VPC firewall) and distributed Redis rate limiting as explicit M06 launch dependencies.
+  4. **Adversarial Test Suite (16 Mandatory Tests + High-Cardinality Stress Test):**
+     - Added 18 automated tests in `scripts/run-m05-tests.ts` proving zero bypass via rotating tokens, cookies, or browser fingerprints; map cardinality preservation under 12,000-key flood; and concurrency safety.
+- **Verification Evidence:**
+  - Automated M05 Suite (`scripts/run-m05-tests.ts`): **135/135 PASSED** (0 failures; 18 dedicated rate-limiter adversarial tests).
+  - Security & Cryptography Suite (`npm run test:security`): **110/110 PASSED** (0 failures).
+  - Monorepo TypeScript Compilation (`npm run typecheck`): **0 ERRORS** across all packages.
+  - Production Web Application Build (`npm run build:web`): **31/31 ROUTES PRERENDERED/COMPILED**.
+  - Hosted Environment Quarantine: Production (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) Supabase strictly quarantined and untouched.
+- **Release Verdict:** **`READY FOR INDEPENDENT COUNSEL REVIEW`** (Technical safeguards and legal baselines verified; distributed rate limiting retained as M06 launch dependency).
+

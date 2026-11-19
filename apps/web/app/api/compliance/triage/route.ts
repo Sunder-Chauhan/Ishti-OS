@@ -4,7 +4,8 @@ import {
   verifyCsrfOrigin,
   checkComplianceRateLimit,
   getClientIp,
-  getComplianceRateLimitKey,
+  getNetworkRateLimitKey,
+  getAccountRateLimitKey,
 } from "../../../../lib/compliance/compliance-server";
 import { triageSecurityIncident } from "../../../../lib/compliance/security-governance";
 
@@ -21,7 +22,9 @@ const ALLOWED_SEVERITIES = new Set(["CRITICAL", "HIGH", "MEDIUM", "LOW"]);
  * 3. Client-supplied role claims are strictly ignored.
  * 4. CSRF protection on mutations.
  * 5. Input payload size and schema validation enforced.
- * 6. Rate limited to prevent denial-of-service.
+ * 6. Layered rate limiting enforced:
+ *    - Layer 1: Network-level pre-auth rate limiting (30 req/min).
+ *    - Layer 2: Account-level post-auth rate limiting (10 req/min).
  */
 
 export async function POST(request: NextRequest) {
@@ -43,9 +46,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3. Rate limiting check with verified client IP provenance and partitioned fallback
-  const rateLimitKey = getComplianceRateLimitKey("triage-post", request.headers);
-  if (!checkComplianceRateLimit(rateLimitKey, 10, 60000)) {
+  // 3. Layer 1: Network-level pre-auth rate limiting
+  const networkKey = getNetworkRateLimitKey("triage-post", request.headers);
+  if (!checkComplianceRateLimit(networkKey, 30, 60000)) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
       { status: 429 }
@@ -63,6 +66,17 @@ export async function POST(request: NextRequest) {
       },
       { status: auth.statusCode }
     );
+  }
+
+  // 5. Layer 2: Account-level post-auth rate limiting (per verified admin account)
+  if (auth.user?.id) {
+    const accountKey = getAccountRateLimitKey("triage-post", auth.user.id);
+    if (!checkComplianceRateLimit(accountKey, 10, 60000)) {
+      return NextResponse.json(
+        { error: "Account rate limit exceeded. Please try again later.", code: "ACCOUNT_RATE_LIMITED" },
+        { status: 429 }
+      );
+    }
   }
 
   // 5. Schema validation & safe JSON parsing

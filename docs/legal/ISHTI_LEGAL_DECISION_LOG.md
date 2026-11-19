@@ -188,3 +188,21 @@ The **ISHTI Legal Decision Log (LDL)** records formal architectural decisions th
   3. Implemented partitioned rate-limit keying and strict proxy strategy checking in `compliance-session-verifier.ts`, `compliance-server.ts`, and API routes.
   4. Added 7 new automated tests in `scripts/run-m05-tests.ts` (117/117 passing).
 - **Status:** APPROVED & IMPLEMENTED LOCALLY.
+
+---
+
+### 2026-11-19: LDL-014 — Pass 8: Denial-of-Service Defense, Non-Spoofable Identity & Unauthenticated Access Governance
+- **Statutory Context:** DPDP Act, 2023 Section 8(5) (obligation to take reasonable security safeguards to prevent personal data breach); IT Act, 2000 Section 43 / Section 66 (unauthorized access / denial of service); CERT-In Cyber Security Directions 2022 (incident prevention, resource starvation, and availability controls); Technical Security Integrity of Compliance Ingress.
+- **Legal & Technical Finding:**
+  1. *Rate Limiting Vulnerability as a Statutory Security Risk:* Section 8(5) of the DPDP Act mandates reasonable security safeguards. In Pass 7, attempting to mitigate shared direct-client DoS by hashing client-supplied headers (Bearer tokens, cookies, User-Agent, Accept-Language, Sec-CH-UA) created a severe security vulnerability: an attacker could rotate headers on every request to generate infinite rate-limit buckets, completely bypassing rate limits and exhausting Node.js heap memory (OOM DoS).
+  2. *Defensible Identity Invariant:* An application cannot reliably provide per-client fairness when no trustworthy network identity exists. Client headers cannot be transformed into identities before cryptographic authentication. Relying on client-controlled fingerprints created an illusion of fairness while introducing critical vulnerabilities.
+- **Architectural Decision:**
+  1. *Strict Separation of Pre-Auth and Post-Auth Identity:*
+     - **Pre-Authentication:** Uses verified network IP ONLY from explicitly configured trusted ingress (`TRUSTED_PROXY_STRATEGY=cloudflare` or `reverse_proxy`). Direct or unverified requests collapse into a single bounded fallback bucket: `${prefix}:net:untrusted-direct`. All client-controlled headers are strictly ignored before auth.
+     - **Post-Authentication:** Quotas bound strictly to cryptographically verified internal user ID: `${prefix}:acct:${auth.user.id}`. Roaming accounts remain bound to quota; multiple accounts on the same IP receive isolated quotas.
+  2. *Bounded Memory Architecture (`BoundedRateLimiter`):*
+     - Enforces hard ceiling `MAX_ENTRIES = 10_000` with proactive capacity sweeps and LRU eviction when saturated.
+     - Guarantees fail-closed safety (`return false`) on invalid inputs or unexpected errors.
+  3. *Adversarial Verification:*
+     - Added 18 automated tests in `scripts/run-m05-tests.ts` (135/135 passing) proving resistance against 10,000 rotating tokens, 10,000 rotating cookies, rotating fingerprints, and 12,000-key stress floods.
+- **Status:** APPROVED & IMPLEMENTED LOCALLY. Production Supabase (`zxwkfnvmmxoojewhvsdc`) and staging (`zrjptpkhtklfgnovdrny`) strictly quarantined. Distributed rate limiting retained as launch dependency.

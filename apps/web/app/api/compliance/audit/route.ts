@@ -4,7 +4,8 @@ import {
   verifyCsrfOrigin,
   checkComplianceRateLimit,
   getClientIp,
-  getComplianceRateLimitKey,
+  getNetworkRateLimitKey,
+  getAccountRateLimitKey,
 } from "../../../../lib/compliance/compliance-server";
 
 /**
@@ -14,7 +15,9 @@ import {
  * 1. Independently verifies the session and 'platform_admin' role in a single trusted context.
  * 2. Unauthorized callers cannot read audit data via direct HTTP requests.
  * 3. Client-supplied role claims (headers, cookies, body) are strictly ignored.
- * 4. Rate limiting enforced (30 req/min) to prevent brute-force or resource exhaustion.
+ * 4. Layered rate limiting enforced:
+ *    - Layer 1: Network-level pre-auth rate limiting (60 req/min for GET, 30 req/min for POST).
+ *    - Layer 2: Account-level post-auth rate limiting (30 req/min for GET, 10 req/min for POST).
  * 5. CSRF origin verification on mutations.
  * 6. Disallows unauthorized HTTP methods with 405.
  * 7. When backend auth is unavailable, access is disabled (503) rather than bypassed.
@@ -22,9 +25,9 @@ import {
  */
 
 export async function GET(request: NextRequest) {
-  // 1. Rate limiting check with verified client IP provenance and partitioned fallback
-  const rateLimitKey = getComplianceRateLimitKey("audit-get", request.headers);
-  if (!checkComplianceRateLimit(rateLimitKey, 30, 60000)) {
+  // 1. Layer 1: Network-level pre-auth rate limiting
+  const networkKey = getNetworkRateLimitKey("audit-get", request.headers);
+  if (!checkComplianceRateLimit(networkKey, 60, 60000)) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
       { status: 429 }
@@ -44,7 +47,18 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 3. Authoritative server-side audit ledger requires M06 WORM persistent storage
+  // 3. Layer 2: Account-level post-auth rate limiting (per verified admin account)
+  if (auth.user?.id) {
+    const accountKey = getAccountRateLimitKey("audit-get", auth.user.id);
+    if (!checkComplianceRateLimit(accountKey, 30, 60000)) {
+      return NextResponse.json(
+        { error: "Account rate limit exceeded. Please try again later.", code: "ACCOUNT_RATE_LIMITED" },
+        { status: 429 }
+      );
+    }
+  }
+
+  // 4. Authoritative server-side audit ledger requires M06 WORM persistent storage
   return NextResponse.json(
     {
       error: "Authoritative compliance audit ledger is disabled pending Milestone M06 server-side WORM persistence.",
@@ -67,9 +81,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2. Rate limiting check with verified client IP provenance and partitioned fallback
-  const rateLimitKey = getComplianceRateLimitKey("audit-post", request.headers);
-  if (!checkComplianceRateLimit(rateLimitKey, 10, 60000)) {
+  // 2. Layer 1: Network-level pre-auth rate limiting
+  const networkKey = getNetworkRateLimitKey("audit-post", request.headers);
+  if (!checkComplianceRateLimit(networkKey, 30, 60000)) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
       { status: 429 }
@@ -87,6 +101,17 @@ export async function POST(request: NextRequest) {
       },
       { status: auth.statusCode }
     );
+  }
+
+  // 4. Layer 2: Account-level post-auth rate limiting (per verified admin account)
+  if (auth.user?.id) {
+    const accountKey = getAccountRateLimitKey("audit-post", auth.user.id);
+    if (!checkComplianceRateLimit(accountKey, 10, 60000)) {
+      return NextResponse.json(
+        { error: "Account rate limit exceeded. Please try again later.", code: "ACCOUNT_RATE_LIMITED" },
+        { status: 429 }
+      );
+    }
   }
 
   // Privileged mutating audit actions are disabled pending Milestone M06 WORM storage

@@ -64,14 +64,18 @@ This report represents the comprehensive technical, security, regulatory, and ar
    - Corrected e-commerce marketplace TDS under former Income-tax Act, 1961 Section 194-O from 1% to **0.1%**, as reduced effective 1 October 2024 by Finance (No. 2) Act, 2024.
    - Mapped corresponding e-commerce provisions under the Income-tax Act, 2025 (effective 1 April 2026) to **Section 393(1), Table Serial No. 8(v)** (0.1% TDS on gross sales) with statutory individual/HUF exemption up to ₹5,00,000 under **Section 393(4), Table Serial No. 11** (upon furnishing PAN/Aadhaar), incorporating Section 536 transitional savings.
    - Marked all TDS applicability, classification, and withholding rules as **CA REVIEW REQUIRED**.
-6. **Ingress & Proxy Trust Architecture Hardened & Rate-Limit Key Partitioning:**
+6. **Ingress & Proxy Trust Architecture Hardened & Layered Bounded Rate Limiting (Pass 8):**
    - Tightened `TRUSTED_PROXY_STRATEGY` in `compliance-session-verifier.ts`:
      - *Cloudflare Strategy:* Strictly inspects `CF-Connecting-IP`; rejects fallback to `X-Forwarded-For` or `X-Real-IP` to prevent spoofing.
      - *Reverse Proxy Strategy:* Prioritizes `X-Real-IP`; inspects `X-Forwarded-For` only under operational precondition that ingress strips client headers.
      - *Direct Strategy:* Ignores all forwarded headers.
-   - Resolved `"direct-client"` rate limit denial-of-service vulnerability via `getComplianceRateLimitKey()`: partitions unauthenticated requests by client fingerprint hash (`User-Agent|Accept-Language|Sec-CH-UA`) or session cookie hash, while authenticating requests are partitioned by Bearer token hash.
-   - Explicitly documented that application code cannot cryptographically verify network header origin; origin shielding (Cloudflare Authenticated Origin Pulls / VPC firewall) is an unresolved infrastructure deployment dependency.
-   - Expanded test suite in `scripts/run-m05-tests.ts` to 117 automated tests (adding 15 dedicated proxy-trust, spoofing, and rate-limiting tests, all passing).
+   - Replaced flawed client-header fingerprint partitioning with a defensible layered rate limiting architecture:
+     - *Layer 1 (Pre-Auth Network Rate Limiter):* Keyed strictly on verified network IP from trusted ingress, or collapses to a single bounded fallback key (`${prefix}:net:untrusted-direct`) in direct mode. Client-controlled headers (tokens, cookies, UA, Accept-Language, Sec-CH-UA) are strictly ignored before auth to eliminate rotating-header rate limit bypasses.
+     - *Layer 2 (Authentication Boundary):* Server-side cryptographic session verification via `@supabase/ssr` `auth.getUser()`.
+     - *Layer 3 (Post-Auth Account Rate Limiter):* Keyed on cryptographically verified internal user ID (`${prefix}:acct:${auth.user.id}`), isolating quotas for multiple accounts on the same IP and restraining roaming accounts across IPs.
+   - Replaced unbounded Map with `BoundedRateLimiter`: enforces hard ceiling `MAX_ENTRIES = 10_000`, sweeps expired entries, and evicts LRU entries on saturation, eliminating process heap exhaustion risks.
+   - Explicitly documented that application code cannot cryptographically verify network header origin; origin shielding (Cloudflare Authenticated Origin Pulls / VPC firewall) and distributed Redis rate limiting are explicit infrastructure dependencies.
+   - Expanded test suite in `scripts/run-m05-tests.ts` to 135 automated tests (including 18 dedicated rate-limiter adversarial tests and 12,000-key stress tests, all passing).
 7. **Income Tax Books of Account Scope Clarified:**
    - Clarified that mandatory 7-year retention under Income-tax Act, 2025 §62 / Rule 46 (and 6-year retention under 1961 Act §44AA / Rule 6F) applies specifically to commercial business records exceeding statutory income/turnover thresholds, and does NOT apply across all user personal data. Applying accounting retention to personal user profiles violates data minimization under the DPDP Act. Designated as **CA REVIEW REQUIRED**.
 8. **International Privacy & AI Framework Harmonized:**
@@ -235,9 +239,9 @@ To safeguard the platform, individual promoters, and consumers, the following ca
   Gate 2: Sovereign Consent & Cryptographic Evidence:       7 passed, 0 failed
   Gate 3: Privacy Rights, SAR & 7-Stage Deletion:          14 passed, 0 failed
   Gate 4: Commerce Trust & Minor-Unit Refund Arithmetic:   21 passed, 0 failed
-  Gate 5: Compliance Operations, Grievances & Security:    65 passed, 0 failed
+  Gate 5: Compliance Operations, Grievances & Security:    83 passed, 0 failed
 ================================================================================
-TOTAL M05 TESTS: 117 | PASSED: 117 | FAILED: 0 | EXIT CODE: 0
+TOTAL M05 TESTS: 135 | PASSED: 135 | FAILED: 0 | EXIT CODE: 0
 ================================================================================
 
 ================================================================================

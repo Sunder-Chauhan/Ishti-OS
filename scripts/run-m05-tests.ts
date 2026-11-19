@@ -45,10 +45,17 @@ import {
   verifyCsrfOrigin,
   checkComplianceRateLimit,
   getClientIp,
+  getVerifiedNetworkIp,
+  getNetworkRateLimitKey,
+  getAccountRateLimitKey,
   getComplianceRateLimitKey,
   getTrustedProxyStrategy,
   isTrustedProxyConfigured,
   isValidIpFormat,
+  getComplianceRateLimiterStats,
+  resetComplianceRateLimiter,
+  configureComplianceRateLimiter,
+  BoundedRateLimiter,
   type SessionVerificationProvider,
   type VerificationInput,
   type CookieItem,
@@ -788,7 +795,7 @@ async function runM05Tests() {
       "Server admin check: 18l. Explicit TRUSTED_PROXY_STRATEGY='direct' treats all headers as untrusted"
     );
 
-    // 18m. Shared rate-limit fallback partitioning (mitigates direct-client denial-of-service)
+    // 18m. Defensible Pre-Auth Identity: Direct clients collapse to bounded fallback (no rotating fingerprint bypass)
     delete process.env.TRUSTED_PROXY;
     delete process.env.TRUSTED_PROXY_STRATEGY;
 
@@ -799,26 +806,29 @@ async function runM05Tests() {
       get: (h: string) => (h === "user-agent" ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" : null),
     });
     assert(
-      keyClientA !== keyClientB,
+      keyClientA === "audit-get:net:untrusted-direct" && keyClientB === "audit-get:net:untrusted-direct",
       "G5",
-      "Server admin check: 18m. Unauthenticated direct clients are partitioned by fingerprint to prevent shared DoS"
+      "Server admin check: 18m. Unauthenticated direct clients share bounded fallback key without rotating fingerprint bypass"
     );
 
+    // 18n. Authentication Boundary: Unauthenticated tokens do not create trusted identities; verified accounts use account keys
     const keyAuthBearer = getComplianceRateLimitKey("audit-get", {
       get: (h: string) => (h === "authorization" ? "Bearer token-admin-108" : null),
     });
+    const keyVerifiedAccount = getAccountRateLimitKey("audit-get", "user-verified-admin-108");
     assert(
-      keyAuthBearer.startsWith("audit-get:token:"),
+      keyAuthBearer === "audit-get:net:untrusted-direct" && keyVerifiedAccount === "audit-get:acct:user-verified-admin-108",
       "G5",
-      "Server admin check: 18n. Authenticated caller rate limit key is bound to token hash"
+      "Server admin check: 18n. Unauthenticated bearer tokens do not create identity buckets; verified accounts bind to user ID"
     );
 
+    // 18o. Verified Proxy IP Keying: Explicit trusted proxy correctly formats network rate limit key
     process.env.TRUSTED_PROXY_STRATEGY = "cloudflare";
     const keyVerifiedIp = getComplianceRateLimitKey("audit-get", {
       get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.50" : null),
     });
     assert(
-      keyVerifiedIp === "audit-get:ip:203.0.113.50",
+      keyVerifiedIp === "audit-get:net:ip:203.0.113.50",
       "G5",
       "Server admin check: 18o. Verified proxy IP correctly formats IP-based rate limit key"
     );
@@ -1047,6 +1057,271 @@ async function runM05Tests() {
     (await verifyLedgerIntegrity(forgedHashChain)) === false,
     "G5",
     "Audit ledger: Forged entryHash fails recomputed cryptographic check"
+  );
+
+  // --------------------------------------------------------------------------
+  // Pass 8: Mandatory Adversarial Rate-Limiter & Identity Test Suite
+  // --------------------------------------------------------------------------
+  console.log("\n[PASS 8] Executing Mandatory Adversarial Rate-Limiter & Identity Suite...");
+
+  // Adversarial Test 1: 10,000 unique fake bearer tokens -> No unlimited trusted identity creation
+  const fakeTokenKeys = new Set<string>();
+  for (let i = 0; i < 10000; i++) {
+    const key = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "authorization" ? `Bearer attacker-fake-token-${i}` : null),
+    });
+    fakeTokenKeys.add(key);
+  }
+  assert(
+    fakeTokenKeys.size === 1 && fakeTokenKeys.has("audit-get:net:untrusted-direct"),
+    "G5",
+    "Pass 8 Adversarial 1: 10,000 unique fake bearer tokens collapse into single untrusted-direct key (no identity bloat)"
+  );
+
+  // Adversarial Test 2: 10,000 rotating cookie values -> No unlimited trusted identity creation
+  const rotatingCookieKeys = new Set<string>();
+  for (let i = 0; i < 10000; i++) {
+    const key = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "cookie" ? `sb-auth-token=rotating-session-val-${i}` : null),
+    });
+    rotatingCookieKeys.add(key);
+  }
+  assert(
+    rotatingCookieKeys.size === 1 && rotatingCookieKeys.has("audit-get:net:untrusted-direct"),
+    "G5",
+    "Pass 8 Adversarial 2: 10,000 rotating cookie values collapse into single untrusted-direct key (no identity bloat)"
+  );
+
+  // Adversarial Test 3: Rotating browser fingerprints -> No rate-limit bypass
+  const fingerprintLimiter = new BoundedRateLimiter({ maxEntries: 100, defaultWindowMs: 60000 });
+  const fpLimit = 5;
+  let fpAllowed = 0;
+  let fpBlocked = 0;
+  for (let i = 0; i < 15; i++) {
+    const key = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => {
+        if (h === "user-agent") return `AdversaryBot/${i}.0 (CustomAgent; Variant-${i})`;
+        if (h === "accept-language") return `en-US,en;q=0.${(i % 9) + 1}`;
+        if (h === "sec-ch-ua") return `"Chromium";v="${120 + i}", "Not?A_Brand";v="${i}"`;
+        return null;
+      },
+    });
+    const allowed = fingerprintLimiter.check(key, fpLimit, 60000);
+    if (allowed) fpAllowed++;
+    else fpBlocked++;
+  }
+  assert(
+    fpAllowed === 5 && fpBlocked === 10,
+    "G5",
+    "Pass 8 Adversarial 3: Rotating browser fingerprints (UA/Lang/Sec-CH-UA) fails to bypass rate limit (10 of 15 blocked)"
+  );
+
+  // Adversarial Test 4: Invalid-token flood -> Bounded memory
+  const floodLimiter = new BoundedRateLimiter({ maxEntries: 1000, defaultWindowMs: 60000 });
+  for (let i = 0; i < 10000; i++) {
+    const key = getNetworkRateLimitKey("audit-post", {
+      get: (h: string) => (h === "authorization" ? `Bearer invalid-signature-${i}` : null),
+    });
+    floodLimiter.check(key, 100, 60000);
+  }
+  const floodStats = floodLimiter.getStats();
+  assert(
+    floodStats.size === 1 && floodStats.totalBlocked > 9000,
+    "G5",
+    "Pass 8 Adversarial 4: Invalid-token flood of 10,000 requests consumes exactly 1 entry in limiter Map"
+  );
+
+  // Adversarial Test 5: Spoofed X-Forwarded-For -> Not trusted in direct mode
+  const origProxyStrategy = process.env.TRUSTED_PROXY_STRATEGY;
+  const origProxyBool = process.env.TRUSTED_PROXY;
+  try {
+    delete process.env.TRUSTED_PROXY;
+    delete process.env.TRUSTED_PROXY_STRATEGY;
+    const directXffKey = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "x-forwarded-for" ? "198.51.100.1, 10.0.0.1" : null),
+    });
+    assert(
+      directXffKey === "audit-get:net:untrusted-direct",
+      "G5",
+      "Pass 8 Adversarial 5: Spoofed X-Forwarded-For in direct mode maps to untrusted-direct"
+    );
+
+    // Adversarial Test 6: Spoofed X-Real-IP -> Not trusted in direct mode
+    const directRealIpKey = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "x-real-ip" ? "198.51.100.2" : null),
+    });
+    assert(
+      directRealIpKey === "audit-get:net:untrusted-direct",
+      "G5",
+      "Pass 8 Adversarial 6: Spoofed X-Real-IP in direct mode maps to untrusted-direct"
+    );
+
+    // Adversarial Test 7: Missing Cloudflare header -> Safe rejection/fallback
+    process.env.TRUSTED_PROXY_STRATEGY = "cloudflare";
+    const cfMissingKey = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "x-forwarded-for" ? "203.0.113.195" : null),
+    });
+    assert(
+      cfMissingKey === "audit-get:net:untrusted-direct",
+      "G5",
+      "Pass 8 Adversarial 7: Cloudflare mode with missing CF-Connecting-IP rejects XFF fallback and maps to untrusted-direct"
+    );
+
+    // Adversarial Test 8: Malformed Cloudflare header -> Safe rejection/fallback
+    const cfMalformedKey = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "cf-connecting-ip" ? "999.999.999.999" : null),
+    });
+    const cfInjectionKey = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "cf-connecting-ip" ? "203.0.113.50; DROP TABLE" : null),
+    });
+    assert(
+      cfMalformedKey === "audit-get:net:untrusted-direct" && cfInjectionKey === "audit-get:net:untrusted-direct",
+      "G5",
+      "Pass 8 Adversarial 8: Cloudflare mode with malformed CF-Connecting-IP rejects value and maps to untrusted-direct"
+    );
+
+    // Adversarial Test 9: Reverse proxy mode -> Trust follows explicit ingress assumption
+    process.env.TRUSTED_PROXY_STRATEGY = "reverse_proxy";
+    const revProxyRealIpKey = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "x-real-ip" ? "198.51.100.42" : null),
+    });
+    const revProxyXffKey = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "x-forwarded-for" ? "198.51.100.43, 10.0.0.1" : null),
+    });
+    const revProxyMalformedKey = getNetworkRateLimitKey("audit-get", {
+      get: (h: string) => (h === "x-real-ip" ? "invalid.ip.address" : null),
+    });
+    assert(
+      revProxyRealIpKey === "audit-get:net:ip:198.51.100.42" &&
+        revProxyXffKey === "audit-get:net:ip:198.51.100.43" &&
+        revProxyMalformedKey === "audit-get:net:untrusted-direct",
+      "G5",
+      "Pass 8 Adversarial 9: Reverse proxy strategy extracts sanitized real IP / XFF and rejects malformed values"
+    );
+  } finally {
+    if (origProxyStrategy !== undefined) process.env.TRUSTED_PROXY_STRATEGY = origProxyStrategy;
+    else delete process.env.TRUSTED_PROXY_STRATEGY;
+    if (origProxyBool !== undefined) process.env.TRUSTED_PROXY = origProxyBool;
+    else delete process.env.TRUSTED_PROXY;
+  }
+
+  // Adversarial Test 10: Map saturation -> Maximum cardinality preserved
+  const satLimiter = new BoundedRateLimiter({ maxEntries: 100, defaultWindowMs: 60000 });
+  for (let i = 0; i < 1000; i++) {
+    satLimiter.check(`ip:${Math.floor(i / 256)}.${i % 256}.1.1`, 10, 60000);
+  }
+  const satStats = satLimiter.getStats();
+  assert(
+    satStats.size <= 100 && satStats.totalEvicted >= 900,
+    "G5",
+    "Pass 8 Adversarial 10: Map saturation stress test strictly bounds size (<= 100) and executes LRU eviction"
+  );
+
+  // Adversarial Test 11: Expired entries -> Correct cleanup
+  const expLimiter = new BoundedRateLimiter({ maxEntries: 100, defaultWindowMs: 50 });
+  const simulatedNow = Date.now();
+  for (let i = 0; i < 20; i++) {
+    expLimiter.check(`exp-key-${i}`, 5, 50);
+  }
+  assert(expLimiter.getStats().size === 20, "G5", "Pass 8 Adversarial 11a: Entries inserted before expiration");
+  const purged = expLimiter.cleanupExpired(simulatedNow + 200);
+  assert(
+    purged === 20 && expLimiter.getStats().size === 0,
+    "G5",
+    "Pass 8 Adversarial 11: Expired entries are cleanly purged and memory is fully reclaimed"
+  );
+
+  // Adversarial Test 12: Concurrent requests -> No limit-boundary race
+  const raceLimiter = new BoundedRateLimiter({ maxEntries: 100, defaultWindowMs: 60000 });
+  const raceLimit = 10;
+  const raceBurst = 50;
+  const raceResults = await Promise.all(
+    Array.from({ length: raceBurst }).map(() =>
+      Promise.resolve(raceLimiter.check("concurrent-race-key", raceLimit, 60000))
+    )
+  );
+  const raceAllowed = raceResults.filter(Boolean).length;
+  const raceBlocked = raceResults.filter((r) => !r).length;
+  assert(
+    raceAllowed === 10 && raceBlocked === 40,
+    "G5",
+    "Pass 8 Adversarial 12: Concurrent burst of 50 requests strictly allows exactly 10 and rejects 40 without race"
+  );
+
+  // Adversarial Test 13: Authenticated account -> Account-level bucket works
+  const acctLimiter = new BoundedRateLimiter({ maxEntries: 100, defaultWindowMs: 60000 });
+  const acctKey1 = getAccountRateLimitKey("audit-post", "user-uuid-1");
+  const acctKey2 = getAccountRateLimitKey("audit-post", "user-uuid-2");
+  for (let i = 0; i < 5; i++) {
+    acctLimiter.check(acctKey1, 5, 60000);
+  }
+  const acct1Breach = acctLimiter.check(acctKey1, 5, 60000); // 6th attempt
+  const acct2First = acctLimiter.check(acctKey2, 5, 60000); // independent account
+  assert(
+    acct1Breach === false && acct2First === true,
+    "G5",
+    "Pass 8 Adversarial 13: Authenticated user account rate limit correctly isolates quota and blocks on breach"
+  );
+
+  // Adversarial Test 14: Multiple accounts, same network -> Independent account controls
+  const multiAcctLimiter = new BoundedRateLimiter({ maxEntries: 100, defaultWindowMs: 60000 });
+  const aliceKey = getAccountRateLimitKey("triage-post", "user-alice-108");
+  const bobKey = getAccountRateLimitKey("triage-post", "user-bob-108");
+  // Alice exhausts her account limit of 3
+  multiAcctLimiter.check(aliceKey, 3, 60000);
+  multiAcctLimiter.check(aliceKey, 3, 60000);
+  multiAcctLimiter.check(aliceKey, 3, 60000);
+  const aliceBlocked = !multiAcctLimiter.check(aliceKey, 3, 60000);
+  // Bob, on the same IP network, has an independent quota
+  const bobAllowed = multiAcctLimiter.check(bobKey, 3, 60000);
+  assert(
+    aliceBlocked && bobAllowed,
+    "G5",
+    "Pass 8 Adversarial 14: Multiple accounts sharing same network have independent quotas (Alice exhausted does not block Bob)"
+  );
+
+  // Adversarial Test 15: One account, multiple networks -> Account-level limit remains effective
+  const roamLimiter = new BoundedRateLimiter({ maxEntries: 100, defaultWindowMs: 60000 });
+  const roamingUserId = "user-charlie-roaming-108";
+  const roamAcctKey = getAccountRateLimitKey("audit-get", roamingUserId);
+  const roamLimit = 3;
+  // Charlie attempts 3 requests from 3 different IPs
+  const roamReq1 = roamLimiter.check(roamAcctKey, roamLimit, 60000); // IP 1
+  const roamReq2 = roamLimiter.check(roamAcctKey, roamLimit, 60000); // IP 2
+  const roamReq3 = roamLimiter.check(roamAcctKey, roamLimit, 60000); // IP 3
+  const roamReq4 = roamLimiter.check(roamAcctKey, roamLimit, 60000); // IP 4 (breach)
+  assert(
+    roamReq1 && roamReq2 && roamReq3 && !roamReq4,
+    "G5",
+    "Pass 8 Adversarial 15: Single account roaming across multiple networks remains strictly bound by account quota"
+  );
+
+  // Adversarial Test 16: Limiter internal error / invalid input -> Documented fail-safe behaviour
+  const errorLimiter = new BoundedRateLimiter({ maxEntries: 100, defaultWindowMs: 60000 });
+  const failEmptyKey = errorLimiter.check("", 10, 60000);
+  const failZeroLimit = errorLimiter.check("key", 0, 60000);
+  const failNegLimit = errorLimiter.check("key", -5, 60000);
+  const failZeroWindow = errorLimiter.check("key", 10, 0);
+  const failNegWindow = errorLimiter.check("key", 10, -1000);
+  assert(
+    !failEmptyKey && !failZeroLimit && !failNegLimit && !failZeroWindow && !failNegWindow,
+    "G5",
+    "Pass 8 Adversarial 16: Limiter fails closed safely (returns false) on invalid limits, negative windows, or empty keys"
+  );
+
+  // High-Cardinality Stress Test: 12,000 insertions against 10,000 capacity
+  const stressLimiter = new BoundedRateLimiter({ maxEntries: 10000, defaultWindowMs: 60000 });
+  let peakSize = 0;
+  for (let i = 0; i < 12000; i++) {
+    stressLimiter.check(`key-stress-${i}`, 10, 60000);
+    const currSize = stressLimiter.getStats().size;
+    if (currSize > peakSize) peakSize = currSize;
+  }
+  const finalStressStats = stressLimiter.getStats();
+  assert(
+    peakSize <= 10000 && finalStressStats.size === 10000 && finalStressStats.totalEvicted === 2000,
+    "G5",
+    "Pass 8 High-Cardinality Stress Test: Limiter Map size never exceeds configured maxEntries (10,000) during 12,000 key flood"
   );
 
   // --------------------------------------------------------------------------

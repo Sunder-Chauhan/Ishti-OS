@@ -70,34 +70,210 @@ export interface SessionVerificationProvider {
 }
 
 /**
- * In-memory sliding window rate limiter for compliance endpoints.
+ * Bounded In-Memory Sliding Window Rate Limiter for Compliance Endpoints
  *
- * NOTE: This is PROCESS-LOCAL in-memory rate limiting. It operates per Node.js process instance.
- * In a multi-instance or serverless container deployment, distributed rate limiting
- * backed by Redis or PostgreSQL advisory locking (as scheduled for M06) is required
- * for global quota enforcement across all instances.
+ * CRITICAL MEMORY & LIFECYCLE INVARIANTS:
+ * 1. STRICT CARDINALITY BOUND: The internal Map capacity is capped at `maxEntries` (default 10,000).
+ *    Under no circumstances (including high-cardinality floods of random keys) does the map exceed this bound.
+ * 2. PROACTIVE & SATURATION EVICTION:
+ *    - On every insertion when at or approaching capacity, expired entries (`now > entry.resetTime`) are purged.
+ *    - If the map remains saturated after purging expired entries, least-recently-accessed (LRU)
+ *      entries are evicted to make space for the new key, ensuring active keys are preserved.
+ * 3. PROCESS-LOCAL NOTICE: This is an in-memory process-local limiter. It enforces quotas
+ *    per Node.js process instance. Multi-instance distributed deployments require Redis or
+ *    PostgreSQL advisory locks (scheduled for Milestone M06 production deployment).
+ * 4. FAIL-SAFE / FAIL-CLOSED BEHAVIOR: If invalid arguments (limit <= 0, windowMs <= 0, empty identifier)
+ *    are supplied or an internal error occurs, the limiter fails closed by returning `false`,
+ *    preventing unmetered access during anomalies.
  */
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+export interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+  lastAccessed: number;
+}
+
+export interface RateLimiterStats {
+  size: number;
+  maxEntries: number;
+  totalHits: number;
+  totalBlocked: number;
+  totalEvicted: number;
+  totalExpired: number;
+}
+
+export class BoundedRateLimiter {
+  private map = new Map<string, RateLimitEntry>();
+  private maxEntries: number;
+  private defaultWindowMs: number;
+  private totalHits = 0;
+  private totalBlocked = 0;
+  private totalEvicted = 0;
+  private totalExpired = 0;
+
+  constructor(options?: { maxEntries?: number; defaultWindowMs?: number }) {
+    this.maxEntries = options?.maxEntries ?? 10_000;
+    this.defaultWindowMs = options?.defaultWindowMs ?? 60_000;
+  }
+
+  public setMaxEntries(max: number): void {
+    if (typeof max === "number" && max > 0) {
+      this.maxEntries = max;
+      this.enforceCapacity(Date.now());
+    }
+  }
+
+  public check(identifier: string, limit: number, windowMs = this.defaultWindowMs): boolean {
+    // Fail-closed validation for invalid arguments
+    if (!identifier || typeof identifier !== "string" || identifier.trim().length === 0) {
+      return false;
+    }
+    if (typeof limit !== "number" || limit <= 0 || !Number.isFinite(limit)) {
+      return false;
+    }
+    if (typeof windowMs !== "number" || windowMs <= 0 || !Number.isFinite(windowMs)) {
+      return false;
+    }
+
+    try {
+      const now = Date.now();
+      const entry = this.map.get(identifier);
+
+      if (entry) {
+        // Check if current window has expired
+        if (now > entry.resetTime) {
+          this.totalExpired += 1;
+          entry.count = 1;
+          entry.resetTime = now + windowMs;
+          entry.lastAccessed = now;
+          this.totalHits += 1;
+          return true;
+        }
+
+        // Within active window: check quota
+        entry.lastAccessed = now;
+        if (entry.count >= limit) {
+          this.totalBlocked += 1;
+          return false;
+        }
+
+        entry.count += 1;
+        this.totalHits += 1;
+        return true;
+      }
+
+      // New entry insertion: enforce capacity before insertion
+      if (this.map.size >= this.maxEntries) {
+        this.enforceCapacity(now);
+      }
+
+      // If still at capacity after sweeping expired keys, evict the least-recently-accessed (LRU) entry
+      if (this.map.size >= this.maxEntries) {
+        this.evictLru();
+      }
+
+      // Final safety guard: ensure size never exceeds maxEntries
+      if (this.map.size >= this.maxEntries) {
+        this.totalBlocked += 1;
+        return false;
+      }
+
+      this.map.set(identifier, {
+        count: 1,
+        resetTime: now + windowMs,
+        lastAccessed: now,
+      });
+      this.totalHits += 1;
+      return true;
+    } catch {
+      // Documented fail-safe / fail-closed behavior on unexpected internal error
+      return false;
+    }
+  }
+
+  private enforceCapacity(now: number): void {
+    for (const [key, entry] of this.map.entries()) {
+      if (now > entry.resetTime) {
+        this.map.delete(key);
+        this.totalExpired += 1;
+      }
+    }
+  }
+
+  private evictLru(): void {
+    let oldestKey: string | null = null;
+    let oldestTime = Infinity;
+
+    for (const [key, entry] of this.map.entries()) {
+      if (entry.lastAccessed < oldestTime) {
+        oldestTime = entry.lastAccessed;
+        oldestKey = key;
+      }
+    }
+
+    if (oldestKey !== null) {
+      this.map.delete(oldestKey);
+      this.totalEvicted += 1;
+    }
+  }
+
+  public cleanupExpired(now = Date.now()): number {
+    let purged = 0;
+    for (const [key, entry] of this.map.entries()) {
+      if (now > entry.resetTime) {
+        this.map.delete(key);
+        purged += 1;
+        this.totalExpired += 1;
+      }
+    }
+    return purged;
+  }
+
+  public getStats(): RateLimiterStats {
+    return {
+      size: this.map.size,
+      maxEntries: this.maxEntries,
+      totalHits: this.totalHits,
+      totalBlocked: this.totalBlocked,
+      totalEvicted: this.totalEvicted,
+      totalExpired: this.totalExpired,
+    };
+  }
+
+  public reset(): void {
+    this.map.clear();
+    this.totalHits = 0;
+    this.totalBlocked = 0;
+    this.totalEvicted = 0;
+    this.totalExpired = 0;
+  }
+}
+
+// Global process-local singleton limiter
+export const globalComplianceRateLimiter = new BoundedRateLimiter({
+  maxEntries: 10_000,
+  defaultWindowMs: 60_000,
+});
 
 export function checkComplianceRateLimit(
   identifier: string,
   limit: number,
   windowMs = 60000
 ): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(identifier);
+  return globalComplianceRateLimiter.check(identifier, limit, windowMs);
+}
 
-  if (!entry || now > entry.resetTime) {
-    rateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs });
-    return true;
+export function getComplianceRateLimiterStats(): RateLimiterStats {
+  return globalComplianceRateLimiter.getStats();
+}
+
+export function resetComplianceRateLimiter(): void {
+  globalComplianceRateLimiter.reset();
+}
+
+export function configureComplianceRateLimiter(options: { maxEntries?: number }): void {
+  if (options.maxEntries) {
+    globalComplianceRateLimiter.setMaxEntries(options.maxEntries);
   }
-
-  if (entry.count >= limit) {
-    return false;
-  }
-
-  entry.count += 1;
-  return true;
 }
 
 export type TrustedProxyStrategy = "cloudflare" | "reverse_proxy" | "direct" | "none";
@@ -219,61 +395,85 @@ export function getClientIp(headers?: { get(name: string): string | null | undef
 }
 
 /**
- * Builds a safe, partitioned rate limit identifier.
+ * Extracts a verified network IP ONLY when obtained through an explicitly trusted ingress.
+ * Returns null if no trusted proxy strategy is configured or if headers are untrusted/malformed.
+ */
+export function getVerifiedNetworkIp(
+  headers?: { get(name: string): string | null | undefined }
+): string | null {
+  if (!headers) return null;
+  const ip = getClientIp(headers);
+  return ip !== "direct-client" ? ip : null;
+}
+
+/**
+ * Generates a pre-authentication network-level rate limit key.
  *
- * MITIGATION FOR SHARED "direct-client" DENIAL-OF-SERVICE:
- * When client IP cannot be established with verified proxy provenance (`ip === "direct-client"`):
- * 1. If an authenticated Authorization Bearer token is present, partition by token hash:
- *    `${prefix}:token:${sha256(bearerToken).slice(0, 16)}`
- * 2. If session cookies are present, partition by cookie hash:
- *    `${prefix}:cookie:${sha256(cookieValue).slice(0, 16)}`
- * 3. If unauthenticated and un-provable, partition by deterministic client-attribute fingerprint
- *    (User-Agent, Accept-Language, Sec-CH-UA) to avoid pooling all direct clients into
- *    one shared bucket where a single abusive client exhausts the quota for all other direct users:
- *    `${prefix}:fp:${sha256(fingerprintString).slice(0, 16)}`
+ * CRITICAL SECURITY INVARIANT:
+ * Before authentication, the ONLY trustworthy client identity is a verified network IP
+ * delivered by an explicitly configured and trusted ingress.
+ *
+ * DO NOT USE:
+ * - Arbitrary bearer token hashes
+ * - Arbitrary cookie hashes
+ * - Browser fingerprints (User-Agent, Accept-Language, Sec-CH-UA)
+ * - Client-supplied headers as identities
+ *
+ * An attacker can freely rotate any client-supplied header to generate infinite buckets,
+ * completely bypassing rate limits and exhausting memory.
+ *
+ * Fallback Behavior:
+ * When direct access is used (no trusted proxy), all unverified traffic shares the
+ * bounded fallback identifier: `${prefix}:net:untrusted-direct`.
+ *
+ * FUNDAMENTAL LIMITATION DOCUMENTED:
+ * An application running on an exposed origin cannot reliably provide per-client fairness
+ * when no trustworthy network identity exists. Granular per-client throttling fundamentally
+ * requires edge termination (e.g. Cloudflare) with origin shielding.
+ */
+export function getNetworkRateLimitKey(
+  prefix: string,
+  headers?: { get(name: string): string | null | undefined }
+): string {
+  const verifiedIp = getVerifiedNetworkIp(headers);
+  if (verifiedIp) {
+    return `${prefix}:net:ip:${verifiedIp}`;
+  }
+  return `${prefix}:net:untrusted-direct`;
+}
+
+/**
+ * Generates an authenticated account-level rate limit key.
+ *
+ * CRITICAL SECURITY INVARIANT:
+ * Account-level rate limits MUST be keyed on a verified internal user ID resolved
+ * through trusted server-side authentication (e.g. `auth.user.id`).
+ *
+ * They MUST NEVER be keyed on client-supplied claims, unverified tokens, or client headers.
+ *
+ * Account-level rate limits are independent of network location:
+ * - A single account switching across multiple IP addresses remains bound to its account quota.
+ * - Multiple accounts sharing the same network IP have isolated, independent account quotas.
+ */
+export function getAccountRateLimitKey(
+  prefix: string,
+  verifiedUserId: string
+): string {
+  if (!verifiedUserId || typeof verifiedUserId !== "string" || verifiedUserId.trim().length === 0) {
+    return `${prefix}:acct:invalid-unauthenticated`;
+  }
+  return `${prefix}:acct:${verifiedUserId.trim()}`;
+}
+
+/**
+ * Backward compatibility alias for existing callers.
+ * Returns the network-level rate limit key.
  */
 export function getComplianceRateLimitKey(
   prefix: string,
   headers?: { get(name: string): string | null | undefined }
 ): string {
-  const ip = getClientIp(headers);
-  if (ip !== "direct-client") {
-    return `${prefix}:ip:${ip}`;
-  }
-
-  if (!headers) {
-    return `${prefix}:direct-fallback`;
-  }
-
-  // 1. Check Authorization header for Bearer tokens
-  const auth = headers.get("authorization");
-  if (auth && auth.toLowerCase().startsWith("bearer ")) {
-    const token = auth.slice(7).trim();
-    if (token) {
-      const tokenHash = crypto.createHash("sha256").update(token).digest("hex").slice(0, 16);
-      return `${prefix}:token:${tokenHash}`;
-    }
-  }
-
-  // 2. Check Cookie header for session tokens
-  const cookieHeader = headers.get("cookie");
-  if (cookieHeader) {
-    const cookieHash = crypto.createHash("sha256").update(cookieHeader).digest("hex").slice(0, 16);
-    return `${prefix}:cookie:${cookieHash}`;
-  }
-
-  // 3. Fallback: Partition unauthenticated direct clients by request fingerprint
-  const ua = headers.get("user-agent") || "";
-  const lang = headers.get("accept-language") || "";
-  const secChUa = headers.get("sec-ch-ua") || "";
-  const fpSource = `${ua}|${lang}|${secChUa}`;
-
-  if (fpSource.length > 2) {
-    const fpHash = crypto.createHash("sha256").update(fpSource).digest("hex").slice(0, 16);
-    return `${prefix}:fp:${fpHash}`;
-  }
-
-  return `${prefix}:direct-unpartitioned`;
+  return getNetworkRateLimitKey(prefix, headers);
 }
 
 /**

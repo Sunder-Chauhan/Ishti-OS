@@ -325,4 +325,15 @@ Scope & Gates:
   - [x] Test suite expanded to 117/117 M05 tests (adding 7 dedicated tests for proxy modes and rate-limit key partitioning); 110/110 security regression tests passing (227 tests total, 0 failures)
   - [x] Decision log updated (ADR-030 in docs/DECISION_LOG.md; LDL-013 in docs/legal/ISHTI_LEGAL_DECISION_LOG.md)
   - [x] Final independent reconciliation report completed: docs/M05_PASS_7_INDEPENDENT_RECONCILIATION_REPORT.md with status READY FOR INDEPENDENT COUNSEL REVIEW
+- [x] Milestone M05 Pass 8: Critical Rate-Limiter Remediation, Adversarial Testing & Bounded Memory Hardening (ADR-031):
+  - [x] Eliminated reliance on attacker-controlled client headers (Bearer tokens, session cookies, User-Agent, Accept-Language, Sec-CH-UA) as rate-limit identities; eliminated rotating-header rate limit bypass
+  - [x] Implemented layered defense-in-depth: Layer 1 (pre-auth network limit via verified IP or bounded fallback `${prefix}:net:untrusted-direct`) $\to$ Layer 2 (server session auth) $\to$ Layer 3 (post-auth account limit via verified `auth.user.id`)
+  - [x] Implemented `BoundedRateLimiter` engine with hard ceiling `MAX_ENTRIES = 10_000`, proactive capacity sweeps, LRU eviction on saturation, and fail-closed safety
+  - [x] Documented fundamental network provenance limitation: origin web servers cannot manufacture per-client fairness without trustworthy ingress; origin shielding (Cloudflare AOP / VPC firewall) and distributed Redis rate limiting retained as M06 launch dependencies
+  - [x] Verified endpoint protection: `/api/compliance/audit` and `/api/compliance/triage` protected at both Layer 1 (network) and Layer 3 (account)
+  - [x] Added 18 automated adversarial tests in `scripts/run-m05-tests.ts`: 10,000 fake tokens collapse, 10,000 cookies collapse, rotating fingerprint block, invalid-token flood bounded memory, spoofed XFF/X-Real-IP rejection, Cloudflare missing/malformed rejection, reverse proxy sanitization, map saturation LRU eviction, expired cleanup, concurrent race safety, account quota isolation, multi-account same network fairness, roaming account enforcement, fail-closed safety, and 12,000-key high-cardinality stress test
+  - [x] Test suite expanded to 135/135 M05 tests (100% pass); 110/110 security regression tests passing (245 tests total, 0 failures)
+  - [x] TypeScript clean (0 errors) across all packages; Next.js web build clean (31/31 routes prerendered)
+  - [x] Decision log updated (ADR-031 in `docs/DECISION_LOG.md`; LDL-014 in `docs/legal/ISHTI_LEGAL_DECISION_LOG.md`)
+  - [x] Remediation report completed: `docs/M05_PASS_8_RATE_LIMITER_REMEDIATION_REPORT.md` with status `READY FOR INDEPENDENT COUNSEL REVIEW`
 
